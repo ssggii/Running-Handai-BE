@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    active: local
+    group:
+      local:
+        - private
+        - local
+      produce:
+        - produce
