@@ -1,9 +1,10 @@
 spring:
   profiles:
-    active: local
-    group:
-      local:
-        - private
-        - local
-      produce:
-        - produce
+    active: local # 기본으로 로컬 실행
+
+  jpa:
+    hibernate:
+      ddl-auto: none # 기본값은 none (환경에 따라 필요 시 오버라이딩)
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100

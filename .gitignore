@@ -41,3 +41,7 @@ out/
 
 # Setting
 application-private.yml
+.env
+
+# Docker data volumes
+/data
