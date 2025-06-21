@@ -1,0 +1,35 @@
+version: 0.0
+os: linux
+
+# 코드 파일 전송과 관련된 설정
+files:
+  - source: /
+    destination: /home/ubuntu/deploy/app/
+    overwrite: yes
+
+# 파일 및 디렉토리 권한에 관련된 설정
+permissions:
+  - object: /home/ubuntu/deploy/app/scripts/
+    pattern: "**"
+    mode: 755
+    owner: ubuntu
+    group: ubuntu
+
+# Deploy 전후에 실행할 스크립트 또는 명령에 관련된 설정
+hooks:
+  BeforeInstall:
+    - location: scripts/before_install.sh
+      timeout: 180
+      runas: ubuntu
+  ApplicationStart:
+    - location: scripts/application_start.sh
+      timeout: 300
+      runas: ubuntu
+  ValidateService:
+    - location: scripts/validate_service.sh
+      timeout: 180
+      runas: ubuntu
+  BeforeAllowTraffic:
+    - location: scripts/switch_nginx.sh
+      timeout: 90
+      runas: root
