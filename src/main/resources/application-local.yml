@@ -1,5 +1,5 @@
 spring:
-  datasource: # .env 파일로부터 주입 받음
+  datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
@@ -12,8 +12,3 @@ spring:
       hibernate:
         format_sql: true
         show-sql: true
-
-management:
-  endpoints:
-    web:
-      base-path: /
