@@ -13,19 +13,28 @@ jobs:
       - name: Parse labels and determine template type
         id: parse_labels
         run: |
-          # 라벨 JSON 배열 추출
-          labels_json='${{ toJson(github.event.client_payload.labels) }}'
+          # 라벨 CSV 문자열 추출
+          labels_csv="${{ github.event.client_payload.labels }}"
           
-          # jq를 사용해 라벨 배열 파싱
-          labels_array=$(echo "$labels_json" | jq -r '.[]')
+          # 쉼표로 분할하여 배열 생성
+          IFS=',' read -ra labels_array <<< "$labels_csv"
           
           # 템플릿 타입 결정 (기본값: todo)
           template_type="todo"
-          if echo "$labels_array" | grep -qi "bug"; then
-            template_type="bug"
-          elif echo "$labels_array" | grep -qi "feature"; then
-            template_type="feature"
-          fi
+          for label in "${labels_array[@]}"; do
+            # 대소문자 구분 없이 비교
+            label_lower=$(echo "$label" | tr '[:upper:]' '[:lower:]')
+            case $label_lower in
+              *bug*)
+                template_type="bug"
+                break
+                ;;
+              *feature*)
+                template_type="feature"
+                break
+                ;;
+            esac
+          done
           
           # 결과 출력
           echo "template_type=$template_type" >> $GITHUB_OUTPUT
