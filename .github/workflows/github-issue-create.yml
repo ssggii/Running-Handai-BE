@@ -54,7 +54,7 @@ jobs:
           header="### 📋 할당 정보\n- **할당자:** $assignee\n- **상위 이슈:** $parent_key\n\n"
           
           # 템플릿 메타 데이터 제거 후 내용 로드
-          template_content=$(awk '/^---$/ {count++; next} count < 2' "$template_file")
+          template_content=$(awk '/^---$/ {count++; next} count==1 {next} 1' "$template_file")
           
           # 템플릿 유형별 설명 섹션 설정
           case $template_type in
