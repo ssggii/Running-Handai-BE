@@ -1,0 +1,27 @@
+name: Change Jira Issue State When PR Closed
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main, develop]
+
+jobs:
+  change-state-jira-issue:
+    if: ${{ github.event.pull_request.merged }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Jira Issue Key
+        id: extract_key
+        run: |
+          # Pull Request 제목에서 Jira 이슈 키 추출
+          issue_key=$(echo "${{ github.event.pull_request.title }}" | grep -o '\[[^]]*\]' | sed 's/\[//;s/\]//')
+          echo "issue_key=$issue_key" >> $GITHUB_OUTPUT
+
+      - name: Change State to Done
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ steps.extract_key.outputs.issue_key }}
+          transition: "완료"
+          jira-base-url: ${{ secrets.JIRA_BASE_URL }}
+          jira-user-email: ${{ secrets.JIRA_USER_EMAIL }}
+          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
