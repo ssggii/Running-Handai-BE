@@ -1,37 +1,32 @@
 services:
-  # 스프링부트 애플리케이션
+  # SpringBoot 애플리케이션
   app:
-    build: . # 현재 디렉토리의 Dockerfile로 이미지 빌드
-    container_name: running-handai-app
+    build: .
+    container_name: runninghandai-app
     ports:
-      - "8080:8080" # 호스트 8080포트와 컨테이너 8080포트 연결
+      - "8080:8080"
     depends_on:
       mysql-db:
-        condition: service_healthy # 'healthy' 상태를 조건으로 대기
+        condition: service_healthy
     environment:
-      # .env 파일에 정의된 변수들을 컨테이너 환경변수로 주입
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
 
   # MySQL Database
   mysql-db:
-    image: mysql:8.0 # MySQL 8.0 버전 이미지 사용
-    container_name: running-handai-local-db # 컨테이너 이름이자, 앱에서 접속할 호스트명
+    image: mysql:8.0
+    container_name: runninghandai-local-db
     ports:
-      # 로컬 PC의 MySQL과 충돌을 피하기 위해 3307 포트 사용
       - "3307:3306"
     volumes:
-      # DB 데이터를 호스트 PC에 저장하여 영속성 보장
       - ./data/mysql:/var/lib/mysql
     environment:
-      # .env 파일의 변수들을 MySQL 설정에 사용
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     command:
-      # 한글 등 다국어 처리를 위한 UTF-8 설정
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     healthcheck:
