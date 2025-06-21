@@ -51,7 +51,7 @@ jobs:
           issue_key="${{ github.event.client_payload.issue_key }}"
           
           # 할당 정보 헤더 생성
-          header="### 📋 할당 정보\n- **할당자**: $assignee\n- **상위 이슈**: $parent_key\n\n"
+          header="### 📋 할당 정보\n- **할당자:** $assignee\n- **상위 이슈:** $parent_key\n\n"
           
           # 템플릿 내용 로드
           template_content=$(cat "$template_file")
@@ -85,7 +85,12 @@ jobs:
             '
           )
           
-          echo "body=$processed_content" >> $GITHUB_OUTPUT
+          # 멀티라인 출력으로 body 설정
+          {
+            echo "body<<EOF"
+            echo "$processed_content"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Create GitHub Issue
         uses: actions/github-script@v6
