@@ -1,0 +1,77 @@
+name: Create Github Issue From Jira Task
+on:
+  repository_dispatch:
+    types: [github-issue-create]
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Load and process template
+        id: process_template
+        run: |
+          # 필수 변수 추출
+          template_type="${{ github.event.client_payload.template_type }}"
+          template_file=".github/ISSUE_TEMPLATE/$template_type-report.md"
+          jira_description="${{ github.event.client_payload.description }}"
+          assignee="${{ github.event.client_payload.assignee }}"
+          parent_key="${{ github.event.client_payload.parent_key }}"
+          issue_key="${{ github.event.client_payload.issue_key }}"
+          
+          # 할당 정보 헤더 생성
+          header="### 📋 할당 정보\n- **할당자**: $assignee\n- **상위 이슈**: $parent_key\n\n"
+          
+          # 템플릿 내용 로드
+          template_content=$(cat "$template_file")
+          
+          # 템플릿 유형별 설명 섹션 설정
+          case $template_type in
+            bug)
+              section_header="### 🐞 어떤 버그인가요?"
+              ;;
+            feature)
+              section_header="### 🚀 어떤 기능인가요?"
+              ;;
+            *)
+              section_header="### 🚀 이슈 설명"
+              ;;
+          esac
+          
+          # Jira 설명을 템플릿에 삽입
+          processed_content=$(
+            echo -e "$header"
+            echo "$template_content" | 
+            awk -v header="$section_header" -v desc="$jira_description" '
+              $0 ~ header { 
+                print $0
+                print desc
+                getline # Skip placeholder line
+                next
+              }
+              /^>/ { next } # > 제거
+              1
+            '
+          )
+          
+          echo "body=$processed_content" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { summary, issue_key } = context.payload.client_payload;
+            const body = `${{ steps.process_template.outputs.body }}`;
+            
+            // 이슈 제목 설정 (Jira Issue 번호 포함)
+            const title = `[${issue_key}] ${summary}`;
+            
+            // 이슈 생성
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body
+            });
