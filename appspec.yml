@@ -26,10 +26,6 @@ hooks:
       timeout: 300
       runas: ubuntu
   ValidateService:
-    - location: scripts/validate_service.sh
-      timeout: 180
-      runas: ubuntu
-  BeforeAllowTraffic:
-    - location: scripts/switch_nginx.sh
-      timeout: 90
-      runas: root
+    - location: scripts/validate_and_switch.sh
+      timeout: 300
+      runas: root  # 스크립트 내 sudo 명령어 실행을 위해 root 권한으로 실행
