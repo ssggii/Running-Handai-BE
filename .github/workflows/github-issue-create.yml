@@ -1,4 +1,4 @@
-name: Create Github Issue From Jira Task
+name: Create GitHub Issue from Jira Task
 on:
   repository_dispatch:
     types: [github-issue-create]
@@ -10,11 +10,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Parse labels and determine template type
+        id: parse_labels
+        run: |
+          # 라벨 JSON 배열 추출
+          labels_json='${{ toJson(github.event.client_payload.labels) }}'
+          
+          # jq를 사용해 라벨 배열 파싱
+          labels_array=$(echo "$labels_json" | jq -r '.[]')
+          
+          # 템플릿 타입 결정 (기본값: todo)
+          template_type="todo"
+          if echo "$labels_array" | grep -qi "bug"; then
+            template_type="bug"
+          elif echo "$labels_array" | grep -qi "feature"; then
+            template_type="feature"
+          fi
+          
+          # 결과 출력
+          echo "template_type=$template_type" >> $GITHUB_OUTPUT
+
       - name: Load and process template
         id: process_template
         run: |
-          # 필수 변수 추출
-          template_type="${{ github.event.client_payload.template_type }}"
+          # 변수 추출
+          template_type="${{ steps.parse_labels.outputs.template_type }}"
           template_file=".github/ISSUE_TEMPLATE/$template_type-report.md"
           jira_description="${{ github.event.client_payload.description }}"
           assignee="${{ github.event.client_payload.assignee }}"
@@ -48,10 +68,10 @@ jobs:
               $0 ~ header { 
                 print $0
                 print desc
-                getline # Skip placeholder line
+                getline
                 next
               }
-              /^>/ { next } # > 제거
+              /^>/ { next }
               1
             '
           )
@@ -64,11 +84,8 @@ jobs:
           script: |
             const { summary, issue_key } = context.payload.client_payload;
             const body = `${{ steps.process_template.outputs.body }}`;
-            
-            // 이슈 제목 설정 (Jira Issue 번호 포함)
             const title = `[${issue_key}] ${summary}`;
             
-            // 이슈 생성
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
