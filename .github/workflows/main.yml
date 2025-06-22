@@ -25,7 +25,26 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      # 3. AWS 자격 증명 설정 (GitHub Secrets 사용)
+      # 3. Gradle 캐시 설정
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4. gradlew 실행 권한 부여
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 5. Gradle로 단위 테스트 실행
+      - name: Run unit tests with Gradle
+        run: ./gradlew test
+
+      # 6. AWS 자격 증명 설정 (GitHub Secrets 사용)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -33,12 +52,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
-      # 4. AWS ECR에 로그인
+      # 7. AWS ECR에 로그인
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 5. Docker 이미지 빌드, 태그 지정, ECR에 푸시, image_uri.txt 생성
+      # 8. Docker 이미지 빌드, 태그 지정, ECR에 푸시, image_uri.txt 생성
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
@@ -50,11 +69,11 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" > image_uri.txt
 
-      # 6. 배포할 파일들만 모아서 압축
+      # 9. 배포할 파일들만 모아서 압축
       - name: Make zip file
         run: zip -r deploy.zip appspec.yml image_uri.txt scripts
 
-      # 7. 압축 파일을 S3 버킷에 업로드
+      # 10. 압축 파일을 S3 버킷에 업로드
       - name: Upload to S3
         env:
           S3_BUCKET_NAME: "runninghandai-bucket"
@@ -62,7 +81,7 @@ jobs:
         run: |
           aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/codedeploy-artifacts/$IMAGE_TAG-deploy.zip
 
-      # 8. AWS CodeDeploy에 새로운 배포 생성 요청
+      # 11. AWS CodeDeploy에 새로운 배포 생성 요청
       - name: Deploy to EC2 with CodeDeploy
         env:
           S3_BUCKET_NAME: "runninghandai-bucket"
