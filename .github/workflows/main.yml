@@ -1,18 +1,12 @@
-# 워크플로우의 이름
 name: Deploy SpringBoot to AWS EC2
 
-# 워크플로우가 실행될 조건 (트리거)
 on:
   push:
     branches: [ "main" ] # 'main' 브랜치에 push(merge) 이벤트가 발생했을 때 실행
 
-# 실행될 작업(Job)들을 정의
 jobs:
   build-and-deploy:
-    # 작업이 실행될 가상 환경
     runs-on: ubuntu-latest
-
-    # 작업의 단계(Step)들을 정의
     steps:
       # 1. 소스코드 체크아웃
       - name: Checkout
@@ -91,3 +85,34 @@ jobs:
             --application-name "runninghandai-app" \
             --deployment-group-name "runninghandai-app-prod" \
             --s3-location bucket=$S3_BUCKET_NAME,bundleType=zip,key=codedeploy-artifacts/$IMAGE_TAG-deploy.zip
+
+  send-slack-notification:
+    name: Send Slack Notification
+    runs-on: ubuntu-latest
+    needs: build-and-deploy # 'build-and-deploy' 작업이 끝나야 실행됨
+    if: always() # build-and-deploy 작업의 성공/실패 여부와 관계없이 항상 실행됨
+
+    steps:
+      - name: Send notification on success
+        if: needs.build-and-deploy.result == 'success' # build-and-deploy가 성공했을 때 실행
+        uses: act10ns/slack@v2
+        with:
+          status: success
+          message: |
+            ✅ 배포 성공!
+            `main` 브랜치의 최신 코드가 EC2에 성공적으로 배포되었습니다.
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|배포 로그 보기>
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send notification on failure
+        if: needs.build-and-deploy.result == 'failure' # build-and-deploy가 실패했을 때 실행
+        uses: act10ns/slack@v2
+        with:
+          status: failure
+          message: |
+            🚨 배포 실패!
+            워크플로우 실행 중 에러가 발생했습니다. 아래 링크에서 로그를 확인해주세요.
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|실패 로그 보기>
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
