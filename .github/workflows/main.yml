@@ -1,18 +1,12 @@
-# 워크플로우의 이름
 name: Deploy SpringBoot to AWS EC2
 
-# 워크플로우가 실행될 조건 (트리거)
 on:
   push:
     branches: [ "main" ] # 'main' 브랜치에 push(merge) 이벤트가 발생했을 때 실행
 
-# 실행될 작업(Job)들을 정의
 jobs:
   build-and-deploy:
-    # 작업이 실행될 가상 환경
     runs-on: ubuntu-latest
-
-    # 작업의 단계(Step)들을 정의
     steps:
       # 1. 소스코드 체크아웃
       - name: Checkout
@@ -25,7 +19,26 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      # 3. AWS 자격 증명 설정 (GitHub Secrets 사용)
+      # 3. Gradle 캐시 설정
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4. gradlew 실행 권한 부여
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 5. Gradle로 단위 테스트 실행
+      - name: Run unit tests with Gradle
+        run: ./gradlew test
+
+      # 6. AWS 자격 증명 설정 (GitHub Secrets 사용)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -33,12 +46,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
-      # 4. AWS ECR에 로그인
+      # 7. AWS ECR에 로그인
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 5. Docker 이미지 빌드, 태그 지정, ECR에 푸시, image_uri.txt 생성
+      # 8. Docker 이미지 빌드, 태그 지정, ECR에 푸시, image_uri.txt 생성
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
@@ -50,11 +63,11 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" > image_uri.txt
 
-      # 6. 배포할 파일들만 모아서 압축
+      # 9. 배포할 파일들만 모아서 압축
       - name: Make zip file
         run: zip -r deploy.zip appspec.yml image_uri.txt scripts
 
-      # 7. 압축 파일을 S3 버킷에 업로드
+      # 10. 압축 파일을 S3 버킷에 업로드
       - name: Upload to S3
         env:
           S3_BUCKET_NAME: "runninghandai-bucket"
@@ -62,7 +75,7 @@ jobs:
         run: |
           aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/codedeploy-artifacts/$IMAGE_TAG-deploy.zip
 
-      # 8. AWS CodeDeploy에 새로운 배포 생성 요청
+      # 11. AWS CodeDeploy에 새로운 배포 생성 요청
       - name: Deploy to EC2 with CodeDeploy
         env:
           S3_BUCKET_NAME: "runninghandai-bucket"
@@ -72,3 +85,34 @@ jobs:
             --application-name "runninghandai-app" \
             --deployment-group-name "runninghandai-app-prod" \
             --s3-location bucket=$S3_BUCKET_NAME,bundleType=zip,key=codedeploy-artifacts/$IMAGE_TAG-deploy.zip
+
+  send-slack-notification:
+    name: Send Slack Notification
+    runs-on: ubuntu-latest
+    needs: build-and-deploy # 'build-and-deploy' 작업이 끝나야 실행됨
+    if: always() # build-and-deploy 작업의 성공/실패 여부와 관계없이 항상 실행됨
+
+    steps:
+      - name: Send notification on success
+        if: needs.build-and-deploy.result == 'success' # build-and-deploy가 성공했을 때 실행
+        uses: act10ns/slack@v2
+        with:
+          status: success
+          message: |
+            ✅ 배포 성공!
+            `main` 브랜치의 최신 코드가 EC2에 성공적으로 배포되었습니다.
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|배포 로그 보기>
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send notification on failure
+        if: needs.build-and-deploy.result == 'failure' # build-and-deploy가 실패했을 때 실행
+        uses: act10ns/slack@v2
+        with:
+          status: failure
+          message: |
+            🚨 배포 실패!
+            워크플로우 실행 중 에러가 발생했습니다. 아래 링크에서 로그를 확인해주세요.
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|실패 로그 보기>
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
