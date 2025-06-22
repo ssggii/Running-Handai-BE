@@ -18,10 +18,18 @@ echo "Deploy Target Port: $NEW_PORT"
 echo "Deploy Target Container Name: $TARGET_CONTAINER_NAME"
 echo "====================================================="
 
+# 2. ECR에 Docker 로그인
+echo "Logging in to Amazon ECR..."
+aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 033504885739.dkr.ecr.ap-northeast-2.amazonaws.com
 
-# 2. 최신 Docker 이미지 pull
-# CodeDeploy가 전달한 파일 중, 이미지 주소가 담긴 파일을 읽어온다.
-# image_uri.txt 파일은 GitHub Actions 단계에서 생성된다.
+# 로그인 실패 시 스크립트 중단
+if [ $? -ne 0 ]; then
+    echo "ECR login failed!"
+    exit 1
+fi
+echo "ECR login successful."
+
+# 3. 최신 Docker 이미지 pull
 DEPLOY_DIR="/home/ubuntu/deploy/app"
 ECR_IMAGE_URI=$(cat "$DEPLOY_DIR"/image_uri.txt)
 
@@ -40,16 +48,15 @@ if [ $? -ne 0 ]; then
 fi
 echo "====================================================="
 
-
-# 3. 새로운 Docker 컨테이너 실행
-docker rm "$TARGET_CONTAINER_NAME" 2>/dev/null || true # 이전에 실패했을 경우를 대비해, 같은 이름의 컨테이너 삭제
+# 4. 새로운 Docker 컨테이너 실행
+docker rm "$TARGET_CONTAINER_NAME" 2>/dev/null || true
 
 echo "Running new container on port $NEW_PORT with name $TARGET_CONTAINER_NAME..."
 
 docker run -d -p "$NEW_PORT":"$NEW_PORT" --name "$TARGET_CONTAINER_NAME" \
            -e SERVER_PORT="$NEW_PORT" \
            --env-file /home/ubuntu/config/prod.env \
-           "$ECR_IMAGE_URI" # 이미지 이름으로 ECR 주소 사용
+           "$ECR_IMAGE_URI"
 
 echo "====================================================="
 echo "ApplicationStart hook finished."
