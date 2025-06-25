@@ -9,19 +9,22 @@ import static org.springframework.http.HttpStatus.*;
 @AllArgsConstructor
 @Getter
 public enum ErrorCode {
-    // BAD_REQUEST (400): 잘못된 요청
-
-    // UNAUTHORIZED (401): 인증되지 않은 사용자
-
-    // FORBIDDEN (403): 허용되지 않은 접근
-
-    // NOT_FOUND (404): 잘못된 리소스 접근
+    /** 비즈니스 에러 코드 */
+    // NOT_FOUND (404)
     REVIEW_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리뷰입니다."),
-    MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다.");
 
-    // CONFLICT (409): 중복된 리소스, 요청이 현재 서버 상태와 충돌될 때
+    /** 시스템 및 공통 예외용 에러 코드 */
+    // BAD_REQUEST (400)
+    ILLEGAL_ARGUMENT(BAD_REQUEST, "잘못된 인자 값입니다."),
+    METHOD_ARGUMENT_NOT_VALID(BAD_REQUEST, "유효하지 않은 인자 값입니다."),
+    HTTP_MESSAGE_NOT_READABLE(BAD_REQUEST, "잘못된 요청 형식입니다."),
+    MISSING_SERVLET_REQUEST_PARAMETER(BAD_REQUEST, "필수 요청 매개변수가 누락되었습니다."),
+
+    // METHOD_NOT_ALLOWED (405)
+    HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
 
     // INTERNAL SERVER ERROR (500)
+    REQUEST_SERVER(INTERNAL_SERVER_ERROR, "서버에 요청 부탁드립니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

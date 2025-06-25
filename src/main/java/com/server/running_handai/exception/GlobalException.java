@@ -1,7 +1,6 @@
 package com.server.running_handai.exception;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -18,8 +17,7 @@ public class GlobalException {
     /** CustomException: Error Code에 정의된 비즈니스 로직 예외 */
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
-        ErrorCode errorCode = e.getErrorCode();
-        return getErrorResponse(e, errorCode.getHttpStatus(), errorCode.getCode());
+        return getErrorResponse(e, e.getErrorCode());
     }
 
     /**
@@ -31,25 +29,25 @@ public class GlobalException {
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
-        return getErrorResponse(e, HttpStatus.BAD_REQUEST, "ILLEGAL_ARGUMENT");
+        return getErrorResponse(e, ErrorCode.ILLEGAL_ARGUMENT);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e) {
-        return getErrorResponse(e, HttpStatus.BAD_REQUEST, "METHOD_ARGUMENT_NOT_VALID");
+        return getErrorResponse(e, ErrorCode.METHOD_ARGUMENT_NOT_VALID);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException e) {
-        return getErrorResponse(e, HttpStatus.BAD_REQUEST, "HTTP_MESSAGE_NOT_READABLE");
+        return getErrorResponse(e, ErrorCode.HTTP_MESSAGE_NOT_READABLE);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException e) {
-        return getErrorResponse(e, HttpStatus.BAD_REQUEST, "MISSING_SERVLET_REQUEST_PARAMETER");
+        return getErrorResponse(e, ErrorCode.MISSING_SERVLET_REQUEST_PARAMETER);
     }
 
     /**
@@ -59,7 +57,7 @@ public class GlobalException {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e) {
-        return getErrorResponse(e, HttpStatus.METHOD_NOT_ALLOWED, "HTTP_REQUEST_METHOD_NOT_SUPPORTED");
+        return getErrorResponse(e, ErrorCode.HTTP_REQUEST_METHOD_NOT_SUPPORTED);
     }
 
     /**
@@ -68,14 +66,14 @@ public class GlobalException {
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException e) {
-        return getErrorResponse(e, HttpStatus.INTERNAL_SERVER_ERROR, "REQUEST_SERVER");
+        return getErrorResponse(e, ErrorCode.REQUEST_SERVER);
     }
 
     // 예상하지 못한 모든 예외를 처리
     // 추후 자주 발생하는 오류에 대해 추가 필요
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
-        return getErrorResponse(e, HttpStatus.INTERNAL_SERVER_ERROR, "REQUEST_SERVER");
+        return getErrorResponse(e, ErrorCode.REQUEST_SERVER);
     }
 
     // 일관된 예외 응답 처리
