@@ -56,7 +56,6 @@ public class GlobalException {
      * METHOD_NOT_ALLOWED (405)
      * HttpRequestMethodNotSupportedException: 잘못된 Http Method를 가지고 요청할 경우
      */
-    // spotless:on
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e) {
