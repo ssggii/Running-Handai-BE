@@ -79,24 +79,24 @@ public class GlobalException {
     }
 
     // 일관된 예외 응답 처리
-    private ResponseEntity<ErrorResponse> getErrorResponse(Exception e, HttpStatus httpStatus, String code) {
+    private ResponseEntity<ErrorResponse> getErrorResponse(Exception e, ErrorCode errorCode) {
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
-                httpStatus.value(),
-                httpStatus.name(),
-                code,
-                e.getMessage()
+                errorCode.getHttpStatus().value(),
+                errorCode.getHttpStatus().name(),
+                errorCode.getCode(),
+                errorCode.getMessage()
         );
 
         log.error(
                 "Exception: {} timeStamp: {} status: {} error: {} code: {} message: {}",
                 e.getClass().getSimpleName(),
                 LocalDateTime.now(),
-                httpStatus.value(),
-                httpStatus.name(),
-                code,
+                errorCode.getHttpStatus().value(),
+                errorCode.getHttpStatus().name(),
+                errorCode.getCode(),
                 e.getMessage()
         );
-        return new ResponseEntity<>(errorResponse, httpStatus);
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
 }
