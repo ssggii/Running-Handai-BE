@@ -22,6 +22,7 @@ jobs:
           fi
 
       - name: Jira Login
+        # Jira 이슈 키 없으면 건너뜀
         if: ${{ steps.extract_key.outputs.issue_key != '' }}
         uses: atlassian/gajira-login@v3
         env:
@@ -30,6 +31,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 
       - name: Change State to Done
+        # Jira 이슈 키 없으면 건너뜀
         if: ${{ steps.extract_key.outputs.issue_key != '' }}
         uses: atlassian/gajira-transition@v3
         with:
