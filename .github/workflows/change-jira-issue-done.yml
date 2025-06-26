@@ -15,13 +15,23 @@ jobs:
         run: |
           # Pull Request 제목에서 Jira 이슈 키 추출
           issue_key=$(echo "${{ github.event.pull_request.title }}" | grep -o '\[[^]]*\]' | sed 's/\[//;s/\]//')
-          echo "issue_key=$issue_key" >> $GITHUB_OUTPUT
+          if [ -z "$issue_key" ]; then
+            echo "::warning:: ⚠️ PR 제목에 Jira 이슈 키가 없습니다."
+          else  
+            echo "issue_key=$issue_key" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Jira Login
+        if: ${{ steps.extract_key.outputs.issue_key != '' }}
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 
       - name: Change State to Done
+        if: ${{ steps.extract_key.outputs.issue_key != '' }}
         uses: atlassian/gajira-transition@v3
         with:
           issue: ${{ steps.extract_key.outputs.issue_key }}
           transition: "완료"
-          jira-base-url: ${{ secrets.JIRA_BASE_URL }}
-          jira-user-email: ${{ secrets.JIRA_USER_EMAIL }}
-          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
