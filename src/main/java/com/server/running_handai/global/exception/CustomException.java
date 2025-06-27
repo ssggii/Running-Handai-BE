@@ -1,4 +1,4 @@
-package com.server.running_handai.exception;
+package com.server.running_handai.global.exception;
 
 import lombok.Getter;
 
