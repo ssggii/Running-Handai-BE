@@ -49,9 +49,6 @@ public class Course extends BaseTimeEntity {
     @Column(name = "tour_point", columnDefinition = "TEXT")
     private String tourPoint; // 코스 내 주요 관광지 정보
 
-    @Column(name = "traveler_info", columnDefinition = "TEXT")
-    private String travelerInfo; // 여행자를 위한 정보
-
     @Column(name = "road_condition", columnDefinition = "TEXT", nullable = false)
     private String roadCondition; // 길 상태
 
@@ -68,7 +65,7 @@ public class Course extends BaseTimeEntity {
 
     @Builder
     public Course(String externalId, String name, int distance, int duration,
-                  CourseLevel level, String tourPoint, String travelerInfo, String roadCondition,
+                  CourseLevel level, String tourPoint, String roadCondition,
                   String district) {
         this.externalId = externalId;
         this.name = name;
@@ -76,7 +73,6 @@ public class Course extends BaseTimeEntity {
         this.duration = duration;
         this.level = level;
         this.tourPoint = tourPoint;
-        this.travelerInfo = travelerInfo;
         this.roadCondition = roadCondition;
         this.district = district;
     }

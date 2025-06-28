@@ -12,7 +12,6 @@ CREATE TABLE course
     name           VARCHAR(255)                    NOT NULL,
     road_condition TEXT                            NOT NULL,
     tour_point     TEXT                            NULL,
-    traveler_info  TEXT                            NULL,
     level          ENUM ('EASY', 'HARD', 'MEDIUM') NOT NULL,
     CONSTRAINT UK_course_external_id UNIQUE (external_id)
 );
