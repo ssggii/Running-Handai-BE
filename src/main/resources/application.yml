@@ -1,18 +1,23 @@
 spring:
   profiles:
-    active: prod
+    active: local
 
   jpa:
     hibernate:
-      ddl-auto: none # 기본값은 none (환경에 따라 오버라이딩)
+      ddl-auto: none
     properties:
       hibernate:
         default_batch_fetch_size: 100
 sever:
   port: ${PORT:8080}
 
-# 헬스 체크
 management:
   endpoints:
     web:
       base-path: /
+
+external:
+  api:
+    durunubi:
+      base-url: http://apis.data.go.kr/B551011/Durunubi
+      service-key: ${DURUNUBI_SERVICE_KEY}
