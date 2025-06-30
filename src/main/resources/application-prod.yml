@@ -9,7 +9,6 @@ jpa:
   hibernate:
     ddl-auto: none
 
-# S3 버킷
 aws:
   region: ap-northeast-2
   s3:
