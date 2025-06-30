@@ -52,8 +52,9 @@ public class Course extends BaseTimeEntity {
     @Column(name = "road_condition", columnDefinition = "TEXT")
     private String roadCondition; // 길 상태
 
-    @Column(name = "district", nullable = false)
-    private String district; // 행정구역
+    @Enumerated(EnumType.STRING)
+    @Column(name = "area", nullable = false)
+    private Area area;
 
     @Column(name = "gpx_path", nullable = false)
     private String gpxPath; // gpx 파일
@@ -69,7 +70,7 @@ public class Course extends BaseTimeEntity {
     @Builder
     public Course(String externalId, String name, int distance, int duration,
                   CourseLevel level, String tourPoint, String roadCondition,
-                  String district, String gpxPath) {
+                  Area area, String gpxPath) {
         this.externalId = externalId;
         this.name = name;
         this.distance = distance;
@@ -77,7 +78,7 @@ public class Course extends BaseTimeEntity {
         this.level = level;
         this.tourPoint = tourPoint;
         this.roadCondition = roadCondition;
-        this.district = district;
+        this.area = area;
         this.gpxPath = gpxPath;
     }
 
@@ -112,8 +113,8 @@ public class Course extends BaseTimeEntity {
             this.tourPoint = source.getTourPoint();
             isUpdated = true;
         }
-        if (!this.district.equals(source.getDistrict())) {
-            this.district = source.getDistrict();
+        if (this.area != source.getArea()) {
+            this.area = source.getArea();
             isUpdated = true;
         }
         if (!this.gpxPath.equals(source.getGpxPath())) {

@@ -90,7 +90,7 @@ public class DurunubiApiResponseDto {
         private String tourInfo; // 관광포인트 (Course.tourPoint)
 
         @JsonProperty("sigun")
-        private String sigun; // 행정구역 (Course.district)
+        private String sigun; // 행정구역 (Course.area)
 
         @JsonProperty("gpxpath")
         private String gpxPath; // gpx 경로 (Course.gpxPath)

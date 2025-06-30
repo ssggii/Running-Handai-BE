@@ -12,6 +12,7 @@ public enum ErrorCode {
     /** 비즈니스 에러 코드 */
     // NOT_FOUND (404)
     REVIEW_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리뷰입니다."),
+    AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
 
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)

@@ -1,11 +1,15 @@
 package com.server.running_handai.course.service;
 
+import static com.server.running_handai.global.exception.ErrorCode.AREA_NOT_FOUND;
+
 import com.server.running_handai.course.client.DurunubiApiClient;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto.Item;
+import com.server.running_handai.course.entity.Area;
 import com.server.running_handai.course.entity.Course;
 import com.server.running_handai.course.entity.CourseLevel;
 import com.server.running_handai.course.repository.CourseRepository;
+import com.server.running_handai.global.exception.BusinessException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -113,6 +117,7 @@ public class CourseDataService {
             }
 
             for (DurunubiApiResponseDto.Item item : items) {
+                if (!item.getSigun().startsWith("부산")) continue;
                 allItems.put(item.getCourseIndex(), item);
             }
 
@@ -150,9 +155,15 @@ public class CourseDataService {
                 // 숫자, 문자열 등 각 필드를 안전하게 파싱하고 기본값 할당
                 int distance = safeParseInt(item.getCourseDistance(), DEFAULT_DISTANCE);
                 int duration = safeParseInt(item.getTotalRequiredTime(), DEFAULT_TIME);
-                CourseLevel level = CourseLevel.fromApiValue(item.getCourseLevel());
                 String tourPoint = item.getTourInfo();
                 String district = safeParseString(item.getSigun());
+                CourseLevel level = CourseLevel.fromApiValue(item.getCourseLevel());
+
+                String subRegionName = item.getSigun().split(" ")[1];
+                Area area = Area.findBySubRegion(subRegionName).orElseThrow(() -> {
+                    log.error("지역 변환을 실패했습니다. subRegionName: {}", subRegionName);
+                    return new BusinessException(AREA_NOT_FOUND);
+                });
 
                 return Course.builder()
                         .externalId(externalId)
@@ -161,7 +172,7 @@ public class CourseDataService {
                         .duration(duration)
                         .level(level)
                         .tourPoint(tourPoint)
-                        .district(district)
+                        .area(area)
                         .gpxPath(gpxPath)
                         .build();
 
