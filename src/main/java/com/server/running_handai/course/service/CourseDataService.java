@@ -2,24 +2,30 @@ package com.server.running_handai.course.service;
 
 import static com.server.running_handai.global.exception.ErrorCode.AREA_NOT_FOUND;
 
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.server.running_handai.course.client.DurunubiApiClient;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto.Item;
+import com.server.running_handai.course.dto.GpxDto;
 import com.server.running_handai.course.entity.Area;
 import com.server.running_handai.course.entity.Course;
 import com.server.running_handai.course.entity.CourseLevel;
+import com.server.running_handai.course.entity.TrackPoint;
 import com.server.running_handai.course.repository.CourseRepository;
+import com.server.running_handai.course.repository.TrackPointRepository;
 import com.server.running_handai.global.exception.BusinessException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 @Slf4j
 @Service
@@ -28,11 +34,15 @@ public class CourseDataService {
 
     public static final int DEFAULT_DISTANCE = 0;
     public static final int DEFAULT_TIME = 0;
+    public static final String WHITE_SPACE = " ";
 
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
+    private final TrackPointRepository trackPointRepository;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final XmlMapper xmlMapper = new XmlMapper();
 
-    @Async("taskExecutor")
+    @Async("syncCourseTaskExecutor")
     @Transactional
     public void synchronizeCourseData() {
         log.info("두루누비 Course 데이터 동기화를 시작합니다.");
@@ -127,80 +137,134 @@ public class CourseDataService {
         return allItems;
     }
 
-        private Course toEntity(DurunubiApiResponseDto.Item item) {
-            if (item == null) {
-                log.warn("API 응답의 Item 필드가 null입니다. 건너뜁니다.");
-                return null;
-            }
-
-            // null이면 안되는 값 검증
-            String externalId = item.getCourseIndex();
-            String name = item.getCourseName();
-            String gpxPath = item.getGpxPath();
-
-            if (externalId == null || externalId.isBlank()) {
-                log.warn("API 데이터에 courseIndex(externalId)가 없습니다. 건너뜁니다. item: {}", item);
-                return null;
-            }
-            if (name == null || name.isBlank()) {
-                log.warn("API 데이터에 courseName(name)이 없습니다. 건너뜁니다. courseIndex: {}", externalId);
-                return null;
-            }
-            if (gpxPath == null || gpxPath.isBlank()) {
-                log.warn("GPX 경로가 없습니다. 코스를 건너뜁니다. courseIndex: {}", externalId);
-                return null;
-            }
-
-            try {
-                // 숫자, 문자열 등 각 필드를 안전하게 파싱하고 기본값 할당
-                int distance = safeParseInt(item.getCourseDistance(), DEFAULT_DISTANCE);
-                int duration = safeParseInt(item.getTotalRequiredTime(), DEFAULT_TIME);
-                String tourPoint = item.getTourInfo();
-                String district = safeParseString(item.getSigun());
-                CourseLevel level = CourseLevel.fromApiValue(item.getCourseLevel());
-
-                String subRegionName = item.getSigun().split(" ")[1];
-                Area area = Area.findBySubRegion(subRegionName).orElseThrow(() -> {
-                    log.error("지역 변환을 실패했습니다. subRegionName: {}", subRegionName);
-                    return new BusinessException(AREA_NOT_FOUND);
-                });
-
-                return Course.builder()
-                        .externalId(externalId)
-                        .name(name)
-                        .distance(distance)
-                        .duration(duration)
-                        .level(level)
-                        .tourPoint(tourPoint)
-                        .area(area)
-                        .gpxPath(gpxPath)
-                        .build();
-
-            } catch (Exception e) {
-                // 예상치 못한 다른 모든 예외를 대비
-                log.error("API 데이터 파싱 중 예상치 못한 예외 발생. courseIndex: {}", externalId, e);
-                return null;
-            }
+    private Course toEntity(DurunubiApiResponseDto.Item item) {
+        if (item == null) {
+            log.warn("API 응답의 Item 필드가 null입니다. 건너뜁니다.");
+            return null;
         }
 
-        /**
-         * Null-safe 정수 파싱 헬퍼 메서드
-         */
-        private int safeParseInt(String value, int defaultValue) {
-            if (value == null || value.isBlank()) {
-                return defaultValue;
-            }
-            try {
-                return Integer.parseInt(value);
-            } catch (NumberFormatException e) {
-                return defaultValue;
-            }
+        // null이면 안되는 값 검증
+        String externalId = item.getCourseIndex();
+        String name = item.getCourseName();
+        String gpxPath = item.getGpxPath();
+
+        if (externalId == null || externalId.isBlank()) {
+            log.warn("API 데이터에 courseIndex(externalId)가 없습니다. 해당 코스를 건너뜁니다. item: {}", item);
+            return null;
+        }
+        if (name == null || name.isBlank()) {
+            log.warn("[CourseIndex: {}] API 데이터에 courseName이 없습니다. 해당 코스를 건너뜁니다.", externalId);
+            return null;
+        }
+        if (gpxPath == null || gpxPath.isBlank()) {
+            log.warn("[CourseIndex: {}] GPX 경로가 없습니다. 해당 코스를 건너뜁니다.", externalId);
+            return null;
         }
 
-        /**
-         * Null-safe 문자열 반환 헬퍼 메서드 (null일 경우 빈 문자열 반환)
-         */
-        private String safeParseString(String value) {
-            return (value != null) ? value : "";
+        try {
+            // 숫자, 문자열 등 각 필드를 안전하게 파싱하고 기본값 할당
+            int distance = safeParseInt(item.getCourseDistance(), DEFAULT_DISTANCE);
+            int duration = safeParseInt(item.getTotalRequiredTime(), DEFAULT_TIME);
+            String tourPoint = item.getTourInfo();
+            CourseLevel level = CourseLevel.fromApiValue(item.getCourseLevel());
+
+            String subRegionName = item.getSigun().split(WHITE_SPACE)[1];
+            Area area = Area.findBySubRegion(subRegionName).orElseThrow(() -> {
+                log.error("지역 변환을 실패했습니다. subRegionName: {}", subRegionName);
+                return new BusinessException(AREA_NOT_FOUND);
+            });
+
+            return Course.builder()
+                    .externalId(externalId)
+                    .name(name)
+                    .distance(distance)
+                    .duration(duration)
+                    .level(level)
+                    .tourPoint(tourPoint)
+                    .area(area)
+                    .gpxPath(gpxPath)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("API 데이터 파싱 중 예상치 못한 예외 발생 (courseIndex: {})", externalId, e);
+            return null;
         }
+    }
+
+    // Null-safe 정수 파싱 헬퍼 메서드
+    private int safeParseInt(String value, int defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    @Async("gpxTaskExecutor")
+    @Transactional
+    public void syncAllCoursesWithEmptyTrackPoints() {
+        List<Course> coursesToSync = courseRepository.findCoursesWithEmptyTrackPoints();
+
+        if (coursesToSync.isEmpty()) {
+            log.info("새롭게 트랙포인트를 동기화할 코스가 없습니다.");
+            return;
+        }
+
+        log.info("총 {}개의 코스에 대해 트랙포인트 동기화를 시작합니다.", coursesToSync.size());
+        for (Course course : coursesToSync) {
+            saveTrackPoints(course);
+        }
+    }
+
+    /**
+     * Course 객체의 gpxPath에 있는 GPX 파일을 다운로드 및 파싱하여,
+     * 해당 GPX 파일의 모든 좌표 정보를 TrackPoint 엔티티로 만들고 데이터베이스에 일괄 저장(Batch Insert)합니다.
+     */
+    private void saveTrackPoints(Course course) {
+        long startTime = System.currentTimeMillis();
+        log.info("[Course ID: {}] 트랙포인트 저장 시작.", course.getId());
+
+        try {
+            // 1. GPX 파일 다운로드
+            String gpxContent = restTemplate.getForObject(course.getGpxPath(), String.class);
+            if (gpxContent == null || gpxContent.isEmpty()) {
+                log.warn("[Course ID: {}] GPX 파일이 비어있습니다. URL: {}", course.getId(), course.getGpxPath());
+                return;
+            }
+
+            // 2. Jackson을 사용한 XML 파싱
+            GpxDto gpx = xmlMapper.readValue(gpxContent, GpxDto.class);
+
+            // 3. TrackPoint 엔티티 리스트 생성
+            List<TrackPoint> trackPointsToSave = new ArrayList<>();
+            AtomicInteger sequence = new AtomicInteger(1);
+
+            gpx.getTrk().getTrksegs().forEach(segment ->
+                    segment.getTrkpts().forEach(point -> {
+                        TrackPoint trackPoint = TrackPoint.builder()
+                                .lat(point.getLat())
+                                .lon(point.getLon())
+                                .ele(point.getEle())
+                                .sequence(sequence.getAndIncrement())
+                                .build();
+                        trackPoint.setCourse(course);
+                        trackPointsToSave.add(trackPoint);
+                    })
+            );
+
+            // 4. Batch Insert 실행
+            if (!trackPointsToSave.isEmpty()) {
+                trackPointRepository.saveAll(trackPointsToSave);
+                long endTime = System.currentTimeMillis();
+                log.info("[Course ID: {}] {}개의 트랙포인트 저장 완료. (소요 시간: {}ms)", course.getId(), trackPointsToSave.size(), (endTime - startTime));
+            }
+
+        } catch (Exception e) {
+            log.error("[Course ID: {}] 트랙포인트 동기화 중 오류 발생", course.getId(), e);
+        }
+    }
+
 }

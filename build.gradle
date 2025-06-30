@@ -43,6 +43,9 @@ dependencies {
 
 	// WebCleint 의존성
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	// Jackson 의존성
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 }
 
 tasks.named('test') {
