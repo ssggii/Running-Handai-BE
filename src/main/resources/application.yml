@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: local
+    active: prod
 
   jpa:
     hibernate:
@@ -12,8 +12,14 @@ spring:
           batch_size: 100 # JDBC Batch Insert 활성화
         order_inserts: true
         order_updates: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-3.5-turbo
 
-sever:
+server:
   port: ${PORT:8080}
 
 management:
