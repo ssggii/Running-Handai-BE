@@ -2,6 +2,7 @@ package com.server.running_handai.course.controller;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
 
+import com.server.running_handai.course.dto.CourseDetailDto;
 import com.server.running_handai.course.dto.CourseInfoDto;
 import com.server.running_handai.course.entity.Area;
 import com.server.running_handai.course.entity.Theme;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -62,4 +64,13 @@ public class CourseController {
 
         return ResponseEntity.ok(ApiResponse.success(SUCCESS, courseInfoDtoList));
     }
+
+    @GetMapping("/{courseId}")
+    public ResponseEntity<ApiResponse<CourseDetailDto>> getCourseDetails(
+            @PathVariable("courseId") Long courseId) {
+        log.info("[코스 상세정보 조회 요청] courseId: {}", courseId);
+        CourseDetailDto courseDetails = courseService.findCourseDetails(courseId);
+        return ResponseEntity.ok(ApiResponse.success(SUCCESS, courseDetails));
+    }
+
 }
