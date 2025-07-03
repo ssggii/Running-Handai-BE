@@ -49,15 +49,16 @@ public class Course extends BaseTimeEntity {
     @Column(name = "tour_point", columnDefinition = "TEXT")
     private String tourPoint; // 코스 내 주요 관광지 정보
 
-    @Column(name = "road_condition", columnDefinition = "TEXT")
-    private String roadCondition; // 길 상태
-
     @Enumerated(EnumType.STRING)
     @Column(name = "area", nullable = false)
     private Area area;
 
     @Column(name = "gpx_path", nullable = false)
     private String gpxPath; // gpx 파일
+
+    // CourseRoadCondition과 일대다 관계
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RoadCondition> roadConditions = new ArrayList<>(); // 길 상태
 
     // TrackPoint와 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -69,15 +70,13 @@ public class Course extends BaseTimeEntity {
 
     @Builder
     public Course(String externalId, String name, int distance, int duration,
-                  CourseLevel level, String tourPoint, String roadCondition,
-                  Area area, String gpxPath) {
+                  CourseLevel level, String tourPoint, Area area, String gpxPath) {
         this.externalId = externalId;
         this.name = name;
         this.distance = distance;
         this.duration = duration;
         this.level = level;
         this.tourPoint = tourPoint;
-        this.roadCondition = roadCondition;
         this.area = area;
         this.gpxPath = gpxPath;
     }

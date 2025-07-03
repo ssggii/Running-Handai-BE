@@ -7,21 +7,28 @@ import com.server.running_handai.course.client.DurunubiApiClient;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto.Item;
 import com.server.running_handai.course.dto.GpxDto;
-import com.server.running_handai.course.entity.Area;
-import com.server.running_handai.course.entity.Course;
-import com.server.running_handai.course.entity.CourseLevel;
-import com.server.running_handai.course.entity.TrackPoint;
+import com.server.running_handai.course.dto.RoadConditionResponseDto;
+import com.server.running_handai.course.entity.*;
 import com.server.running_handai.course.repository.CourseRepository;
+import com.server.running_handai.course.repository.RoadConditionRepository;
 import com.server.running_handai.course.repository.TrackPointRepository;
 import com.server.running_handai.global.exception.BusinessException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import com.server.running_handai.global.exception.ErrorCode;
+import org.springframework.core.io.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +49,13 @@ public class CourseDataService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final XmlMapper xmlMapper = new XmlMapper();
 
+    private final ChatClient.Builder chatClientBuilder;
+    private final RoadConditionRepository roadConditionRepository;
+
+    @Value("classpath:prompt/save-road-condition.st")
+    private Resource getRoadConditionPrompt;
+
+    /** 두루누비 API 관련 */
     @Async("syncCourseTaskExecutor")
     @Transactional
     public void synchronizeCourseData() {
@@ -267,4 +281,80 @@ public class CourseDataService {
         }
     }
 
+    /** OpenAI API 관련 */
+    /** 길 상태 수정 */
+    @Transactional
+    public RoadConditionResponseDto updateRoadCondition(Long courseId) {
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(ErrorCode.COURSE_NOT_FOUND));
+        List<TrackPoint> trackPoints = course.getTrackPoints();
+
+        // 1. 프롬프트 변수 준비
+        List<Map<String, Object>> trackPointData = trackPoints.stream()
+                .map(tp -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("lat", tp.getLat());
+                    map.put("lon", tp.getLon());
+                    map.put("ele", tp.getEle());
+                    map.put("sequence", tp.getSequence());
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> variables = Map.of(
+                "name", course.getName(),
+                "distance", course.getDistance(),
+                "duration", course.getDuration(),
+                "level", course.getLevel().toString(),
+                "trackPoint", trackPointData
+        );
+
+        // 2. OpenAI API 호출 (응답은 "|"로 구분된 5개 설명으로 이루어짐)
+        String openAiResponse = callOpenAiApi(getRoadConditionPrompt, variables);
+
+        // 3. 데이터 파싱
+        List<String> descriptions = parseRoadConditionDescriptions(openAiResponse);
+
+        // 4. 기존 데이터 일괄 삭제 후 새로 저장
+        roadConditionRepository.deleteByCourseId(courseId);
+
+        for (String desc : descriptions) {
+            RoadCondition rc = new RoadCondition(course, desc);
+            roadConditionRepository.save(rc);
+        }
+
+        return new RoadConditionResponseDto(course, descriptions);
+    }
+
+    /** "|" 기준 응답값 파싱 */
+    public List<String> parseRoadConditionDescriptions(String response) {
+        String[] rawData = response.split("\\|");
+        List<String> parseData = new ArrayList<>();
+
+        for (int i = 0; i < Math.min(5, rawData.length); i++) {
+            // 응답이 잘못되어 "난이도: {설명}" 형태로 출력될 경우를 대비
+            String data = rawData[i].trim();
+            if (data.contains(":")) {
+                data = data.substring(data.indexOf(":") + 1).trim();
+            }
+            parseData.add(data);
+        }
+
+        return parseData;
+    }
+
+    /** 원하는 프롬프트로 OpenAI API 호출 */
+    public String callOpenAiApi(Resource promptResource, Map<String, Object> variables) {
+        try {
+            ChatClient chatClient = chatClientBuilder.build();
+            PromptTemplate promptTemplate = new PromptTemplate(promptResource);
+            Prompt prompt = promptTemplate.create(variables);
+
+            return chatClient.prompt(prompt)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.error("OpenAI API 호출 실패: ", e);
+            throw new BusinessException(ErrorCode.OPENAI_API_ERROR);
+        }
+    }
 }
