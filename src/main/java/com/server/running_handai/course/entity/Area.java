@@ -1,6 +1,6 @@
 package com.server.running_handai.course.entity;
 
-import static com.server.running_handai.course.entity.AreaCategory.*;
+import static com.server.running_handai.course.entity.Theme.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,7 +20,7 @@ public enum Area {
     NORTHERN_BUSAN("북부산", RIVERSIDE, List.of("금정구", "북구"));
 
     private final String description;
-    private final AreaCategory category;
+    private final Theme theme;
     private final List<String> subRegions;
 
     /**

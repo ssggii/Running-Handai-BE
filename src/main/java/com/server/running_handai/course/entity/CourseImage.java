@@ -27,7 +27,7 @@ public class CourseImage extends BaseTimeEntity {
     @Column(name = "course_img_id")
     private Long courseImageId;
 
-    @Column(name = "url", nullable = false)
+    @Column(name = "img_url", nullable = false)
     private String imgUrl; // s3 url
 
     @OneToOne(fetch = FetchType.LAZY)
