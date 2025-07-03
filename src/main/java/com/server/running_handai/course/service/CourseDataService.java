@@ -12,8 +12,7 @@ import com.server.running_handai.course.entity.*;
 import com.server.running_handai.course.repository.CourseRepository;
 import com.server.running_handai.course.repository.RoadConditionRepository;
 import com.server.running_handai.course.repository.TrackPointRepository;
-import com.server.running_handai.global.exception.BusinessException;
-
+import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +24,10 @@ import com.server.running_handai.global.exception.ErrorCode;
 import org.springframework.core.io.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -46,6 +49,7 @@ public class CourseDataService {
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
+    private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final RestTemplate restTemplate = new RestTemplate();
     private final XmlMapper xmlMapper = new XmlMapper();
 
@@ -188,6 +192,13 @@ public class CourseDataService {
                 return new BusinessException(AREA_NOT_FOUND);
             });
 
+            // TODO synchronizeCourseData()에 시작점, 최대/최소 고도 초기화하는 로직 추가해야함
+            GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+            double latitude = 35.08747067199999; // 위도
+            double longitude = 129.004480714;    // 경도
+            Coordinate coordinate = new Coordinate(longitude, latitude);
+            Point point = geometryFactory.createPoint(coordinate);
+
             return Course.builder()
                     .externalId(externalId)
                     .name(name)
@@ -197,6 +208,7 @@ public class CourseDataService {
                     .tourPoint(tourPoint)
                     .area(area)
                     .gpxPath(gpxPath)
+                    .startPoint(point)
                     .build();
 
         } catch (Exception e) {
@@ -230,6 +242,7 @@ public class CourseDataService {
         log.info("총 {}개의 코스에 대해 트랙포인트 동기화를 시작합니다.", coursesToSync.size());
         for (Course course : coursesToSync) {
             saveTrackPoints(course);
+            updateCourseStartPoint(course);
         }
     }
 
@@ -278,6 +291,24 @@ public class CourseDataService {
 
         } catch (Exception e) {
             log.error("[Course ID: {}] 트랙포인트 동기화 중 오류 발생", course.getId(), e);
+        }
+    }
+
+    private void updateCourseStartPoint(Course course) {
+        try {
+            trackPointRepository.findFirstByCourseOrderBySequenceAsc(course)
+                    .ifPresentOrElse(
+                            firstTrackPoint -> {
+                                Point startPoint = geometryFactory.createPoint(
+                                        new Coordinate(firstTrackPoint.getLon(), firstTrackPoint.getLat())
+                                );
+                                course.setStartPoint(startPoint);
+                                log.info("[Course ID: {}] 시작 포인트 저장 완료", course.getId());
+                            },
+                            () -> log.warn("[Course ID: {}] 시작 포인트를 찾을 수 없습니다.", course.getId())
+                    );
+        } catch (Exception e) {
+            log.error("[Course ID: {}] 시작 포인트 저장 중 오류 발생", course.getId(), e);
         }
     }
 

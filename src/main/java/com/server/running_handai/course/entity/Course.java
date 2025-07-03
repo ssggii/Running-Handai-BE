@@ -18,6 +18,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Getter
@@ -56,9 +58,20 @@ public class Course extends BaseTimeEntity {
     @Column(name = "gpx_path", nullable = false)
     private String gpxPath; // gpx 파일
 
+    @Setter
+    @Column(columnDefinition = "POINT SRID 4326", name = "start_point", nullable = false)
+    private Point startPoint; // 시작 포인트
+
+    @Column(name = "max_ele")
+    private Double maxElevation; // 최대 고도
+
+    @Column(name = "min_ele")
+    private Double minElevation; // 최소 고도
+
     // CourseRoadCondition과 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RoadCondition> roadConditions = new ArrayList<>(); // 길 상태
+
 
     // TrackPoint와 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -70,7 +83,8 @@ public class Course extends BaseTimeEntity {
 
     @Builder
     public Course(String externalId, String name, int distance, int duration,
-                  CourseLevel level, String tourPoint, Area area, String gpxPath) {
+                  CourseLevel level, String tourPoint, String roadCondition,
+                  Area area, String gpxPath, Point startPoint, Double maxElevation, Double minElevation) {
         this.externalId = externalId;
         this.name = name;
         this.distance = distance;
@@ -79,6 +93,9 @@ public class Course extends BaseTimeEntity {
         this.tourPoint = tourPoint;
         this.area = area;
         this.gpxPath = gpxPath;
+        this.startPoint = startPoint;
+        this.maxElevation = maxElevation;
+        this.minElevation = minElevation;
     }
 
     /**
@@ -124,8 +141,13 @@ public class Course extends BaseTimeEntity {
         return isUpdated;
     }
 
+    public void updateElevation(Double minElevation, Double maxElevation) {
+        this.minElevation = minElevation;
+        this.maxElevation = maxElevation;
+    }
+
     // ==== 연관관계 편의 메서드 ==== //
-    public void setCourseImage(CourseImage courseImage) {
+    public void updateCourseImage(CourseImage courseImage) {
         this.courseImage = courseImage;
         if (courseImage != null) {
             courseImage.setCourse(this);

@@ -1,9 +1,11 @@
 package com.server.running_handai.course.repository;
 
+import com.server.running_handai.course.dto.CourseInfoDto;
 import com.server.running_handai.course.entity.Course;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
@@ -18,4 +20,71 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      */
     @Query("SELECT c FROM Course c WHERE c.gpxPath IS NOT NULL AND c.trackPoints IS EMPTY")
     List<Course> findCoursesWithEmptyTrackPoints();
+
+    /**
+     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 10km 이내에 있는 Course 목록 조회
+     */
+    @Query(
+            value = "SELECT " +
+                    "    c.course_id AS id, " +
+                    "    ci.img_url AS thumbnailUrl, " +
+                    "    c.distance, " +
+                    "    c.duration, " +
+                    "    c.max_ele AS maxElevation, " +
+                    "    (ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) / 1000) AS distanceFromUser " +
+                    "FROM " +
+                    "    course c " +
+                    "LEFT JOIN " +
+                    "    course_image ci ON c.course_id = ci.course_id " +
+                    "WHERE " +
+                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 10000 " +
+                    "ORDER BY " +
+                    "    distanceFromUser ASC",
+            nativeQuery = true
+    )
+    List<CourseInfoDto> findCoursesNearbyUser(@Param("userPoint") String userPoint);
+
+    /**
+     * 특정 지역 내의 Course 목록 조회
+     */
+    @Query(
+            value = "SELECT " +
+                    "    c.course_id AS id, " +
+                    "    ci.img_url AS thumbnailUrl, " +
+                    "    c.distance, " +
+                    "    c.duration, " +
+                    "    c.max_ele AS maxElevation, " +
+                    "    (ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) / 1000) AS distanceFromUser " +
+                    "FROM " +
+                    "    course c " +
+                    "LEFT JOIN " +
+                    "    course_image ci ON c.course_id = ci.course_id " +
+                    "WHERE c.area = :area " +
+                    "ORDER BY distanceFromUser ASC",
+            nativeQuery = true
+    )
+    List<CourseInfoDto> findCoursesByArea(@Param("userPoint") String userPoint, @Param("area") String area);
+
+    /**
+     * 특정 테마에 해당하는 Course 목록 조회
+     */
+    @Query(
+            value = "SELECT " +
+                    "    c.course_id AS id, " +
+                    "    ci.img_url AS thumbnailUrl, " +
+                    "    c.distance, " +
+                    "    c.duration, " +
+                    "    c.max_ele AS maxElevation, " +
+                    "    (ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) / 1000) AS distanceFromUser " +
+                    "FROM " +
+                    "    course c " +
+                    "LEFT JOIN " +
+                    "    course_image ci ON c.course_id = ci.course_id " +
+                    "WHERE " +
+                    "    c.area IN (:areaNames) " +
+                    "ORDER BY " +
+                    "    distanceFromUser ASC",
+            nativeQuery = true
+    )
+    List<CourseInfoDto> findCoursesInAreaList(@Param("userPoint") String userPoint, @Param("areaNames") List<String> areaNames);
 }
