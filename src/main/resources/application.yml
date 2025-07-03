@@ -4,15 +4,31 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none # 기본값은 none (환경에 따라 오버라이딩)
+      ddl-auto: none
     properties:
       hibernate:
         default_batch_fetch_size: 100
-sever:
+        jdbc:
+          batch_size: 100 # JDBC Batch Insert 활성화
+        order_inserts: true
+        order_updates: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-3.5-turbo
+
+server:
   port: ${PORT:8080}
 
-# 헬스 체크
 management:
   endpoints:
     web:
       base-path: /
+
+external:
+  api:
+    durunubi:
+      base-url: http://apis.data.go.kr/B551011/Durunubi
+      service-key: ${DURUNUBI_SERVICE_KEY}

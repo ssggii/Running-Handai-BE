@@ -1,4 +1,4 @@
-package com.server.running_handai.exception;
+package com.server.running_handai.global.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 @RestControllerAdvice
 public class GlobalException {
     /** CustomException: Error Code에 정의된 비즈니스 로직 예외 */
-    @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleCustomException(BusinessException e) {
         return getErrorResponse(e, e.getErrorCode());
     }
 

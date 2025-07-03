@@ -12,6 +12,8 @@ services:
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - DURUNUBI_SERVICE_KEY=${DURUNUBI_SERVICE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
 
   # MySQL Database
   mysql-db:
@@ -32,6 +34,6 @@ services:
     healthcheck:
       test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 10s # 10초마다 확인
-      timeout: 5s # 5초 안에 응답 없으면 실패
-      retries: 5 # 5번 재시도
-      start_period: 30s # 컨테이너 시작 후 30초의 유예시간 부여
+      timeout: 10s # 10초 안에 응답 없으면 실패
+      retries: 10 # 10번 재시도
+      start_period: 40s # 컨테이너 시작 후 40초의 유예시간 부여

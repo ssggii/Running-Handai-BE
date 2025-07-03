@@ -1,4 +1,4 @@
-package com.server.running_handai.exception;
+package com.server.running_handai.global.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,7 +11,8 @@ import static org.springframework.http.HttpStatus.*;
 public enum ErrorCode {
     /** 비즈니스 에러 코드 */
     // NOT_FOUND (404)
-    REVIEW_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리뷰입니다."),
+    AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
+    COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),
 
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)
@@ -24,7 +25,8 @@ public enum ErrorCode {
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
 
     // INTERNAL SERVER ERROR (500)
-    REQUEST_SERVER(INTERNAL_SERVER_ERROR, "서버에 요청 부탁드립니다.");
+    REQUEST_SERVER(INTERNAL_SERVER_ERROR, "서버에 요청 부탁드립니다."),
+    OPENAI_API_ERROR(INTERNAL_SERVER_ERROR, "OpenAI API 호출에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
