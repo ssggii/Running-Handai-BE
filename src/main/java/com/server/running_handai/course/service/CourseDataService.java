@@ -1,6 +1,8 @@
 package com.server.running_handai.course.service;
 
-import static com.server.running_handai.global.exception.ErrorCode.AREA_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.AREA_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.OPENAI_API_ERROR;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.server.running_handai.course.client.DurunubiApiClient;
@@ -20,7 +22,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.server.running_handai.global.exception.ErrorCode;
 import org.springframework.core.io.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -316,7 +317,7 @@ public class CourseDataService {
     /** 길 상태 수정 */
     @Transactional
     public RoadConditionResponseDto updateRoadCondition(Long courseId) {
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(ErrorCode.COURSE_NOT_FOUND));
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
         List<TrackPoint> trackPoints = course.getTrackPoints();
 
         // 1. 프롬프트 변수 준비
@@ -385,7 +386,7 @@ public class CourseDataService {
                     .content();
         } catch (Exception e) {
             log.error("OpenAI API 호출 실패: ", e);
-            throw new BusinessException(ErrorCode.OPENAI_API_ERROR);
+            throw new BusinessException(OPENAI_API_ERROR);
         }
     }
 }

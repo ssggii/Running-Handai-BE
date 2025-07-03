@@ -1,13 +1,23 @@
 package com.server.running_handai.course.service;
 
+import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+
+import com.server.running_handai.course.dto.CourseDetailDto;
 import com.server.running_handai.course.dto.CourseInfoDto;
 import com.server.running_handai.course.entity.Area;
+import com.server.running_handai.course.entity.Course;
+import com.server.running_handai.course.entity.RoadCondition;
 import com.server.running_handai.course.entity.Theme;
 import com.server.running_handai.course.repository.CourseRepository;
+import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +29,7 @@ public class CourseService {
     public static final String POINT_FORMAT = "POINT(%f %f)"; // MySQL의 POINT 포맷
 
     private final CourseRepository courseRepository;
+    private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Transactional(readOnly = true)
     public List<CourseInfoDto> findCoursesNearby(double lat, double lon) {
@@ -55,6 +66,37 @@ public class CourseService {
         List<CourseInfoDto> courseInfoDtoList = courseRepository.findCoursesInAreaList(userPoint, matchingAreaNames);
         log.info("{}개의 코스를 찾았습니다.", courseInfoDtoList.size());
         return courseInfoDtoList;
+    }
+
+    @Transactional(readOnly = true)
+    public CourseDetailDto findCourseDetails(Long courseId) {
+        log.info("코스 상세정보 조회를 시작합니다. courseId: {}", courseId);
+
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        List<String> roadConditions = course.getRoadConditions().stream()
+                .map(RoadCondition::getDescription).toList();
+
+        Coordinate[] originalCoordinates = course.getTrackPoints().stream()
+                .map(point -> new Coordinate(point.getLon(), point.getLat(), point.getEle()))
+                .toArray(Coordinate[]::new);
+
+        LineString originalLine = geometryFactory.createLineString(originalCoordinates);
+        DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(originalLine); // 경로 단순화 (RDP 알고리즘 적용)
+        simplifier.setDistanceTolerance(0.0001); // 이 값이 클수록 더 많이 단순화됨. 0.0001은 약 10m에 해당
+        LineString simplifiedLine = (LineString) simplifier.getResultGeometry();
+
+        log.info("[Course ID: {}] 트랙포인트 간소화 완료. 원본: {}개 -> 단순화: {}개",
+                courseId, originalLine.getNumPoints(), simplifiedLine.getNumPoints());
+
+        List<CourseDetailDto.TrackPointDto> simplifiedTrackPoints = Arrays.stream(simplifiedLine.getCoordinates())
+                .map(c -> new CourseDetailDto.TrackPointDto(c.getY(), c.getX(), c.getZ()))
+                .toList();
+
+        return new CourseDetailDto(course.getId(), course.getDistance(), course.getDuration(),
+                course.getMinElevation(), course.getMaxElevation(), course.getLevel().getDescription(),
+                roadConditions,  simplifiedTrackPoints);
     }
 
 }
