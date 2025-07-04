@@ -2,9 +2,8 @@ package com.server.running_handai.course.controller;
 
 import com.server.running_handai.course.dto.RoadConditionResponseDto;
 import com.server.running_handai.course.service.CourseDataService;
-import com.server.running_handai.global.response.ApiResponse;
+import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +17,9 @@ public class CourseDataController {
     private final CourseDataService courseDataService;
 
     @PostMapping("/sync-courses")
-    public ResponseEntity<ApiResponse<?>> synchronizeCourses() {
+    public ResponseEntity<CommonResponse<?>> synchronizeCourses() {
         courseDataService.synchronizeCourseData();
-        return ResponseEntity.accepted().body(ApiResponse.success(ResponseCode.SUCCESS_COURSE_SYNC_ACCEPTED, null));
+        return ResponseEntity.accepted().body(CommonResponse.success(ResponseCode.SUCCESS_COURSE_SYNC_ACCEPTED, null));
     }
 
     @PutMapping("/{courseId}")

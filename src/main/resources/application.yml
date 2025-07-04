@@ -32,3 +32,8 @@ external:
     durunubi:
       base-url: http://apis.data.go.kr/B551011/Durunubi
       service-key: ${DURUNUBI_SERVICE_KEY}
+
+springdoc:
+  default-produces-media-type: application/json
+  paths-to-exclude:
+    - /api/admin/** # Swagger UI에서 제외하는 엔드포인트
