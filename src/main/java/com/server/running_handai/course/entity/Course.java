@@ -35,7 +35,7 @@ public class Course extends BaseTimeEntity {
     @Column(name = "external_id", unique = true)
     private String externalId; // 두루누비 API의 코스 식별자
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", unique = true, nullable = false)
     private String name; // 코스 이름
 
     @Column(name = "distance", nullable = false)
@@ -59,7 +59,7 @@ public class Course extends BaseTimeEntity {
     private String gpxPath; // gpx 파일
 
     @Setter
-    @Column(columnDefinition = "POINT SRID 4326", name = "start_point", nullable = false)
+    @Column(columnDefinition = "POINT SRID 4326", name = "start_point")
     private Point startPoint; // 시작 포인트
 
     @Column(name = "max_ele")
@@ -79,12 +79,12 @@ public class Course extends BaseTimeEntity {
 
     // CourseImage와 일대일 관계
     @OneToOne(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
-    private CourseImage courseImage;
+    private CourseImage courseImage; // 썸네일 이미지
 
     @Builder
     public Course(String externalId, String name, int distance, int duration,
-                  CourseLevel level, String tourPoint, String roadCondition,
-                  Area area, String gpxPath, Point startPoint, Double maxElevation, Double minElevation) {
+                  CourseLevel level, String tourPoint, Area area, String gpxPath,
+                  Point startPoint, Double maxElevation, Double minElevation) {
         this.externalId = externalId;
         this.name = name;
         this.distance = distance;
@@ -99,16 +99,14 @@ public class Course extends BaseTimeEntity {
     }
 
     /**
-     * API 데이터와 비교하여 Course 엔티티의 내용을 업데이트합니다.
+     * gpx 파일 경로를 제외하고, API 데이터와 비교하여 Course 엔티티의 필드를 업데이트합니다.
      * 변경이 발생했을 경우에만 true를 반환합니다.
-     *
      * @param source 비교 대상이 되는, API 응답으로부터 변환된 Course 객체
      * @return 내용 변경이 있었는지 여부
      */
     public boolean syncWith(Course source) {
         boolean isUpdated = false;
 
-        // 이름, 거리, 시간, 난이도 등 주요 정보가 변경되었는지 확인하고 업데이트
         if (!this.name.equals(source.getName())) {
             this.name = source.getName();
             isUpdated = true;
@@ -133,11 +131,20 @@ public class Course extends BaseTimeEntity {
             this.area = source.getArea();
             isUpdated = true;
         }
-        if (!this.gpxPath.equals(source.getGpxPath())) {
-            this.gpxPath = source.getGpxPath();
-            isUpdated = true;
-        }
+        return isUpdated;
+    }
 
+    /**
+     * API 데이터와 비교하여 Course 엔티티의 gpx 파일 경로를 업데이트합니다.
+     * 변경이 발생했을 경우에만 true를 반환합니다.
+     * @param source 비교 대상이 되는 API 응답으로 받은 코스의 gpx 파일 경로
+     * @return 내용 변경이 있었는지 여부
+     */
+    public boolean syncGpxPathWith(String source) {
+        boolean isUpdated = false;
+        if (!this.gpxPath.equals(source)) {
+            this.gpxPath = source;
+        }
         return isUpdated;
     }
 

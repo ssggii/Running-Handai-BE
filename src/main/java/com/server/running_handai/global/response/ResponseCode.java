@@ -12,6 +12,7 @@ public enum ResponseCode {
     /** 성공 시 응답 코드 */
     SUCCESS(OK, "요청을 성공했습니다."),
     SUCCESS_EMPTY_COURSE_INFO(OK, "코스 조회 결과가 없습니다."),
+    SUCCESS_COURSE_SYNC_ACCEPTED(ACCEPTED, "코스 데이터 동기화 작업이 시작되었습니다. 서버 로그를 통해 진행 상황을 확인하세요."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
