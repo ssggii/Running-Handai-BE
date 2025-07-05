@@ -3,22 +3,20 @@ package com.server.running_handai.course.service;
 import static com.server.running_handai.global.response.ResponseCode.AREA_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.OPENAI_API_ERROR;
+import static com.server.running_handai.global.response.ResponseCode.FILE_UPLOAD_FAILED;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.server.running_handai.course.client.DurunubiApiClient;
-import com.server.running_handai.course.dto.DurunubiApiResponseDto;
+import com.server.running_handai.course.dto.*;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto.Item;
-import com.server.running_handai.course.dto.GpxDto;
-import com.server.running_handai.course.dto.RoadConditionResponseDto;
 import com.server.running_handai.course.entity.*;
 import com.server.running_handai.course.repository.CourseRepository;
 import com.server.running_handai.course.repository.RoadConditionRepository;
 import com.server.running_handai.course.repository.TrackPointRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -37,6 +35,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Slf4j
 @Service
@@ -56,8 +57,16 @@ public class CourseDataService {
     private final ChatClient.Builder chatClientBuilder;
     private final RoadConditionRepository roadConditionRepository;
 
+    private final S3Client s3Client;
+
     @Value("classpath:prompt/save-road-condition.st")
     private Resource getRoadConditionPrompt;
+
+    @Value("${spring.cloud.aws.s3.bucket}")
+    private String bucket;
+
+    @Value("${spring.cloud.aws.region.static}")
+    private String region;
 
     /** 두루누비 API 관련 */
     @Async("syncCourseTaskExecutor")
@@ -366,8 +375,8 @@ public class CourseDataService {
         // 4. 기존 데이터 일괄 삭제 후 새로 저장
         roadConditionRepository.deleteByCourseId(courseId);
 
-        for (String desc : descriptions) {
-            RoadCondition rc = new RoadCondition(course, desc);
+        for (String descrption : descriptions) {
+            RoadCondition rc = new RoadCondition(course, descrption);
             roadConditionRepository.save(rc);
         }
 
@@ -402,8 +411,55 @@ public class CourseDataService {
                     .call()
                     .content();
         } catch (Exception e) {
-            log.error("OpenAI API 호출 실패: ", e);
             throw new BusinessException(OPENAI_API_ERROR);
         }
+    }
+
+    /** AWS S3 관련 */
+    /** 코스 썸네일 이미지 업로드 */
+    @Transactional
+    public CourseImageResponseDto updateCourseImage(Long courseId, MultipartFile courseImageFile) {
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+        String imageUrl;
+        try {
+            imageUrl = uploadFile(courseImageFile, "image");
+        } catch (IOException e) {
+            throw new BusinessException(FILE_UPLOAD_FAILED);
+        }
+
+        CourseImage courseImage = new CourseImage(imageUrl);
+        course.updateCourseImage(courseImage);
+
+        return new CourseImageResponseDto(course, courseImage);
+    }
+
+    /**
+     * AWS S3에 파일 업로드
+     * 같은 Bucket 내에 Directory로 구분
+     */
+    public String uploadFile(MultipartFile multipartFile, String directory) throws IOException {
+        String originalFileName = multipartFile.getOriginalFilename();
+        String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
+
+        // 업로드할 파일의 설정 정보 설정
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(fileName)
+                .contentType(multipartFile.getContentType())
+                .build();
+
+        // AWS S3에 파일 업로드
+        s3Client.putObject(
+                putObjectRequest,
+                software.amazon.awssdk.core.sync.RequestBody.fromInputStream(multipartFile.getInputStream(), multipartFile.getSize())
+                );
+
+        // 업로드된 파일의 S3 Url 반환
+        return String.format(
+                "https://%s.s3.%s.amazonaws.com/%s",
+                bucket,
+                region,
+                fileName
+         );
     }
 }

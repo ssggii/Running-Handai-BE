@@ -27,6 +27,7 @@ repositories {
 
 ext {
 	set('springAiVersion', "1.0.0-M4")
+	set('springCloudAwsVersion', "3.4.0")
 }
 
 dependencies {
@@ -43,9 +44,8 @@ dependencies {
 	implementation 'com.h2database:h2'
 
 	// S3
-	implementation platform('software.amazon.awssdk:bom:2.31.65')
-	implementation 'software.amazon.awssdk:s3'
-	implementation 'software.amazon.awssdk:netty-nio-client'
+	implementation platform("io.awspring.cloud:spring-cloud-aws-dependencies:${springCloudAwsVersion}")
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
 
 	// WebCleint
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
