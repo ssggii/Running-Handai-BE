@@ -7,3 +7,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+  ai:
+    openai:
+      api-key: "test-dummy-openai-key"
+
+external:
+  api:
+    durunubi:
+      service-key: "test-dummy-service-key"
