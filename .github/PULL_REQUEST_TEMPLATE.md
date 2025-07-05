@@ -5,7 +5,7 @@
 > 이번 PR에서 작업한 내용을 간략히 설명해주세요. 
 - [x] CustomException 메세지 포함 생성자 추가
 - [x] ExceptionHandler에서 메시지 반환 로직 수정
-- [x] 에러 응답 포맷 통일 (errorCode, message 구조로 변경)
+- [x] 에러 응답 포맷 통일 (responseCode, message 구조로 변경)
 - [ ] 관련 테스트 코드 수정 및 추가
 
 ## 💬리뷰 요구사항

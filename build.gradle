@@ -42,25 +42,29 @@ dependencies {
 	implementation 'com.mysql:mysql-connector-j'
 	implementation 'com.h2database:h2'
 
-	// S3 관련 의존성
+	// S3
 	implementation platform('software.amazon.awssdk:bom:2.31.65')
 	implementation 'software.amazon.awssdk:s3'
 	implementation 'software.amazon.awssdk:netty-nio-client'
 
-	// WebCleint 의존성
+	// WebCleint
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
-	// Jackson 의존성
+	// Jackson
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 
-	// Spring AI 관련 의존성
-	implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter'
+    // 공간 데이터
+    implementation 'org.hibernate.orm:hibernate-spatial:6.5.3.Final'
+
+    // Spring AI
+    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter'
 }
 
 dependencyManagement {
-	imports {
-		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-	}
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
+
 }
 
 tasks.named('test') {

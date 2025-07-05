@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum AreaCategory {
+public enum Theme {
     SEA("바다"),
     DOWNTOWN("도심"),
     RIVERSIDE("강변");
