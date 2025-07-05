@@ -25,9 +25,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -54,14 +51,17 @@ public class CourseDataService {
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final RestTemplate restTemplate = new RestTemplate();
     private final XmlMapper xmlMapper = new XmlMapper();
-    private final ChatClient.Builder chatClientBuilder;
     private final RoadConditionRepository roadConditionRepository;
 
     private final S3Client s3Client;
     private final KakaoAddressService kakaoAddressService;
+    private final OpenAiService openAiService;
 
     @Value("classpath:prompt/save-road-condition.st")
     private Resource getRoadConditionPrompt;
+
+    @Value("classpath:prompt/save-level-and-road-condition.st")
+    private Resource getLevelAndRoadConditionPrompt;
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
@@ -344,10 +344,7 @@ public class CourseDataService {
         }
     }
 
-    /** OpenAI API 관련 */
-    /**
-     * 길 상태 수정
-     */
+    /** 길 상태 수정 */
     @Transactional
     public RoadConditionResponseDto updateRoadCondition(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
@@ -374,10 +371,10 @@ public class CourseDataService {
         );
 
         // 2. OpenAI API 호출 (응답은 "|"로 구분된 5개 설명으로 이루어짐)
-        String openAiResponse = callOpenAiApi(getRoadConditionPrompt, variables);
+        String openAiResponse = openAiService.getOpenAiResponse(getRoadConditionPrompt, variables);
 
         // 3. 데이터 파싱
-        List<String> descriptions = parseRoadConditionDescriptions(openAiResponse);
+        List<String> descriptions = parseRoadConditionDescriptions(openAiResponse, 5);
 
         // 4. 기존 데이터 일괄 삭제 후 새로 저장
         roadConditionRepository.deleteByCourseId(courseId);
@@ -390,46 +387,7 @@ public class CourseDataService {
         return new RoadConditionResponseDto(course, descriptions);
     }
 
-    /**
-     * "|" 기준 응답값 파싱
-     */
-    private List<String> parseRoadConditionDescriptions(String response) {
-        String[] rawData = response.split("\\|");
-        List<String> parseData = new ArrayList<>();
-
-        for (int i = 0; i < Math.min(5, rawData.length); i++) {
-            // 응답이 잘못되어 "난이도: {설명}" 형태로 출력될 경우를 대비
-            String data = rawData[i].trim();
-            if (data.contains(":")) {
-                data = data.substring(data.indexOf(":") + 1).trim();
-            }
-            parseData.add(data);
-        }
-
-        return parseData;
-    }
-
-    /**
-     * 원하는 프롬프트로 OpenAI API 호출
-     */
-    public String callOpenAiApi(Resource promptResource, Map<String, Object> variables) {
-        try {
-            ChatClient chatClient = chatClientBuilder.build();
-            PromptTemplate promptTemplate = new PromptTemplate(promptResource);
-            Prompt prompt = promptTemplate.create(variables);
-
-            return chatClient.prompt(prompt)
-                    .call()
-                    .content();
-        } catch (Exception e) {
-            throw new BusinessException(OPENAI_API_ERROR);
-        }
-    }
-
-    /** AWS S3 관련 */
-    /**
-     * 코스 썸네일 이미지 업로드
-     */
+    /** 코스 썸네일 이미지 업로드 */
     @Transactional
     public CourseImageResponseDto updateCourseImage(Long courseId, MultipartFile courseImageFile) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
@@ -476,12 +434,17 @@ public class CourseDataService {
         );
     }
 
-    /** GPX 코스 추가 관련 */
     /**
-     * GPX 코스 추가
-     */
+     * GPX 파일을 받아 코스 정보를 생성하고 저장합니다.
+     *
+     * @Param courseGpxFile 업로드된 GPX 파일
+     * @return 생성한 코스의 정보를 담은 CourseGpxResponseDto (OpenAI 응답 포함)
+     * */
     @Transactional
     public CourseGpxResponseDto createCourseToGpx(MultipartFile courseGpxFile) {
+        log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
+
+        // 1. externalId 설정
         String gpxExternalId;
         Random random = new Random();
         StringBuilder sb = new StringBuilder();
@@ -489,53 +452,89 @@ public class CourseDataService {
             sb.append(random.nextInt(10));
         }
         gpxExternalId = "A_CRS_MNG" + sb.toString();
+        log.debug("[GPX 코스 생성] externalId 생성: {}", gpxExternalId);
 
-        String gpxPath;
-        try {
-            gpxPath = uploadFile(courseGpxFile, "gpx");
-        } catch (IOException e) {
-            throw new BusinessException(FILE_UPLOAD_FAILED);
-        }
-
-        // 트랙포인트 파싱
+        // 2. GPX 파일의 track point 파싱
         List<TrackPoint> trackPoints;
         try {
             trackPoints = getTrackPoint(courseGpxFile);
+            log.info("[GPX 코스 생성] 트랙포인트 파싱 완료 ({}개)", trackPoints.size());
         } catch (Exception e) {
+            log.error("[GPX 코스 생성] 트랙포인트 파싱 실패", e);
             throw new BusinessException(FILE_PARSE_FAILED);
         }
 
-        // 전체 거리 계산
+        // 3. 전체 거리 계산
         int distance = calculateDistance(trackPoints);
+        log.info("[GPX 코스 생성] 전체 거리 계산 완료: {}km", distance);
 
-        // 소요 시간 계산
+        // 4. 소요 시간 계산 (9km/h 속도 기준)
         int duration = calculateDuration(distance, 9.0);
+        log.info("[GPX 코스 생성] 소요 시간 계산 완료: {}분", duration);
 
-        // 최대, 최소 고도 계산
+        // 5. 최대, 최소 고도 계산
         double maxElevation = calculateMaxElevation(trackPoints);
         double minElevation = calculateMinElevation(trackPoints);
+        log.info("[GPX 코스 생성] 고도 계산 완료 (최대: {}, 최소: {})", maxElevation, minElevation);
 
-        // 시작점, 종료점 좌표 가져오기
+        // 6. 시작점, 종료점 좌표 가져온 후, 주소값을 위해 카카오 지도 API 호출
         Point startPoint = extractStartPoint(trackPoints);
         Point endPoint = extractEndPoint(trackPoints);
+        log.debug("[GPX 코스 생성] 시작점: {}, 종료점: {}", startPoint, endPoint);
 
-        // 시작점, 종료점 카카오 지도 API로 주소 가져오기
         JsonNode startAddress = kakaoAddressService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
         JsonNode endAddress = kakaoAddressService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
+        log.debug("[GPX 코스 생성] 시작점 주소: {}, 종료점 주소: {}", startAddress, endAddress);
 
-        // 코스 이름 가져오기
+        // 7. 코스 이름 가져오기
         // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
         String courseName = extractCourseName(startAddress) + "~" + extractCourseName(endAddress);
+        log.info("[GPX 코스 생성] 코스명 추출 완료: {}", courseName);
 
-        // 시작점을 기준으로 Area 분류
+        // 8. 시작점을 기준으로 Area 분류
         Area area = extractArea(startAddress);
+        log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
+        // 9. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
+        Map<String, Object> variables = Map.of(
+                "name", courseName,
+                "distance", distance,
+                "duration", duration,
+                "trackPoint", trackPoints
+        );
+
+        String openAiResponse = openAiService.getOpenAiResponse(getLevelAndRoadConditionPrompt, variables);
+        log.info("[GPX 코스 생성] OpenAI 응답 수신: {}", openAiResponse);
+        List<String> descriptions = parseRoadConditionDescriptions(openAiResponse, 6);
+
+        String responseLevel = descriptions.getFirst();
+        CourseLevel level;
+
+        // "EASY", "MEDIUM", "HARD" 중 하나면 그대로, 아니면 MEDIUM (기본값)
+        if ("EASY".equals(responseLevel) || "MEDIUM".equals(responseLevel) || "HARD".equals(responseLevel)) {
+            level = CourseLevel.valueOf(responseLevel);
+        } else {
+            log.warn("[GPX 코스 생성] OpenAI 난이도 응답값이 예상과 다름: {}, 기본값 MEDIUM으로 대체", responseLevel);
+            level = CourseLevel.MEDIUM;
+        }
+
+        // 10. AWS S3에 GPX 파일 업로드
+        String gpxPath;
+        try {
+            gpxPath = uploadFile(courseGpxFile, "gpx");
+            log.info("[GPX 코스 생성] GPX 파일 S3 업로드 완료: {}", gpxPath);
+        } catch (IOException e) {
+            log.error("[GPX 코스 생성] GPX 파일 업로드 실패", e);
+            throw new BusinessException(FILE_UPLOAD_FAILED);
+        }
+
+        // 11. course, road condition, track point DB에 저장
         Course course = Course.builder()
                 .externalId(gpxExternalId)
                 .name(courseName)
                 .distance(distance)
                 .duration(duration)
-                .level(CourseLevel.EASY)
+                .level(level)
                 .area(area)
                 .gpxPath(gpxPath)
                 .startPoint(startPoint)
@@ -544,11 +543,32 @@ public class CourseDataService {
                 .build();
 
         courseRepository.save(course);
+        log.info("[GPX 코스 생성] Course 저장 완료 (ID: {})", course.getId());
 
+        for (int i = 1; i < descriptions.size(); i++) {
+            String description = descriptions.get(i);
+            RoadCondition rc = new RoadCondition(course, description);
+            roadConditionRepository.save(rc);
+            log.debug("[GPX 코스 생성] RoadCondition 저장: {}", description);
+        }
+
+        for (TrackPoint trackPoint : trackPoints) {
+            trackPoint.setCourse(course);
+        }
+        trackPointRepository.saveAll(trackPoints);
+        log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
+
+        log.info("[GPX 코스 생성] 전체 작업 완료! (코스명: {})", courseName);
         return new CourseGpxResponseDto(course);
     }
 
-    /** GPX 트랙포인트 파싱 */
+    /**
+     * GPX 파일에서 트랙포인트 목록을 추출합니다.
+     * 추출할 때, 트랙(trk)이 있으면 우선적으로 파싱에 사용하고, 없으면 루트(rte)를 사용합니다.
+     *
+     * @param courseGpxFile 업로드된 GPX 파일
+     * @return 추출된 TrackPoint 리스트 (lat, lon, ele, sequence)
+     */
     private List<TrackPoint> getTrackPoint(MultipartFile courseGpxFile) throws Exception {
         XmlMapper xmlMapper = new XmlMapper();
 
@@ -597,11 +617,15 @@ public class CourseDataService {
                             .build())
                     .collect(Collectors.toList());
         }
-
         return trackPoints;
     }
 
-    /** distance (코스 전체 거리, 단위: km) 추정 */
+    /**
+     * 트랙포인트 리스트로부터 코스 전체 거리(distance)를 계산합니다.
+     *
+     * @param trackPoints 트랙포인트 리스트
+     * @return 전체 거리 (km, 소수점 반올림)
+     */
     private static int calculateDistance(List<TrackPoint> trackPoints) {
         double totalDistance = 0.0;
         for (int i = 1; i < trackPoints.size(); i++) {
@@ -612,7 +636,16 @@ public class CourseDataService {
         return (int) Math.round(totalDistance);
     }
 
-    /** 두 좌표 간 거리 계산 (하버사인 공식) */
+    /**
+     * 두 좌표 간 거리를 하버사인 공식으로 계산합니다.
+     * 하버사인 공식은 지구 위의 두 점 사이의 최단 거리를 구할 때 사용합니다.
+     *
+     * @param lat1 첫 번째 위도
+     * @param lon1 첫 번째 경도
+     * @param lat2 두 번째 위도
+     * @param lon2 두 번째 경도
+     * @return 두 지점 간 거리 (km)
+     */
     private static double haversine(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371; // 지구 반지름 (km)
         double dLat = Math.toRadians(lat2 - lat1);
@@ -624,37 +657,68 @@ public class CourseDataService {
         return R * c;
     }
 
-    /** duration (코스 소요 시간, 단위: 분) 추정 */
+    /**
+     * 코스 전체 거리와 속도로 소요 시간(duration)을 계산합니다.
+     *
+     * @param distance 거리 (km)
+     * @param speed 속도 (km/h)
+     * @return 소요 시간 (분)
+     */
     private static int calculateDuration(double distance, double speed) {
         double hours = distance / speed;
         return (int) Math.round(hours * 60);
     }
 
-    /** 최대 고도 계산 */
+    /**
+     * 트랙포인트 리스트에서 최대 고도를 계산합니다.
+     *
+     * @param trackPoints 트랙포인트 리스트
+     * @return 최대 고도 (m)
+     */
     private static double calculateMaxElevation(List<TrackPoint> trackPoints) {
         return trackPoints.stream().mapToDouble(TrackPoint::getEle).max().orElse(0.0);
     }
 
-    /** 최소 고도 계산 */
+    /**
+     * 트랙포인트 리스트에서 최소 고도를 계산합니다.
+     *
+     * @param trackPoints 트랙포인트 리스트
+     * @return 최소 고도 (m)
+     */
     private static double calculateMinElevation(List<TrackPoint> trackPoints) {
         return trackPoints.stream().mapToDouble(TrackPoint::getEle).min().orElse(0.0);
     }
 
-    /** 시작점 좌표 추출 */
+    /**
+     * 트랙포인트 리스트에서 시작점 좌표(startPoint)를 추출합니다.
+     *
+     * @param trackPoints 트랙포인트 리스트
+     * @return 시작점 좌표 (Point), 없으면 null
+     */
     private Point extractStartPoint(List<TrackPoint> trackPoints) {
         if (trackPoints == null || trackPoints.isEmpty()) return null;
         TrackPoint first = trackPoints.getFirst();
         return geometryFactory.createPoint(new Coordinate(first.getLon(), first.getLat()));
     }
 
-    /** 종료점 좌표 추출 */
+    /**
+     * 트랙포인트 리스트에서 종료점 좌표(endPoint)를 추출합니다.
+     *
+     * @param trackPoints 트랙포인트 리스트
+     * @return 종료점 좌표 (Point), 없으면 null
+     */
     private Point extractEndPoint(List<TrackPoint> trackPoints) {
         if (trackPoints == null || trackPoints.isEmpty()) return null;
         TrackPoint last = trackPoints.getLast();
         return geometryFactory.createPoint(new Coordinate(last.getLon(), last.getLat()));
     }
 
-    /** 코스 이름 추출 */
+    /**
+     * 카카오 지도 API에서 가져온 주소 정보에서 코스 이름을 추출합니다.
+     *
+     * @param jsonNode 주소 정보 JSON
+     * @return 코스 이름 (건물 이름(building_name), 없으면 지번 주소 조합으로 구성, 모두 없으면 "이름 없음")
+     */
     private String extractCourseName(JsonNode jsonNode) {
         // building_name이 있을 경우 (예: 무지개아파트)
         JsonNode roadAddress = jsonNode.path("road_address"); // 도로명 주소
@@ -670,12 +734,19 @@ public class CourseDataService {
             return region3 + " " + mainNo + (subNo.isBlank() ? "" : "-" + subNo);
         }
 
+        log.warn("[GPX 코스 생성] 코스 이름 추출 실패: buildingName='{}', region3='{}', mainNo='{}', subNo='{}'. address: {}",
+                buildingName, region3, mainNo, subNo, address);
         return "이름 없음";
     }
 
-    /** 행정구역 추출 */
+    /**
+     * 카카오 지도 API에서 가져온 주소 정보에서 행정구역(Area)을 추출합니다.
+     * 도로명 주소(road_address)는 좌표에 따라 반환되지 않을 수 있기 때문에 지번 주소(address)를 기준으로 합니다.
+     *
+     * @param jsonNode 주소 정보 JSON
+     * @return Area enum 값, 없으면 Area.UNKNOWN
+     */
     private Area extractArea(JsonNode jsonNode) {
-        // 도로명 주소는 도로명 주소는 좌표에 따라 반환되지 않을 수 있기 때문에 지번 주소를 기준으로 함
         String region2 = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위
         String region3 = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
 
@@ -686,6 +757,39 @@ public class CourseDataService {
             }
         }
 
+        log.warn("[GPX 코스 생성] 행정구역 매칭 실패: region2='{}', region3='{}'. Area.UNKNOWN 반환", region2, region3);
         return Area.UNKNOWN;
+    }
+
+    /**
+     * "|" 기준으로 파싱하여 리스트로 반환합니다.
+     *
+     * @param response OpenAI 응답 문자열
+     * @param parseNumber 최대 파싱 개수
+     * @return 파싱된 리스트
+     */
+    private List<String> parseRoadConditionDescriptions(String response, Integer parseNumber) {
+        if (response == null || response.isBlank()) {
+            log.warn("[OpenAI 응답 파싱] 응답이 null 또는 빈 문자열");
+            return List.of();
+        }
+
+        String[] rawData = response.split("\\|");
+        List<String> parseData = new ArrayList<>();
+
+        for (int i = 0; i < Math.min(parseNumber, rawData.length); i++) {
+            // 응답이 잘못되어 "난이도: {설명}" 형태로 출력될 경우를 대비
+            String data = rawData[i].trim();
+            if (data.contains(":")) {
+                data = data.substring(data.indexOf(":") + 1).trim();
+            }
+            parseData.add(data);
+        }
+
+        if (parseData.size() < parseNumber) {
+            log.warn("[OpenAI 응답 파싱] 파싱 개수 부족. 기대치: {}, 실제: {}, 원본 응답: {}", parseNumber, parseData.size(), response);
+        }
+
+        return parseData;
     }
 }

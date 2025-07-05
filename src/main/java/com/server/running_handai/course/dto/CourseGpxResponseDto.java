@@ -1,7 +1,6 @@
 package com.server.running_handai.course.dto;
 
 import com.server.running_handai.course.entity.Course;
-import com.server.running_handai.course.entity.CourseImage;
 import lombok.Data;
 
 @Data

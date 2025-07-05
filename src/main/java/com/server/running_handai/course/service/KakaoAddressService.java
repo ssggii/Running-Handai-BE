@@ -1,7 +1,6 @@
 package com.server.running_handai.course.service;
 
 import com.server.running_handai.global.response.exception.BusinessException;
-import io.swagger.v3.core.util.Json;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -50,11 +49,11 @@ public class KakaoAddressService {
                 return documents.get(0);
             }
         } catch (Exception e) {
-            log.error("카카오 지도 API에서 주소 파싱을 실패하였습니다.");
+            log.error("[카카오 지도 API 호출] 카카오 지도 API에서 주소 정보 못가져옴. 요청 좌표: x={}, y={}", longitude, latitude, e);
             throw new BusinessException(ADDRESS_PARSE_FAILED);
         }
 
-        // 해당하는 값이 없으면 null로 반환
+        log.warn("[카카오 지도 API 호출] 카카오 지도 API에서 주소 못찾음. 요청 좌표: x={}, y={}", longitude, latitude);
         return null;
     }
 }
