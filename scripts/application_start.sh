@@ -57,7 +57,6 @@ docker run -d -p "$NEW_PORT":"$NEW_PORT" --name "$TARGET_CONTAINER_NAME" \
            --log-driver=awslogs \
            --log-opt awslogs-region=ap-northeast-2 \
            --log-opt awslogs-group="RunninghandaiLogs" \
-           --log-opt awslogs-stream-prefix="$TARGET_CONTAINER_NAME" \
            -e SERVER_PORT="$NEW_PORT" \
            --env-file /home/ubuntu/config/prod.env \
            "$ECR_IMAGE_URI"
