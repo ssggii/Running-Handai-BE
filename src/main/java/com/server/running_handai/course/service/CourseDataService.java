@@ -1,11 +1,8 @@
 package com.server.running_handai.course.service;
 
-import static com.server.running_handai.global.response.ResponseCode.AREA_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.OPENAI_API_ERROR;
-import static com.server.running_handai.global.response.ResponseCode.FILE_UPLOAD_FAILED;
-
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.course.client.DurunubiApiClient;
 import com.server.running_handai.course.dto.*;
 import com.server.running_handai.course.dto.DurunubiApiResponseDto.Item;
@@ -15,7 +12,7 @@ import com.server.running_handai.course.repository.RoadConditionRepository;
 import com.server.running_handai.course.repository.TrackPointRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
 
-import java.io.IOException;
+import java.io.IOException;s
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -39,6 +36,8 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import static com.server.running_handai.global.response.ResponseCode.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -58,6 +57,7 @@ public class CourseDataService {
     private final RoadConditionRepository roadConditionRepository;
 
     private final S3Client s3Client;
+    private final KakaoAddressService kakaoAddressService;
 
     @Value("classpath:prompt/save-road-condition.st")
     private Resource getRoadConditionPrompt;
@@ -480,39 +480,147 @@ public class CourseDataService {
      * GPX 코스 추가
      */
     @Transactional
-    public CourseGpxResponseDto createCourseToGpx(CourseGpxRequestDto courseGpxRequestDto, MultipartFile courseGpxFile) {
+    public CourseGpxResponseDto createCourseToGpx(MultipartFile courseGpxFile) {
         String gpxExternalId;
-        String gpxPath;
-
         Random random = new Random();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 10; i++) {
             sb.append(random.nextInt(10));
         }
-        gpxExternalId = sb.toString();
+        gpxExternalId = "A_CRS_MNG" + sb.toString();
 
+        String gpxPath;
         try {
             gpxPath = uploadFile(courseGpxFile, "gpx");
         } catch (IOException e) {
             throw new BusinessException(FILE_UPLOAD_FAILED);
         }
 
+        // 트랙포인트 파싱
+        List<TrackPoint> trackPoints;
+        try {
+            trackPoints = getTrackPoint(courseGpxFile);
+        } catch (Exception e) {
+            throw new BusinessException(FILE_PARSE_FAILED);
+        }
+
+        // 전체 거리 계산
+        int distance = calculateDistance(trackPoints);
+
+        // 소요 시간 계산
+        int duration = calculateDuration(distance, 9.0);
+
+        // 최대, 최소 고도 계산
+        double maxElevation = calculateMaxElevation(trackPoints);
+        double minElevation = calculateMinElevation(trackPoints);
+
+        // 시작점, 종료점 좌표 가져오기
+        Point startPoint = extractStartPoint(trackPoints);
+        Point endPoint = extractEndPoint(trackPoints);
+
+        // 카카오 지도 API를 통해 코스 이름 가져오기
+        // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
+        String startCourseName = kakaoAddressService.getCourseName(startPoint.getX(), startPoint.getY());
+        String endCourseName = kakaoAddressService.getCourseName(endPoint.getX(), endPoint.getY());
+        String courseName = startCourseName + "~" + endCourseName;
+
         // todo: 필드 값 구현 메소드 작성 후 수정 (임시 값)
         Course course = Course.builder()
                 .externalId(gpxExternalId)
-                .name(courseGpxRequestDto.getCourseName())
-                .distance(22)
-                .duration(147)
+                .name(courseName)
+                .distance(distance)
+                .duration(duration)
                 .level(CourseLevel.EASY)
                 .area(Area.HAEUN_GWANGAN)
                 .gpxPath(gpxPath)
-                .startPoint(null)
-                .maxElevation(188.589)
-                .minElevation(-0.702)
+                .startPoint(startPoint)
+                .maxElevation(maxElevation)
+                .minElevation(minElevation)
                 .build();
 
         courseRepository.save(course);
 
         return new CourseGpxResponseDto(course);
+    }
+
+    /** GPX 트랙포인트 파싱 */
+    public List<TrackPoint> getTrackPoint(MultipartFile courseGpxFile) throws Exception {
+        XmlMapper xmlMapper = new XmlMapper();
+
+        // DTO에 정의되지 않은 필드 무시
+        xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        xmlMapper.configure(FromXmlParser.Feature.EMPTY_ELEMENT_AS_NULL, true);
+
+        GpxDto gpx = xmlMapper.readValue(courseGpxFile.getInputStream(), GpxDto.class);
+
+        List<GpxDto.Trkpt> allPoints = gpx.getTrk().getTrksegs().stream()
+                .flatMap(trkseg -> trkseg.getTrkpts().stream())
+                .collect(Collectors.toList());
+
+        AtomicInteger sequence = new AtomicInteger(1);
+
+        List<TrackPoint> trackPoints = allPoints.stream()
+                .map(pt -> TrackPoint.builder()
+                        .lat(pt.getLat())
+                        .lon(pt.getLon())
+                        .ele(pt.getEle())
+                        .sequence(sequence.getAndIncrement())
+                        .build())
+                .collect(Collectors.toList());
+
+        return trackPoints;
+    }
+
+    /** distance (코스 전체 거리, 단위: km) 추정 */
+    public static int calculateDistance(List<TrackPoint> trackPoints) {
+        double totalDistance = 0.0;
+        for (int i = 1; i < trackPoints.size(); i++) {
+            TrackPoint previous = trackPoints.get(i - 1);
+            TrackPoint current = trackPoints.get(i);
+            totalDistance += haversine(previous.getLat(), previous.getLon(), current.getLat(), current.getLon());
+        }
+        return (int) Math.round(totalDistance);
+    }
+
+    /** 두 좌표 간 거리 계산 (하버사인 공식) */
+    private static double haversine(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // 지구 반지름 (km)
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    /** duration (코스 소요 시간, 단위: 분) 추정 */
+    public static int calculateDuration(double distance, double speed) {
+        double hours = distance / speed;
+        return (int) Math.round(hours * 60);
+    }
+
+    /** 최대 고도 계산 */
+    public static double calculateMaxElevation(List<TrackPoint> trackPoints) {
+        return trackPoints.stream().mapToDouble(TrackPoint::getEle).max().orElse(0.0);
+    }
+
+    /** 최소 고도 계산 */
+    public static double calculateMinElevation(List<TrackPoint> trackPoints) {
+        return trackPoints.stream().mapToDouble(TrackPoint::getEle).min().orElse(0.0);
+    }
+
+    /** 시작점 좌표 추출 */
+    public Point extractStartPoint(List<TrackPoint> trackPoints) {
+        if (trackPoints == null || trackPoints.isEmpty()) return null;
+        TrackPoint first = trackPoints.getFirst();
+        return geometryFactory.createPoint(new Coordinate(first.getLon(), first.getLat()));
+    }
+
+    /** 종료점 좌표 추출 */
+    public Point extractEndPoint(List<TrackPoint> trackPoints) {
+        if (trackPoints == null || trackPoints.isEmpty()) return null;
+        TrackPoint last = trackPoints.getLast();
+        return geometryFactory.createPoint(new Coordinate(last.getLon(), last.getLat()));
     }
 }
