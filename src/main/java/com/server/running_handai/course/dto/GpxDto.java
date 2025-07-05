@@ -19,6 +19,10 @@ public class GpxDto {
     @JacksonXmlProperty(localName = "trk")
     private Trk trk;
 
+    @JacksonXmlProperty(localName = "rte")
+    private Rte rte;
+
+    // 트랙(trk) 구조
     @Getter
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -39,6 +43,33 @@ public class GpxDto {
     @Getter
     @Setter
     public static class Trkpt {
+        @JacksonXmlProperty(isAttribute = true)
+        private double lat;
+
+        @JacksonXmlProperty(isAttribute = true)
+        private double lon;
+
+        @JacksonXmlProperty(localName = "ele")
+        private double ele;
+    }
+
+    // 루트(rte) 구조 파싱
+    @Getter
+    @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Rte {
+        @JacksonXmlProperty(localName = "name")
+        private String name;
+
+        @JacksonXmlProperty(localName = "rtept")
+        @JacksonXmlElementWrapper(useWrapping = false)
+        private List<Rtept> rtepts;
+    }
+
+    @Getter
+    @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Rtept {
         @JacksonXmlProperty(isAttribute = true)
         private double lat;
 

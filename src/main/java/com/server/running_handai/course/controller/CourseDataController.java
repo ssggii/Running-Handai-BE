@@ -1,6 +1,5 @@
 package com.server.running_handai.course.controller;
 
-import com.server.running_handai.course.dto.CourseGpxRequestDto;
 import com.server.running_handai.course.dto.CourseGpxResponseDto;
 import com.server.running_handai.course.dto.CourseImageResponseDto;
 import com.server.running_handai.course.dto.RoadConditionResponseDto;

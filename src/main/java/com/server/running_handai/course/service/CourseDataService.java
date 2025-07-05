@@ -1,6 +1,7 @@
 package com.server.running_handai.course.service;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.course.client.DurunubiApiClient;
@@ -12,7 +13,7 @@ import com.server.running_handai.course.repository.RoadConditionRepository;
 import com.server.running_handai.course.repository.TrackPointRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
 
-import java.io.IOException;s
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -392,7 +393,7 @@ public class CourseDataService {
     /**
      * "|" 기준 응답값 파싱
      */
-    public List<String> parseRoadConditionDescriptions(String response) {
+    private List<String> parseRoadConditionDescriptions(String response) {
         String[] rawData = response.split("\\|");
         List<String> parseData = new ArrayList<>();
 
@@ -518,20 +519,24 @@ public class CourseDataService {
         Point startPoint = extractStartPoint(trackPoints);
         Point endPoint = extractEndPoint(trackPoints);
 
-        // 카카오 지도 API를 통해 코스 이름 가져오기
-        // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
-        String startCourseName = kakaoAddressService.getCourseName(startPoint.getX(), startPoint.getY());
-        String endCourseName = kakaoAddressService.getCourseName(endPoint.getX(), endPoint.getY());
-        String courseName = startCourseName + "~" + endCourseName;
+        // 시작점, 종료점 카카오 지도 API로 주소 가져오기
+        JsonNode startAddress = kakaoAddressService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
+        JsonNode endAddress = kakaoAddressService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
 
-        // todo: 필드 값 구현 메소드 작성 후 수정 (임시 값)
+        // 코스 이름 가져오기
+        // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
+        String courseName = extractCourseName(startAddress) + "~" + extractCourseName(endAddress);
+
+        // 시작점을 기준으로 Area 분류
+        Area area = extractArea(startAddress);
+
         Course course = Course.builder()
                 .externalId(gpxExternalId)
                 .name(courseName)
                 .distance(distance)
                 .duration(duration)
                 .level(CourseLevel.EASY)
-                .area(Area.HAEUN_GWANGAN)
+                .area(area)
                 .gpxPath(gpxPath)
                 .startPoint(startPoint)
                 .maxElevation(maxElevation)
@@ -544,7 +549,7 @@ public class CourseDataService {
     }
 
     /** GPX 트랙포인트 파싱 */
-    public List<TrackPoint> getTrackPoint(MultipartFile courseGpxFile) throws Exception {
+    private List<TrackPoint> getTrackPoint(MultipartFile courseGpxFile) throws Exception {
         XmlMapper xmlMapper = new XmlMapper();
 
         // DTO에 정의되지 않은 필드 무시
@@ -553,26 +558,51 @@ public class CourseDataService {
 
         GpxDto gpx = xmlMapper.readValue(courseGpxFile.getInputStream(), GpxDto.class);
 
-        List<GpxDto.Trkpt> allPoints = gpx.getTrk().getTrksegs().stream()
-                .flatMap(trkseg -> trkseg.getTrkpts().stream())
-                .collect(Collectors.toList());
+        List<GpxDto.Trkpt> trkPoints = new ArrayList<>();
+        List<GpxDto.Rtept> rtePoints = new ArrayList<>();
 
+        // 트랙(trk) 구조 파싱
+        if (gpx.getTrk() != null && gpx.getTrk().getTrksegs() != null) {
+            trkPoints = gpx.getTrk().getTrksegs().stream()
+                    .filter(trkseg -> trkseg.getTrkpts() != null)
+                    .flatMap(trkseg -> trkseg.getTrkpts().stream())
+                    .toList();
+        }
+
+        // 루트(rte) 구조 파싱
+        if (gpx.getRte() != null && gpx.getRte().getRtepts() != null) {
+            rtePoints = gpx.getRte().getRtepts();
+        }
+
+        // 트랙포인트 변환 (트랙 우선, 없으면 루트 사용)
+        List<TrackPoint> trackPoints = new ArrayList<>();
         AtomicInteger sequence = new AtomicInteger(1);
 
-        List<TrackPoint> trackPoints = allPoints.stream()
-                .map(pt -> TrackPoint.builder()
-                        .lat(pt.getLat())
-                        .lon(pt.getLon())
-                        .ele(pt.getEle())
-                        .sequence(sequence.getAndIncrement())
-                        .build())
-                .collect(Collectors.toList());
+        if (!trkPoints.isEmpty()) {
+            trackPoints = trkPoints.stream()
+                    .map(pt -> TrackPoint.builder()
+                            .lat(pt.getLat())
+                            .lon(pt.getLon())
+                            .ele(pt.getEle())
+                            .sequence(sequence.getAndIncrement())
+                            .build())
+                    .collect(Collectors.toList());
+        } else if (!rtePoints.isEmpty()) {
+            trackPoints = rtePoints.stream()
+                    .map(pt -> TrackPoint.builder()
+                            .lat(pt.getLat())
+                            .lon(pt.getLon())
+                            .ele(pt.getEle())
+                            .sequence(sequence.getAndIncrement())
+                            .build())
+                    .collect(Collectors.toList());
+        }
 
         return trackPoints;
     }
 
     /** distance (코스 전체 거리, 단위: km) 추정 */
-    public static int calculateDistance(List<TrackPoint> trackPoints) {
+    private static int calculateDistance(List<TrackPoint> trackPoints) {
         double totalDistance = 0.0;
         for (int i = 1; i < trackPoints.size(); i++) {
             TrackPoint previous = trackPoints.get(i - 1);
@@ -595,32 +625,67 @@ public class CourseDataService {
     }
 
     /** duration (코스 소요 시간, 단위: 분) 추정 */
-    public static int calculateDuration(double distance, double speed) {
+    private static int calculateDuration(double distance, double speed) {
         double hours = distance / speed;
         return (int) Math.round(hours * 60);
     }
 
     /** 최대 고도 계산 */
-    public static double calculateMaxElevation(List<TrackPoint> trackPoints) {
+    private static double calculateMaxElevation(List<TrackPoint> trackPoints) {
         return trackPoints.stream().mapToDouble(TrackPoint::getEle).max().orElse(0.0);
     }
 
     /** 최소 고도 계산 */
-    public static double calculateMinElevation(List<TrackPoint> trackPoints) {
+    private static double calculateMinElevation(List<TrackPoint> trackPoints) {
         return trackPoints.stream().mapToDouble(TrackPoint::getEle).min().orElse(0.0);
     }
 
     /** 시작점 좌표 추출 */
-    public Point extractStartPoint(List<TrackPoint> trackPoints) {
+    private Point extractStartPoint(List<TrackPoint> trackPoints) {
         if (trackPoints == null || trackPoints.isEmpty()) return null;
         TrackPoint first = trackPoints.getFirst();
         return geometryFactory.createPoint(new Coordinate(first.getLon(), first.getLat()));
     }
 
     /** 종료점 좌표 추출 */
-    public Point extractEndPoint(List<TrackPoint> trackPoints) {
+    private Point extractEndPoint(List<TrackPoint> trackPoints) {
         if (trackPoints == null || trackPoints.isEmpty()) return null;
         TrackPoint last = trackPoints.getLast();
         return geometryFactory.createPoint(new Coordinate(last.getLon(), last.getLat()));
+    }
+
+    /** 코스 이름 추출 */
+    private String extractCourseName(JsonNode jsonNode) {
+        // building_name이 있을 경우 (예: 무지개아파트)
+        JsonNode roadAddress = jsonNode.path("road_address"); // 도로명 주소
+        String buildingName = roadAddress.path("building_name").asText(); // 건물 이름
+        if (buildingName != null && !buildingName.isBlank()) return buildingName;
+
+        // building_name이 없을 경우 (지번 주소 조합, 예: 기장읍 죽성리 30-35)
+        JsonNode address = jsonNode.path("address"); // 지번 주소
+        String region3 = address.path("region_3depth_name").asText(); // 동 단위
+        String mainNo = address.path("main_address_no").asText(); // 지번 주 번지
+        String subNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
+        if (!region3.isBlank() && !mainNo.isBlank()) {
+            return region3 + " " + mainNo + (subNo.isBlank() ? "" : "-" + subNo);
+        }
+
+        return "이름 없음";
+    }
+
+    /** 행정구역 추출 */
+    private Area extractArea(JsonNode jsonNode) {
+        // 도로명 주소는 도로명 주소는 좌표에 따라 반환되지 않을 수 있기 때문에 지번 주소를 기준으로 함
+        String region2 = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위
+        String region3 = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
+
+        // Area 설정
+        for (Area area : Area.values()) {
+            if (area.getSubRegions().contains(region2) || area.getSubRegions().contains(region3)) {
+                return area;
+            }
+        }
+
+        return Area.UNKNOWN;
     }
 }
