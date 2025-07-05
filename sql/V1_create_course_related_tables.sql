@@ -14,7 +14,7 @@ create table course
     level          enum ('EASY', 'HARD', 'MEDIUM')                                                                                                        not null,
     max_ele        double                                                                                                                                 null,
     min_ele        double                                                                                                                                 null,
-    name           varchar(255)                                                                                                                           not null,                                                                                                                                 null,
+    name           varchar(255)                                                                                                                           not null,
     start_point    point                                                                                                                                  not null,
     tour_point     text                                                                                                                                   null,
     constraint UKftj9sywcqetdlrcts15h17nx3
