@@ -153,6 +153,10 @@ public class Course extends BaseTimeEntity {
         this.maxElevation = maxElevation;
     }
 
+    public void updateGpxPath(String gpxPath) {
+        this.gpxPath = gpxPath;
+    }
+
     // ==== 연관관계 편의 메서드 ==== //
     public void updateCourseImage(CourseImage courseImage) {
         this.courseImage = courseImage;
