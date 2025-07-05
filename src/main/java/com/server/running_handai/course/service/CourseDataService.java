@@ -68,7 +68,9 @@ public class CourseDataService {
     @Value("${spring.cloud.aws.region.static}")
     private String region;
 
-    /** 두루누비 API 관련 */
+    /**
+     * 두루누비 API 관련
+     */
     @Async("syncCourseTaskExecutor")
     @Transactional
     public void synchronizeCourseData() {
@@ -239,8 +241,9 @@ public class CourseDataService {
 
     /**
      * 필드가 null이거나 비어있는지 검사하고, 유효하지 않은 경우 로그를 남깁니다.
-     * @param value 검사할 필드의 값
-     * @param fieldName 로그에 표시될 필드의 이름
+     *
+     * @param value       검사할 필드의 값
+     * @param fieldName   로그에 표시될 필드의 이름
      * @param courseIndex externalId 값
      * @return 필드가 유효하지 않으면 true, 유효하면 false
      */
@@ -258,6 +261,7 @@ public class CourseDataService {
 
     /**
      * null, 공백, 숫자 형식 오류를 모두 검사하고, 유효하지 않은 경우 로그를 남깁니다.
+     *
      * @return 필드가 유효하지 않으면 false, 유효하지 않으면 true
      */
     private boolean isIntegerInvalid(String value, String fieldName, String courseIndex) {
@@ -340,7 +344,9 @@ public class CourseDataService {
     }
 
     /** OpenAI API 관련 */
-    /** 길 상태 수정 */
+    /**
+     * 길 상태 수정
+     */
     @Transactional
     public RoadConditionResponseDto updateRoadCondition(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
@@ -383,7 +389,9 @@ public class CourseDataService {
         return new RoadConditionResponseDto(course, descriptions);
     }
 
-    /** "|" 기준 응답값 파싱 */
+    /**
+     * "|" 기준 응답값 파싱
+     */
     public List<String> parseRoadConditionDescriptions(String response) {
         String[] rawData = response.split("\\|");
         List<String> parseData = new ArrayList<>();
@@ -400,7 +408,9 @@ public class CourseDataService {
         return parseData;
     }
 
-    /** 원하는 프롬프트로 OpenAI API 호출 */
+    /**
+     * 원하는 프롬프트로 OpenAI API 호출
+     */
     public String callOpenAiApi(Resource promptResource, Map<String, Object> variables) {
         try {
             ChatClient chatClient = chatClientBuilder.build();
@@ -416,7 +426,9 @@ public class CourseDataService {
     }
 
     /** AWS S3 관련 */
-    /** 코스 썸네일 이미지 업로드 */
+    /**
+     * 코스 썸네일 이미지 업로드
+     */
     @Transactional
     public CourseImageResponseDto updateCourseImage(Long courseId, MultipartFile courseImageFile) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
@@ -452,7 +464,7 @@ public class CourseDataService {
         s3Client.putObject(
                 putObjectRequest,
                 software.amazon.awssdk.core.sync.RequestBody.fromInputStream(multipartFile.getInputStream(), multipartFile.getSize())
-                );
+        );
 
         // 업로드된 파일의 S3 Url 반환
         return String.format(
@@ -460,6 +472,47 @@ public class CourseDataService {
                 bucket,
                 region,
                 fileName
-         );
+        );
+    }
+
+    /** GPX 코스 추가 관련 */
+    /**
+     * GPX 코스 추가
+     */
+    @Transactional
+    public CourseGpxResponseDto createCourseToGpx(CourseGpxRequestDto courseGpxRequestDto, MultipartFile courseGpxFile) {
+        String gpxExternalId;
+        String gpxPath;
+
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            sb.append(random.nextInt(10));
+        }
+        gpxExternalId = sb.toString();
+
+        try {
+            gpxPath = uploadFile(courseGpxFile, "gpx");
+        } catch (IOException e) {
+            throw new BusinessException(FILE_UPLOAD_FAILED);
+        }
+
+        // todo: 필드 값 구현 메소드 작성 후 수정 (임시 값)
+        Course course = Course.builder()
+                .externalId(gpxExternalId)
+                .name(courseGpxRequestDto.getCourseName())
+                .distance(22)
+                .duration(147)
+                .level(CourseLevel.EASY)
+                .area(Area.HAEUN_GWANGAN)
+                .gpxPath(gpxPath)
+                .startPoint(null)
+                .maxElevation(188.589)
+                .minElevation(-0.702)
+                .build();
+
+        courseRepository.save(course);
+
+        return new CourseGpxResponseDto(course);
     }
 }

@@ -1,5 +1,7 @@
 package com.server.running_handai.course.controller;
 
+import com.server.running_handai.course.dto.CourseGpxRequestDto;
+import com.server.running_handai.course.dto.CourseGpxResponseDto;
 import com.server.running_handai.course.dto.CourseImageResponseDto;
 import com.server.running_handai.course.dto.RoadConditionResponseDto;
 import com.server.running_handai.course.service.CourseDataService;
@@ -31,7 +33,14 @@ public class CourseDataController {
     }
 
     @PutMapping(value = "/{courseId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CourseImageResponseDto> updateCourseImage(@PathVariable Long courseId, @RequestParam MultipartFile courseImageFile) {
+    public ResponseEntity<CourseImageResponseDto> updateCourseImage(@PathVariable Long courseId,
+                                                                    @RequestPart("courseImageFile") MultipartFile courseImageFile) {
         return new ResponseEntity<>(courseDataService.updateCourseImage(courseId, courseImageFile), HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CourseGpxResponseDto> createCourseToGpx(@RequestPart("courseGpxRequestDto") CourseGpxRequestDto courseGpxRequestDto,
+                                                                  @RequestPart("courseGpxFile") MultipartFile courseGpxFile) {
+        return new ResponseEntity<>(courseDataService.createCourseToGpx(courseGpxRequestDto, courseGpxFile), HttpStatus.OK);
     }
 }
