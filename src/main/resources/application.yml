@@ -19,6 +19,16 @@ spring:
         options:
           model: gpt-3.5-turbo
 
+  cloud:
+    aws:
+      credentials:
+        access-key: ${S3_ACCESS_KEY}
+        secret-key: ${S3_SECRET_KEY}
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+
 server:
   port: ${PORT:8080}
 
