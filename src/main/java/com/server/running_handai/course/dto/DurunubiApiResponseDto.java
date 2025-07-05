@@ -2,11 +2,13 @@ package com.server.running_handai.course.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.Hidden;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+@Hidden
 @Getter
 @ToString
 @NoArgsConstructor

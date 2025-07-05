@@ -4,10 +4,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import io.swagger.v3.oas.annotations.Hidden;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
+@Hidden
 @Getter
 @Setter
 @JacksonXmlRootElement(localName = "gpx")

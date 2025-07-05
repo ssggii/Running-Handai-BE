@@ -1,9 +1,6 @@
 package com.server.running_handai.global.response;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Collection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Getter
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ApiResponse<T> {
+public class CommonResponse<T> {
 
     private final int statusCode;
     private final String responseCode;
@@ -20,7 +17,7 @@ public class ApiResponse<T> {
     private final T data;
 
     // 성공 응답 생성자
-    private ApiResponse(ResponseCode responseCode, T data) {
+    private CommonResponse(ResponseCode responseCode, T data) {
         this.statusCode = responseCode.getHttpStatus().value();
         this.responseCode = responseCode.getCode();
         this.message = responseCode.getMessage();
@@ -34,7 +31,7 @@ public class ApiResponse<T> {
     }
 
     // 실패 응답 생성자
-    private ApiResponse(ResponseCode responseCode) {
+    private CommonResponse(ResponseCode responseCode) {
         this.statusCode = responseCode.getHttpStatus().value();
         this.responseCode = responseCode.getCode();
         this.message = responseCode.getMessage();
@@ -43,12 +40,12 @@ public class ApiResponse<T> {
     }
 
     // 성공 응답을 위한 정적 팩토리 메서드
-    public static <T> ApiResponse<T> success(ResponseCode responseCode, T data) {
-        return new ApiResponse<>(responseCode, data);
+    public static <T> CommonResponse<T> success(ResponseCode responseCode, T data) {
+        return new CommonResponse<>(responseCode, data);
     }
 
     // 실패 응답을 위한 정적 팩토리 메서드
-    public static <T> ApiResponse<T> error(ResponseCode responseCode) {
-        return new ApiResponse<>(responseCode);
+    public static <T> CommonResponse<T> error(ResponseCode responseCode) {
+        return new CommonResponse<>(responseCode);
     }
 }
