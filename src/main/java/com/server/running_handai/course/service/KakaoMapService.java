@@ -13,7 +13,7 @@ import static com.server.running_handai.global.response.ResponseCode.ADDRESS_PAR
 
 @Slf4j
 @Service
-public class KakaoAddressService {
+public class KakaoMapService {
     @Value("${KAKAO_API_KEY}")
     private String kakaoApiKey;
 

@@ -31,8 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
 
@@ -45,29 +43,24 @@ public class CourseDataService {
     public static final String TARGET_REGION = "부산";
     public static final int RUNNING_SPEED = 9;
 
-    private final DurunubiApiClient durunubiApiClient;
-    private final CourseRepository courseRepository;
-    private final TrackPointRepository trackPointRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final RestTemplate restTemplate = new RestTemplate();
     private final XmlMapper xmlMapper = new XmlMapper();
+
+    private final DurunubiApiClient durunubiApiClient;
+    private final CourseRepository courseRepository;
+    private final TrackPointRepository trackPointRepository;
     private final RoadConditionRepository roadConditionRepository;
 
-    private final S3Client s3Client;
-    private final KakaoAddressService kakaoAddressService;
+    private final KakaoMapService kakaoMapService;
     private final OpenAiService openAiService;
+    private final FileService fileService;
 
     @Value("classpath:prompt/save-road-condition.st")
     private Resource getRoadConditionPrompt;
 
     @Value("classpath:prompt/save-level-and-road-condition.st")
     private Resource getLevelAndRoadConditionPrompt;
-
-    @Value("${spring.cloud.aws.s3.bucket}")
-    private String bucket;
-
-    @Value("${spring.cloud.aws.region.static}")
-    private String region;
 
     /**
      * 두루누비 API 관련
@@ -344,13 +337,20 @@ public class CourseDataService {
         }
     }
 
-    /** 길 상태 수정 */
+    /**
+     * 코스의 길 상태(road_condition) 정보를 OpenAI API 호출을 통해 저장합니다.
+     * 기존 데이터가 있는 경우, 일괄 삭제 후 새로 생성된 설명을 저장됩니다.
+     * 하나의 코스 데이터 당 5개의 길 상태 정보가 생성됩니다.
+     * 데이터 처리 과정을 로그로 확인할 수 있습니다.
+     *
+     * @param courseId 길 상태를 수정할 course Id
+     */
     @Transactional
-    public RoadConditionResponseDto updateRoadCondition(Long courseId) {
+    public void updateRoadCondition(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
         List<TrackPoint> trackPoints = course.getTrackPoints();
 
-        // 1. 프롬프트 변수 준비
+        // 프롬프트 변수 준비
         List<Map<String, Object>> trackPointData = trackPoints.stream()
                 .map(tp -> {
                     Map<String, Object> map = new HashMap<>();
@@ -370,78 +370,61 @@ public class CourseDataService {
                 "trackPoint", trackPointData
         );
 
-        // 2. OpenAI API 호출 (응답은 "|"로 구분된 5개 설명으로 이루어짐)
+        // OpenAI API 호출 후 파싱 (응답은 "|"로 구분된 5개 설명으로 이루어짐)
         String openAiResponse = openAiService.getOpenAiResponse(getRoadConditionPrompt, variables);
+        log.info("[길 상태 수정] OpenAI 응답 수신: {}", openAiResponse);
+        List<String> descriptions = parseResponse(openAiResponse, 5);
 
-        // 3. 데이터 파싱
-        List<String> descriptions = parseRoadConditionDescriptions(openAiResponse, 5);
-
-        // 4. 기존 데이터 일괄 삭제 후 새로 저장
+        // 기존 데이터 일괄 삭제 후 새로 저장
         roadConditionRepository.deleteByCourseId(courseId);
+        log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
 
         for (String descrption : descriptions) {
             RoadCondition rc = new RoadCondition(course, descrption);
             roadConditionRepository.save(rc);
         }
-
-        return new RoadConditionResponseDto(course, descriptions);
-    }
-
-    /** 코스 썸네일 이미지 업로드 */
-    @Transactional
-    public CourseImageResponseDto updateCourseImage(Long courseId, MultipartFile courseImageFile) {
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        String imageUrl;
-        try {
-            imageUrl = uploadFile(courseImageFile, "image");
-        } catch (IOException e) {
-            throw new BusinessException(FILE_UPLOAD_FAILED);
-        }
-
-        CourseImage courseImage = new CourseImage(imageUrl);
-        course.updateCourseImage(courseImage);
-
-        return new CourseImageResponseDto(course, courseImage);
+        log.info("[길 상태 수정] DB에 길 상태 정보 갱신 완료: courseId={}", courseId);
     }
 
     /**
-     * AWS S3에 파일 업로드
-     * 같은 Bucket 내에 Directory로 구분
+     * 저장된 코스의 썸네일 이미지를 S3 버킷에 저장 후, DB에 저장합니다.
+     * Course와 CourseImage는 1:1 관계이므로 이미 저장된 이미지가 있을 경우, 이전 이미지는 S3 버킷 내에서 삭제합니다.
+     * S3 버킷의 디렉토리는 "image"로 지정합니다.
+     * 데이터 저장 과정을 로그로 확인할 수 있습니다.
+     *
+     * @param courseImageFile 업로드된 이미지 파일
      */
-    public String uploadFile(MultipartFile multipartFile, String directory) throws IOException {
-        String originalFileName = multipartFile.getOriginalFilename();
-        String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
+    @Transactional
+    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) throws IOException {
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+        CourseImage courseImage = course.getCourseImage();
 
-        // 업로드할 파일의 설정 정보 설정
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(fileName)
-                .contentType(multipartFile.getContentType())
-                .build();
+        if (courseImage != null) {
+            fileService.deleteFile(course.getCourseImage().getImgUrl());
+            log.info("[코스 이미지 수정] S3에서 기존 이미지 삭제: Course Id={}, URL={}", course.getCourseImage().getCourseImageId(), course.getCourseImage().getImgUrl());
+        }
 
-        // AWS S3에 파일 업로드
-        s3Client.putObject(
-                putObjectRequest,
-                software.amazon.awssdk.core.sync.RequestBody.fromInputStream(multipartFile.getInputStream(), multipartFile.getSize())
-        );
+        String imageUrl = fileService.uploadFile(courseImageFile, "image");
+        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: {}", imageUrl);
 
-        // 업로드된 파일의 S3 Url 반환
-        return String.format(
-                "https://%s.s3.%s.amazonaws.com/%s",
-                bucket,
-                region,
-                fileName
-        );
+        if (courseImage != null) {
+            courseImage.updateImageUrl(imageUrl);
+        } else {
+            courseImage = new CourseImage(imageUrl);
+            course.updateCourseImage(courseImage);
+        }
+        log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료 (Course ID: {})", courseId);
     }
 
     /**
      * GPX 파일을 받아 코스 정보를 생성하고 저장합니다.
+     * S3 버킷의 디렉토리는 "gpx"로 지정합니다.
+     * 데이터 저장 과정을 로그로 확인할 수 있습니다.
      *
-     * @Param courseGpxFile 업로드된 GPX 파일
-     * @return 생성한 코스의 정보를 담은 CourseGpxResponseDto (OpenAI 응답 포함)
-     * */
+     * @param courseGpxFile 업로드된 GPX 파일
+     */
     @Transactional
-    public CourseGpxResponseDto createCourseToGpx(MultipartFile courseGpxFile) {
+    public void createCourseToGpx(MultipartFile courseGpxFile) throws IOException {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
         // 1. externalId 설정
@@ -461,7 +444,7 @@ public class CourseDataService {
             log.info("[GPX 코스 생성] 트랙포인트 파싱 완료 ({}개)", trackPoints.size());
         } catch (Exception e) {
             log.error("[GPX 코스 생성] 트랙포인트 파싱 실패", e);
-            throw new BusinessException(FILE_PARSE_FAILED);
+            throw new BusinessException(GPX_FILE_PARSE_FAILED);
         }
 
         // 3. 전체 거리 계산
@@ -482,8 +465,8 @@ public class CourseDataService {
         Point endPoint = extractEndPoint(trackPoints);
         log.debug("[GPX 코스 생성] 시작점: {}, 종료점: {}", startPoint, endPoint);
 
-        JsonNode startAddress = kakaoAddressService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
-        JsonNode endAddress = kakaoAddressService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
+        JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
+        JsonNode endAddress = kakaoMapService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
         log.debug("[GPX 코스 생성] 시작점 주소: {}, 종료점 주소: {}", startAddress, endAddress);
 
         // 7. 코스 이름 가져오기
@@ -505,7 +488,7 @@ public class CourseDataService {
 
         String openAiResponse = openAiService.getOpenAiResponse(getLevelAndRoadConditionPrompt, variables);
         log.info("[GPX 코스 생성] OpenAI 응답 수신: {}", openAiResponse);
-        List<String> descriptions = parseRoadConditionDescriptions(openAiResponse, 6);
+        List<String> descriptions = parseResponse(openAiResponse, 6);
 
         String responseLevel = descriptions.getFirst();
         CourseLevel level;
@@ -519,14 +502,7 @@ public class CourseDataService {
         }
 
         // 10. AWS S3에 GPX 파일 업로드
-        String gpxPath;
-        try {
-            gpxPath = uploadFile(courseGpxFile, "gpx");
-            log.info("[GPX 코스 생성] GPX 파일 S3 업로드 완료: {}", gpxPath);
-        } catch (IOException e) {
-            log.error("[GPX 코스 생성] GPX 파일 업로드 실패", e);
-            throw new BusinessException(FILE_UPLOAD_FAILED);
-        }
+        String gpxPath = fileService.uploadFile(courseGpxFile, "gpx");
 
         // 11. course, road condition, track point DB에 저장
         Course course = Course.builder()
@@ -559,7 +535,6 @@ public class CourseDataService {
         log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
 
         log.info("[GPX 코스 생성] 전체 작업 완료! (코스명: {})", courseName);
-        return new CourseGpxResponseDto(course);
     }
 
     /**
@@ -626,7 +601,7 @@ public class CourseDataService {
      * @param trackPoints 트랙포인트 리스트
      * @return 전체 거리 (km, 소수점 반올림)
      */
-    private static int calculateDistance(List<TrackPoint> trackPoints) {
+    private int calculateDistance(List<TrackPoint> trackPoints) {
         double totalDistance = 0.0;
         for (int i = 1; i < trackPoints.size(); i++) {
             TrackPoint previous = trackPoints.get(i - 1);
@@ -646,7 +621,7 @@ public class CourseDataService {
      * @param lon2 두 번째 경도
      * @return 두 지점 간 거리 (km)
      */
-    private static double haversine(double lat1, double lon1, double lat2, double lon2) {
+    private double haversine(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371; // 지구 반지름 (km)
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
@@ -664,7 +639,7 @@ public class CourseDataService {
      * @param speed 속도 (km/h)
      * @return 소요 시간 (분)
      */
-    private static int calculateDuration(double distance, double speed) {
+    private int calculateDuration(double distance, double speed) {
         double hours = distance / speed;
         return (int) Math.round(hours * 60);
     }
@@ -675,7 +650,7 @@ public class CourseDataService {
      * @param trackPoints 트랙포인트 리스트
      * @return 최대 고도 (m)
      */
-    private static double calculateMaxElevation(List<TrackPoint> trackPoints) {
+    private double calculateMaxElevation(List<TrackPoint> trackPoints) {
         return trackPoints.stream().mapToDouble(TrackPoint::getEle).max().orElse(0.0);
     }
 
@@ -685,7 +660,7 @@ public class CourseDataService {
      * @param trackPoints 트랙포인트 리스트
      * @return 최소 고도 (m)
      */
-    private static double calculateMinElevation(List<TrackPoint> trackPoints) {
+    private double calculateMinElevation(List<TrackPoint> trackPoints) {
         return trackPoints.stream().mapToDouble(TrackPoint::getEle).min().orElse(0.0);
     }
 
@@ -717,26 +692,32 @@ public class CourseDataService {
      * 카카오 지도 API에서 가져온 주소 정보에서 코스 이름을 추출합니다.
      *
      * @param jsonNode 주소 정보 JSON
-     * @return 코스 이름 (건물 이름(building_name), 없으면 지번 주소 조합으로 구성, 모두 없으면 "이름 없음")
+     * @return 코스 이름 (지번 주소 조합(건물 이름)으로 구성, 없으면 "이름 없음")
      */
     private String extractCourseName(JsonNode jsonNode) {
-        // building_name이 있을 경우 (예: 무지개아파트)
-        JsonNode roadAddress = jsonNode.path("road_address"); // 도로명 주소
-        String buildingName = roadAddress.path("building_name").asText(); // 건물 이름
-        if (buildingName != null && !buildingName.isBlank()) return buildingName;
+        String courseName = null;
 
-        // building_name이 없을 경우 (지번 주소 조합, 예: 기장읍 죽성리 30-35)
+        // 지번 주소 조합 가져오기 (예: 기장읍 죽성리 30-35)
         JsonNode address = jsonNode.path("address"); // 지번 주소
         String region3 = address.path("region_3depth_name").asText(); // 동 단위
         String mainNo = address.path("main_address_no").asText(); // 지번 주 번지
         String subNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
         if (!region3.isBlank() && !mainNo.isBlank()) {
-            return region3 + " " + mainNo + (subNo.isBlank() ? "" : "-" + subNo);
+            courseName = region3 + " " + mainNo + (subNo.isBlank() ? "" : "-" + subNo);
+        } else {
+            log.warn("[GPX 코스 생성] 코스 이름 추출 실패: region3='{}', mainNo='{}', subNo='{}'. address: {}",
+                    region3, mainNo, subNo, address);
+            return "이름 없음";
         }
 
-        log.warn("[GPX 코스 생성] 코스 이름 추출 실패: buildingName='{}', region3='{}', mainNo='{}', subNo='{}'. address: {}",
-                buildingName, region3, mainNo, subNo, address);
-        return "이름 없음";
+        // 건물 이름 가져오기 (예: 무지개아파트)
+        JsonNode roadAddress = jsonNode.path("road_address"); // 도로명 주소
+        String buildingName = roadAddress.path("building_name").asText(); // 건물 이름
+        if (buildingName != null && !buildingName.isBlank()) {
+            return courseName + "(" + buildingName + ")";
+        } else {
+            return courseName;
+        }
     }
 
     /**
@@ -768,7 +749,7 @@ public class CourseDataService {
      * @param parseNumber 최대 파싱 개수
      * @return 파싱된 리스트
      */
-    private List<String> parseRoadConditionDescriptions(String response, Integer parseNumber) {
+    private List<String> parseResponse(String response, int parseNumber) {
         if (response == null || response.isBlank()) {
             log.warn("[OpenAI 응답 파싱] 응답이 null 또는 빈 문자열");
             return List.of();
