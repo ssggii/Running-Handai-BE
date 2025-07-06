@@ -67,8 +67,6 @@ public class FileService {
             throw new IllegalArgumentException("지원하지 않는 파일 형식입니다.");
         }
 
-        log.info("[S3 파일 업로드] 업로드 시작: 파일명={}, 대상경로={}", originalFileName, fileName);
-
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucket)
@@ -87,7 +85,6 @@ public class FileService {
                     region,
                     fileName
             );
-            log.info("[S3 파일 업로드] 업로드 성공: URL={}", fileUrl);
             return fileUrl;
         } catch (IOException e) {
             log.error("[S3 파일 업로드] 업로드 실패: 파일명={}, 대상경로={}", originalFileName, fileName, e);
@@ -105,7 +102,6 @@ public class FileService {
     public String getPresignedGetUrl(String fileUrl, int minutes) {
         Duration duration = Duration.ofMinutes(minutes);
         String key = extractKeyFromUrl(fileUrl);
-        log.info("[S3 presigned URL 발급] 요청 시작: key={}, duration={}분", key, minutes);
 
         try (S3Presigner s3Presigner = S3Presigner.builder()
                 .region(Region.of(region))
@@ -142,7 +138,6 @@ public class FileService {
      */
     public void deleteFile(String fileUrl) {
         String key = extractKeyFromUrl(fileUrl);
-        log.info("[S3 파일 삭제] 삭제 시작: key={}", key);
 
         try {
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
@@ -151,7 +146,6 @@ public class FileService {
                     .build();
 
             s3Client.deleteObject(deleteObjectRequest);
-            log.info("[S3 파일 삭제] 삭제 성공: key={}", key);
         } catch (Exception e) {
             log.error("[S3 파일 삭제] 삭제 실패: key={}", key);
             throw new BusinessException(FILE_DELETE_FAILED);

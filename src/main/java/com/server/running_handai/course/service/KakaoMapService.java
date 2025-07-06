@@ -17,7 +17,13 @@ public class KakaoMapService {
     @Value("${KAKAO_API_KEY}")
     private String kakaoApiKey;
 
-    /** kakao 지도 API 호출해서 위도, 경도의 주소 가져오기 */
+    /**
+     * 주어진 위도(latitude), 경도(longitude) 좌표로부터 카카오 지도 API를 통해 주소 정보를 조회합니다.
+     *
+     * @param longitude 경도 (x)
+     * @param latitude 위도 (y)
+     * @return 주소 정보가 담긴 JsonNode (성공 시 documents[0]), 없으면 null
+     */
     public JsonNode getAddressFromCoordinate(double longitude, double latitude) {
         String requestUrl = "https://dapi.kakao.com/v2/local/geo/coord2address.json"
                 + "?x=" + longitude
@@ -49,11 +55,11 @@ public class KakaoMapService {
                 return documents.get(0);
             }
         } catch (Exception e) {
-            log.error("[카카오 지도 API 호출] 카카오 지도 API에서 주소 정보 못가져옴. 요청 좌표: x={}, y={}", longitude, latitude, e);
+            log.error("[카카오 지도 API 호출] 카카오 지도 API 파싱 실패: x={}, y={}", longitude, latitude, e);
             throw new BusinessException(ADDRESS_PARSE_FAILED);
         }
 
-        log.warn("[카카오 지도 API 호출] 카카오 지도 API에서 주소 못찾음. 요청 좌표: x={}, y={}", longitude, latitude);
+        log.warn("[카카오 지도 API 호출] 카카오 지도 API에서 주소 정보 없음: x={}, y={}", longitude, latitude);
         return null;
     }
 }
