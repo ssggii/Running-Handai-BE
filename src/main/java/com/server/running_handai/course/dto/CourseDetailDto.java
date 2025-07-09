@@ -12,5 +12,4 @@ public record CourseDetailDto(
         List<String> roadConditions,
         List<TrackPointDto> trackPoints
 ) {
-    public record TrackPointDto(double lat, double lon, double ele) {}
 }

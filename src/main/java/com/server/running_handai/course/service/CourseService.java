@@ -4,11 +4,14 @@ import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_
 
 import com.server.running_handai.course.dto.CourseDetailDto;
 import com.server.running_handai.course.dto.CourseInfoDto;
+import com.server.running_handai.course.dto.CourseWithPointDto;
+import com.server.running_handai.course.dto.TrackPointDto;
 import com.server.running_handai.course.entity.Area;
 import com.server.running_handai.course.entity.Course;
 import com.server.running_handai.course.entity.RoadCondition;
 import com.server.running_handai.course.entity.Theme;
 import com.server.running_handai.course.repository.CourseRepository;
+import com.server.running_handai.course.repository.TrackPointRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.Arrays;
 import java.util.List;
@@ -29,28 +32,29 @@ public class CourseService {
     public static final String POINT_FORMAT = "POINT(%f %f)"; // MySQL의 POINT 포맷
 
     private final CourseRepository courseRepository;
+    private final TrackPointRepository trackPointRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Transactional(readOnly = true)
-    public List<CourseInfoDto> findCoursesNearby(double lat, double lon) {
+    public List<CourseWithPointDto> findCoursesNearby(double lat, double lon) {
         log.info("사용자 근방 10km 이내 코스 조회를 시작합니다. lat={}, lon={}", lat, lon);
         String userPoint = String.format(POINT_FORMAT, lat, lon);
-        List<CourseInfoDto> courseInfoDtoList = courseRepository.findCoursesNearbyUser(userPoint);
-        log.info("{}개의 코스를 찾았습니다.", courseInfoDtoList.size());
-        return courseInfoDtoList;
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findCoursesNearbyUser(userPoint);
+        log.info("{}개의 코스를 찾았습니다.", courseInfoDtos.size());
+        return combineCoursesWithPoints(courseInfoDtos);
     }
 
     @Transactional(readOnly = true)
-    public List<CourseInfoDto> findCoursesByArea(Area area, double lat, double lon) {
+    public List<CourseWithPointDto> findCoursesByArea(Area area, double lat, double lon) {
         log.info("지역 필터링 기반 코스 조회를 시작합니다. lat={}, lon={}, area={}", lat, lon, area.name());
         String userPoint = String.format(POINT_FORMAT, lat, lon);
-        List<CourseInfoDto> courseInfoDtoList = courseRepository.findCoursesByArea(userPoint, area.name());
-        log.info("{}개의 코스를 찾았습니다.", courseInfoDtoList.size());
-        return courseInfoDtoList;
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findCoursesByArea(userPoint, area.name());
+        log.info("{}개의 코스를 찾았습니다.", courseInfoDtos.size());
+        return combineCoursesWithPoints(courseInfoDtos);
     }
 
     @Transactional(readOnly = true)
-    public List<CourseInfoDto> findCoursesByTheme(Theme theme, double lat, double lon) {
+    public List<CourseWithPointDto> findCoursesByTheme(Theme theme, double lat, double lon) {
         log.info("테마 기반 코스 조회를 시작합니다. lat={}, lon={}, theme={}", lat, lon, theme.name());
 
         List<String> matchingAreaNames = Arrays.stream(Area.values()) // 모든 Area Enum 상수 가져옴
@@ -63,9 +67,29 @@ public class CourseService {
         }
 
         String userPoint = String.format(POINT_FORMAT, lat, lon);
-        List<CourseInfoDto> courseInfoDtoList = courseRepository.findCoursesInAreaList(userPoint, matchingAreaNames);
-        log.info("{}개의 코스를 찾았습니다.", courseInfoDtoList.size());
-        return courseInfoDtoList;
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findCoursesInAreaList(userPoint, matchingAreaNames);
+        log.info("{}개의 코스를 찾았습니다.", courseInfoDtos.size());
+        return combineCoursesWithPoints(courseInfoDtos);
+    }
+
+    private List<CourseWithPointDto> combineCoursesWithPoints(List<CourseInfoDto> courseInfos) {
+        return courseInfos.stream()
+                .map(courseInfo -> {
+                    List<TrackPointDto> trackPoints = trackPointRepository.findByCourseId(courseInfo.getId())
+                            .stream()
+                            .map(TrackPointDto::from)
+                            .toList();
+                    return new CourseWithPointDto(
+                            courseInfo.getId(),
+                            courseInfo.getThumbnailUrl(),
+                            courseInfo.getDistance(),
+                            courseInfo.getDuration(),
+                            courseInfo.getMaxElevation(),
+                            courseInfo.getDistanceFromUser(),
+                            trackPoints
+                    );
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -90,8 +114,8 @@ public class CourseService {
         log.info("[Course ID: {}] 트랙포인트 간소화 완료. 원본: {}개 -> 단순화: {}개",
                 courseId, originalLine.getNumPoints(), simplifiedLine.getNumPoints());
 
-        List<CourseDetailDto.TrackPointDto> simplifiedTrackPoints = Arrays.stream(simplifiedLine.getCoordinates())
-                .map(c -> new CourseDetailDto.TrackPointDto(c.getY(), c.getX(), c.getZ()))
+        List<TrackPointDto> simplifiedTrackPoints = Arrays.stream(simplifiedLine.getCoordinates())
+                .map(c -> new TrackPointDto(c.getY(), c.getX(), c.getZ()))
                 .toList();
 
         return new CourseDetailDto(course.getId(), course.getDistance(), course.getDuration(),
