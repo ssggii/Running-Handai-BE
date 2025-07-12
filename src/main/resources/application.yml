@@ -47,3 +47,10 @@ springdoc:
   default-produces-media-type: application/json
   paths-to-exclude:
     - /api/admin/** # Swagger UI에서 제외하는 엔드포인트
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  # Access Token: 30분 (1,800,000ms)
+  access-expiration: 1800000
+  # Refresh Token: 14일 (1,209,600,000ms)
+  refresh-expiration: 1209600000
