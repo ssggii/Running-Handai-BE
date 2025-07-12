@@ -30,10 +30,6 @@ public class Member extends BaseTimeEntity {
     private String refreshToken; // 리프래시 토큰
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
-    private Role role; // 회원 역할
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "provider", nullable = false)
     private Provider provider; // 인증 제공자
 }
