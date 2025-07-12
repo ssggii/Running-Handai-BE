@@ -26,6 +26,9 @@ public class Member extends BaseTimeEntity {
     @Column(name = "nickname", unique = true, nullable = false, length = 20)
     private String nickname; // 닉네임
 
+    @Column(name = "refresh_token")
+    private String refreshToken; // 리프래시 토큰
+
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private Role role; // 회원 역할
