@@ -7,8 +7,35 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
         format_sql: true
         show-sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-name: kakao
+            client-id: ${KAKAO_API_KEY}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            # (2) 인가코드를 서버에 전달
+            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+        provider:
+          kakao:
+            # (1) 사용자가 카카오 로그인 클릭 시
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            # (3) 카카오 Access Token 발급
+            token-uri: https://kauth.kakao.com/oauth/token
+            # (4) 카카오 Access Token으로 사용자 정보 반환
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+            scope: account_email
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:3000/auth
