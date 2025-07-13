@@ -27,9 +27,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private String redirectUrl;
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest httpServletRequest,
-                                        HttpServletResponse httpServletResponse,
-                                        Authentication authentication)
+    public void onAuthenticationSuccess(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication)
             throws IOException {
         CustomOAuth2User customOAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         Member member = customOAuth2User.getMember();

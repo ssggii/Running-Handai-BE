@@ -20,9 +20,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
     private String redirectUrl;
 
     @Override
-    public void onAuthenticationFailure(HttpServletRequest httpServletRequest,
-                                        HttpServletResponse httpServletResponse,
-                                        AuthenticationException authenticationException)
+    public void onAuthenticationFailure(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, AuthenticationException authenticationException)
             throws IOException {
         log.warn("[OAuth2 인증] 실패 - 오류: {}", authenticationException.getMessage());
 
