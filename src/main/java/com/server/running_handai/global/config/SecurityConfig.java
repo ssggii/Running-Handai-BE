@@ -46,7 +46,8 @@ public class SecurityConfig {
                                                 "/swagger-resources/**",
                                                 "/v3/api-docs/**",
                                                 "/api/courses/**",
-                                                "/api/admin/courses/**")
+                                                "/api/admin/courses/**",
+                                                "/api/members/oauth/token")
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())

@@ -7,6 +7,8 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -70,30 +72,15 @@ public class JwtProvider {
         try {
             Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
             return true;
-        } catch (Exception e) {
+        } catch (ExpiredJwtException e) {
+            // 만료 예외
+            throw e;
+        } catch (JwtException e) {
+            // 기타 JWT 관련 예외 (서명 오류, 형식 오류 등)
             return false;
-        }
-    }
-
-    /**
-     * Jwt Token의 만료 여부를 검증합니다.
-     *
-     * @param token 검증할 Jwt Token
-     * @return 만료되면 true, 아니면 false
-     */
-    public boolean isTokenExpired(String token) {
-        try {
-            Date expiration =
-                    Jwts.parserBuilder()
-                            .setSigningKey(getSigningKey())
-                            .build()
-                            .parseClaimsJws(token)
-                            .getBody()
-                            .getExpiration();
-            return expiration.before(new Date());
         } catch (Exception e) {
-            // 파싱에 실패할 경우, 만료되었다고 간주
-            return true;
+            // 예상치 못한 예외
+            return false;
         }
     }
 

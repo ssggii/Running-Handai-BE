@@ -1,22 +1,27 @@
 package com.server.running_handai.member.service;
 
+import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
+import com.server.running_handai.global.response.exception.BusinessException;
+import com.server.running_handai.member.dto.TokenRequest;
+import com.server.running_handai.member.dto.TokenResponse;
 import com.server.running_handai.member.entity.Member;
 import com.server.running_handai.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
+
+import static com.server.running_handai.global.response.ResponseCode.INVALID_REFRESH_TOKEN;
+import static com.server.running_handai.global.response.ResponseCode.REFRESH_TOKEN_NOT_FOUND;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MemberService {
     private final MemberRepository memberRepository;
+    private final JwtProvider jwtProvider;
 
     /**
      * OAuth2 사용자 정보를 기반으로 회원을 생성하거나 기존 회원을 조회합니다.
@@ -47,6 +52,42 @@ public class MemberService {
             return savedMember;
         } catch (Exception e) {
             log.error("[회원 생성] 실패 - Provider: {}, 오류: {}", oAuth2UserInfo.getProvider(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Refresh Token을 통해 Access Token을 재발급합니다.
+     *
+     * @param tokenRequest refresh Token 포함
+     * @return tokenResponse access Token 포함
+     */
+    public TokenResponse createAccessToken(TokenRequest tokenRequest) {
+        String refreshToken = tokenRequest.getRefreshToken();
+
+        try {
+            if (!jwtProvider.isTokenValidate(refreshToken)) {
+                log.error("[액세스 토큰 재발급] 유효하지 않은 리프래시 토큰");
+                throw new BusinessException(INVALID_REFRESH_TOKEN);
+            }
+
+            Member member = memberRepository.findByRefreshToken(refreshToken)
+                    .orElseThrow(() -> {
+                        log.error("[액세스 토큰 재발급] 리프래시 토큰을 찾을 수 없음");
+                        return new BusinessException(REFRESH_TOKEN_NOT_FOUND);
+                    });
+
+            if (!Objects.equals(member.getRefreshToken(), refreshToken)) {
+                log.error("[액세스 토큰 재발급] 저장된 리프래시 토큰과 불일치 - 사용자 ID: {}", member.getId());
+                throw new BusinessException(INVALID_REFRESH_TOKEN);
+            }
+
+            String accessToken = jwtProvider.createAccessToken(member.getId());
+            log.info("[액세스 토큰 재발급] 성공 - 사용자 ID: {}", member.getId());
+
+            return new TokenResponse(accessToken);
+        } catch (Exception e) {
+            log.error("[액세스 토큰 재발급] 실패 - 오류: {}", e.getMessage());
             throw e;
         }
     }

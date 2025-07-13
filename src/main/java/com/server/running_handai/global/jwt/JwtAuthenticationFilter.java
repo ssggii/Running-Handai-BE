@@ -19,8 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Map;
 
-import static com.server.running_handai.global.response.ResponseCode.ACCESS_TOKEN_EXPIRED;
-import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.*;
 
 @Slf4j
 @Component
@@ -39,10 +38,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = jwtProvider.getToken(httpServletRequest);
 
             // Access Token 검증 및 인증 처리
-            if (token != null && jwtProvider.isTokenValidate(token)) {
-                if (jwtProvider.isTokenExpired(token)) {
-                    log.warn("[JWT 인증] 토큰 만료 - URI: {}", requestURI);
-                    throw new BusinessException(ACCESS_TOKEN_EXPIRED);
+            if (token != null) {
+                if (!jwtProvider.isTokenValidate(token)) {
+                    log.warn("[JWT 인증] 유효하지 않은 토큰 - URI: {}", requestURI);
+                    throw new BusinessException(INVALID_ACCESS_TOKEN);
                 }
 
                 String id = jwtProvider.getId(token);
