@@ -379,10 +379,11 @@ public class CourseDataService {
         roadConditionRepository.deleteByCourseId(courseId);
         log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
 
-        for (String descrption : descriptions) {
-            RoadCondition rc = new RoadCondition(course, descrption);
-            roadConditionRepository.save(rc);
-        }
+        List<RoadCondition> newRoadConditions = descriptions.stream()
+                .map(description -> new RoadCondition(course, description))
+                .toList();
+
+        roadConditionRepository.saveAll(newRoadConditions);
         log.info("[길 상태 수정] DB에 길 상태 정보 갱신 완료: courseId={}", courseId);
     }
 
@@ -521,12 +522,12 @@ public class CourseDataService {
         courseRepository.save(course);
         log.info("[GPX 코스 생성] Course 저장 완료 (ID: {})", course.getId());
 
-        for (int i = 1; i < descriptions.size(); i++) {
-            String description = descriptions.get(i);
-            RoadCondition rc = new RoadCondition(course, description);
-            roadConditionRepository.save(rc);
-            log.debug("[GPX 코스 생성] RoadCondition 저장: {}", description);
-        }
+        List<RoadCondition> roadConditions = descriptions.stream()
+                .map(description -> new RoadCondition(course, description))
+                .toList();
+
+        roadConditionRepository.saveAll(roadConditions);
+        log.info("[GPX 코스 생성] RoadCondition {}개 저장 완료", roadConditions.size());
 
         for (TrackPoint trackPoint : trackPoints) {
             trackPoint.setCourse(course);
