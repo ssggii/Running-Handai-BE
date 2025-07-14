@@ -404,23 +404,27 @@ public class CourseDataService {
     @Transactional
     public void updateCourseImage(Long courseId, MultipartFile courseImageFile) throws IOException {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        CourseImage courseImage = course.getCourseImage();
 
-        if (courseImage != null) {
-            fileService.deleteFile(course.getCourseImage().getImgUrl());
-            log.info("[코스 이미지 수정] S3에서 기존 이미지 삭제: Course Id={}, URL={}", course.getCourseImage().getCourseImageId(), course.getCourseImage().getImgUrl());
-        }
+        // 새 파일을 S3에 먼저 업로드
+        String newImageUrl = fileService.uploadFile(courseImageFile, "image");
+        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: {}", newImageUrl);
 
-        String imageUrl = fileService.uploadFile(courseImageFile, "image");
-        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: {}", imageUrl);
+        // 삭제할 기존 파일 URL을 임시 변수에 저장
+        String oldImageUrl = (course.getCourseImage() != null) ? course.getCourseImage().getImgUrl() : null;
 
-        if (courseImage != null) {
-            courseImage.updateImageUrl(imageUrl);
+        // DB 정보 업데이트
+        if (oldImageUrl != null) {
+            course.getCourseImage().updateImageUrl(newImageUrl);
         } else {
-            courseImage = new CourseImage(imageUrl);
-            course.updateCourseImage(courseImage);
+            course.updateCourseImage(new CourseImage(newImageUrl));
         }
         log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료 (Course ID: {})", courseId);
+
+        // 트랜잭션이 성공적으로 커밋된 후에 기존 파일 삭제
+        if (oldImageUrl != null) {
+            fileService.deleteFile(oldImageUrl);
+            log.info("[코스 이미지 수정] S3에서 기존 이미지 삭제: Course Id={}, URL={}", course.getCourseImage().getCourseImageId(), course.getCourseImage().getImgUrl());
+        }
     }
 
     /**
