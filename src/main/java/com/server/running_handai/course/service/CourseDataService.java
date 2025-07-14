@@ -700,14 +700,14 @@ public class CourseDataService {
 
         // 지번 주소 조합 가져오기 (예: 기장읍 죽성리 30-35)
         JsonNode address = jsonNode.path("address"); // 지번 주소
-        String region3 = address.path("region_3depth_name").asText(); // 동 단위
-        String mainNo = address.path("main_address_no").asText(); // 지번 주 번지
-        String subNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
-        if (!region3.isBlank() && !mainNo.isBlank()) {
-            courseName = region3 + " " + mainNo + (subNo.isBlank() ? "" : "-" + subNo);
+        String dongName = address.path("region_3depth_name").asText(); // 동 단위
+        String mainAddressNo = address.path("main_address_no").asText(); // 지번 주 번지
+        String subAddressNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
+        if (!dongName.isBlank() && !mainAddressNo.isBlank()) {
+            courseName = dongName + " " + mainAddressNo + (subAddressNo.isBlank() ? "" : "-" + subAddressNo);
         } else {
-            log.warn("[GPX 코스 생성] 코스 이름 추출 실패: region3='{}', mainNo='{}', subNo='{}'. address: {}",
-                    region3, mainNo, subNo, address);
+            log.warn("[GPX 코스 생성] 코스 이름 추출 실패: dongName='{}', mainAddressNo='{}', subAddressNo='{}'. address: {}",
+                    dongName, mainAddressNo, subAddressNo, address);
             return "이름 없음";
         }
 
@@ -729,17 +729,17 @@ public class CourseDataService {
      * @return Area enum 값, 없으면 Area.UNKNOWN
      */
     private Area extractArea(JsonNode jsonNode) {
-        String region2 = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위
-        String region3 = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
+        String districtName = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위
+        String dongName = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
 
         // Area 설정
         for (Area area : Area.values()) {
-            if (area.getSubRegions().contains(region2) || area.getSubRegions().contains(region3)) {
+            if (area.getSubRegions().contains(districtName) || area.getSubRegions().contains(dongName)) {
                 return area;
             }
         }
 
-        log.warn("[GPX 코스 생성] 행정구역 매칭 실패: region2='{}', region3='{}'. Area.UNKNOWN 반환", region2, region3);
+        log.warn("[GPX 코스 생성] 행정구역 매칭 실패: districtName='{}', dongName='{}'. Area.UNKNOWN 반환", districtName, dongName);
         return Area.UNKNOWN;
     }
 
