@@ -428,17 +428,7 @@ public class CourseDataService {
     public void createCourseToGpx(MultipartFile courseGpxFile) throws IOException {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
-        // 1. externalId 설정
-        String gpxExternalId;
-        Random random = new Random();
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 10; i++) {
-            sb.append(random.nextInt(10));
-        }
-        gpxExternalId = "A_CRS_MNG" + sb.toString();
-        log.debug("[GPX 코스 생성] externalId 생성: {}", gpxExternalId);
-
-        // 2. GPX 파일의 track point 파싱
+        // 1. GPX 파일의 track point 파싱
         List<TrackPoint> trackPoints;
         try {
             trackPoints = getTrackPoint(courseGpxFile);
@@ -448,20 +438,20 @@ public class CourseDataService {
             throw new BusinessException(GPX_FILE_PARSE_FAILED);
         }
 
-        // 3. 전체 거리 계산
+        // 2. 전체 거리 계산
         int distance = calculateDistance(trackPoints);
         log.info("[GPX 코스 생성] 전체 거리 계산 완료: {}km", distance);
 
-        // 4. 소요 시간 계산 (9km/h 속도 기준)
+        // 3. 소요 시간 계산 (9km/h 속도 기준)
         int duration = calculateDuration(distance, 9.0);
         log.info("[GPX 코스 생성] 소요 시간 계산 완료: {}분", duration);
 
-        // 5. 최대, 최소 고도 계산
+        // 4. 최대, 최소 고도 계산
         double maxElevation = calculateMaxElevation(trackPoints);
         double minElevation = calculateMinElevation(trackPoints);
         log.info("[GPX 코스 생성] 고도 계산 완료 (최대: {}, 최소: {})", maxElevation, minElevation);
 
-        // 6. 시작점, 종료점 좌표 가져온 후, 주소값을 위해 카카오 지도 API 호출
+        // 5. 시작점, 종료점 좌표 가져온 후, 주소값을 위해 카카오 지도 API 호출
         Point startPoint = extractStartPoint(trackPoints);
         Point endPoint = extractEndPoint(trackPoints);
         log.debug("[GPX 코스 생성] 시작점: {}, 종료점: {}", startPoint, endPoint);
@@ -470,16 +460,16 @@ public class CourseDataService {
         JsonNode endAddress = kakaoMapService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
         log.debug("[GPX 코스 생성] 시작점 주소: {}, 종료점 주소: {}", startAddress, endAddress);
 
-        // 7. 코스 이름 가져오기
+        // 6. 코스 이름 가져오기
         // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
         String courseName = extractCourseName(startAddress) + "~" + extractCourseName(endAddress);
         log.info("[GPX 코스 생성] 코스명 추출 완료: {}", courseName);
 
-        // 8. 시작점을 기준으로 Area 분류
+        // 7. 시작점을 기준으로 Area 분류
         Area area = extractArea(startAddress);
         log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
-        // 9. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
+        // 8. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
         Map<String, Object> variables = Map.of(
                 "name", courseName,
                 "distance", distance,
@@ -502,12 +492,11 @@ public class CourseDataService {
             level = CourseLevel.MEDIUM;
         }
 
-        // 10. AWS S3에 GPX 파일 업로드
+        // 9. AWS S3에 GPX 파일 업로드
         String gpxPath = fileService.uploadFile(courseGpxFile, "gpx");
 
-        // 11. course, road condition, track point DB에 저장
+        // 10. course, road condition, track point DB에 저장
         Course course = Course.builder()
-                .externalId(gpxExternalId)
                 .name(courseName)
                 .distance(distance)
                 .duration(duration)
