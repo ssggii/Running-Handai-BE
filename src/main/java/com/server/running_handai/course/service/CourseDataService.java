@@ -46,12 +46,10 @@ public class CourseDataService {
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final RestTemplate restTemplate = new RestTemplate();
     private final XmlMapper xmlMapper = new XmlMapper();
-
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final RoadConditionRepository roadConditionRepository;
-
     private final KakaoMapService kakaoMapService;
     private final OpenAiService openAiService;
     private final FileService fileService;
@@ -85,27 +83,40 @@ public class CourseDataService {
         List<Course> toSave = new ArrayList<>();
         for (Map.Entry<String, DurunubiApiResponseDto.Item> entry : apiCourseMap.entrySet()) {
             String externalId = entry.getKey();
-            Course apiCourse = toEntity(entry.getValue());
+            Item courseItem = entry.getValue();
 
-            if (apiCourse == null) { // toEntity에서 파싱 실패 등으로 null을 반환한 경우
-                continue; // 다음 코스로 건너뜀
+            // trackpoints 생성
+            List<TrackPoint> trackPoints = parseTrackPoints(courseItem.getGpxPath());
+            if (trackPoints.isEmpty()) {
+                log.warn("[두루누비 코스 동기화] 코스의 트랙포인트가 없습니다. 해당 코스를 건너뜁니다. externalId: {}", externalId);
+                continue;
+            }
+
+            // course 생성
+            Course apiCourse = parseCourse(courseItem, trackPoints);
+            if (apiCourse == null) {
+                log.warn("[두루누비 코스 동기화] 코스 파싱 중 오류가 발생했습니다. 해당 코스를 건너뜁니다. externalId: {}", externalId);
+                continue;
             }
 
             Course dbCourse = dbCourseMap.get(externalId); // 현재 DB에 저장된 Course
             if (dbCourse != null) { // DB에 이미 존재 -> 업데이트
-                if (dbCourse.syncWith(apiCourse)) { // gpxPath 외의 다른 필드들 동기화
+                trackPointRepository.deleteByCourseId(dbCourse.getId());
+                trackPoints.forEach(trackPoint -> trackPoint.setCourse(dbCourse));
+                trackPointRepository.saveAll(trackPoints);
+                dbCourse.setStartPoint(apiCourse.getStartPoint());
+                dbCourse.updateElevation(apiCourse.getMinElevation(), apiCourse.getMaxElevation());
+                log.info("[두루누비 코스 동기화] 트랙포인트 업데이트 완료: courseId={}, count={}", dbCourse.getId(), trackPoints.size());
+
+                if (dbCourse.syncWith(apiCourse)) {
                     toSave.add(dbCourse);
                     log.info("[두루누비 코스 동기화] 코스 데이터 변경 감지 (UPDATE): courseId={}, externalId={}", dbCourse.getId(), externalId);
                 }
-                if (dbCourse.syncGpxPathWith(apiCourse.getGpxPath())) { // gpx 파일이 달라지면
-                    saveTrackPoints(dbCourse); // 트랙포인트 동기화
-                    log.info("[두루누비 코스 동기화] gpx 파일 변경 감지 (UPDATE): courseId={}, externalId={}", dbCourse.getId(), externalId);
-                }
                 dbCourseMap.remove(externalId); // 업데이트 끝난 DB 데이터는 맵에서 제거 (남은 데이터는 DELETE 대상)
             } else { // DB에 없음 -> 신규 추가
-                Course savedCourse = courseRepository.save(apiCourse);
-                saveTrackPoints(savedCourse);
-                log.info("[두루누비 코스 동기화] 신규 코스 발견 (INSERT): externalId={}", externalId);
+                trackPoints.forEach(trackPoint -> trackPoint.setCourse(apiCourse));
+                toSave.add(apiCourse);
+                log.info("[두루누비 코스 동기화] 신규 코스 저장 (INSERT): externalId={}", externalId);
             }
         }
 
@@ -119,7 +130,7 @@ public class CourseDataService {
         if (!dbCourseMap.isEmpty()) {
             List<Course> toDelete = new ArrayList<>(dbCourseMap.values());
             courseRepository.deleteAll(toDelete);
-            log.info("[두루누비 코스 동기화] {}건의 오래된 코스 데이터가 삭제되었습니다.", toDelete.size());
+            log.info("[두루누비 코스 동기화] {}건의 오래된 코스 삭제(DELETE)", toDelete.size());
             toDelete.forEach(course -> log.debug("[두루누비 코스 동기화] 삭제된 코스: courseId={}, externalId={}", course.getId(), course.getExternalId()));
         }
 
@@ -162,7 +173,7 @@ public class CourseDataService {
         return allItems;
     }
 
-    private Course toEntity(DurunubiApiResponseDto.Item item) {
+    private Course parseCourse(DurunubiApiResponseDto.Item item, List<TrackPoint> trackPoints) {
         if (item == null) {
             log.warn("[두루누비 코스 동기화] API 응답의 Item 필드가 null입니다. 해당 코스를 건너뜁니다.");
             return null;
@@ -179,11 +190,6 @@ public class CourseDataService {
                 return null;
             }
 
-            String gpxPath = item.getGpxPath();
-            if (isFieldInvalid(gpxPath, "gpxPath", externalId)) {
-                return null;
-            }
-
             String distanceValue = item.getCourseDistance();
             if (isIntegerInvalid(distanceValue, "courseDistance", externalId)) {
                 return null;
@@ -194,11 +200,8 @@ public class CourseDataService {
             if (isIntegerInvalid(durationValue, "totalRequiredTime", externalId)) {
                 return null;
             }
-
             double durationInMinutes = (double) distance / RUNNING_SPEED * 60.0;
             int duration = (int) Math.round(durationInMinutes);
-
-            String tourPoint = item.getTourInfo();
 
             String levelValue = item.getCourseLevel();
             if (isFieldInvalid(levelValue, "courseLevel", externalId)) {
@@ -206,18 +209,35 @@ public class CourseDataService {
             }
             CourseLevel level = CourseLevel.fromApiValue(item.getCourseLevel());
 
+            String tourPoint = item.getTourInfo();
+
+            String gpxPath = item.getGpxPath();
+            if (isFieldInvalid(gpxPath, "gpxPath", externalId)) {
+                return null;
+            }
+
+            Point startPoint = extractStartPoint(trackPoints);
+            double minElevation = calculateMinElevation(trackPoints);
+            double maxElevation = calculateMaxElevation(trackPoints);
+
             String sigun = item.getSigun();
             if (isFieldInvalid(sigun, "sigun", externalId)) {
                 return null;
             }
 
-            String subRegionName = sigun.split(WHITE_SPACE)[1];
-            Area area = Area.findBySubRegion(subRegionName).orElseThrow(() -> {
-                log.error("[두루누비 코스 동기화] 지역 파싱을 실패했습니다. subRegionName: {}", subRegionName);
-                return new BusinessException(AREA_NOT_FOUND);
-            });
+            String subRegionName = sigun.split(WHITE_SPACE)[1]; // 구 단위 행정구역명
+            Area area;
+            if (subRegionName.equals("해운대구")) { // 해운대구인 경우, 카카오 지도 API 사용하여 동 단위 분류
+                JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
+                area = extractArea(startAddress);
+            } else {
+                area = Area.findBySubRegion(subRegionName).orElseThrow(() -> {
+                    log.error("[두루누비 코스 동기화] 지역 파싱을 실패했습니다. subRegionName: {}", subRegionName);
+                    return new BusinessException(AREA_NOT_FOUND);
+                });
+            }
 
-            return Course.builder()
+            Course course = Course.builder()
                     .externalId(externalId)
                     .name(name)
                     .distance(distance)
@@ -226,7 +246,13 @@ public class CourseDataService {
                     .tourPoint(tourPoint)
                     .area(area)
                     .gpxPath(gpxPath)
+                    .startPoint(startPoint)
+                    .minElevation(minElevation)
+                    .maxElevation(maxElevation)
                     .build();
+
+            Theme.findBySubRegion(subRegionName).forEach(course::addTheme);
+            return course;
         } catch (Exception e) {
             log.error("[두루누비 코스 동기화] API 데이터 파싱 중 예상치 못한 예외가 발생했습니다. courseIndex: {}", item.getCourseIndex(), e);
             return null;
@@ -272,69 +298,48 @@ public class CourseDataService {
     }
 
     /**
-     * Course 객체의 gpxPath에 있는 GPX 파일을 다운로드 및 파싱하여,
-     * 해당 GPX 파일의 모든 좌표 정보를 TrackPoint 엔티티로 만들고 데이터베이스에 일괄 저장(Batch Insert)합니다.
+     * GPX 파일을 다운로드 및 파싱하여, 해당 GPX 파일의 모든 좌표 정보를 TrackPoint 엔티티로 만듭니다.
      */
-    public void saveTrackPoints(Course course) {
-        long startTime = System.currentTimeMillis();
-        log.info("[Course ID: {}] 트랙포인트 저장 시작", course.getId());
-
+    private List<TrackPoint> parseTrackPoints(String gpxPath) {
+        List<TrackPoint> trackPoints = new ArrayList<>();
         try {
+            long startTime = System.currentTimeMillis();
+
             // GPX 파일 다운로드
-            String gpxContent = restTemplate.getForObject(course.getGpxPath(), String.class);
+            String gpxContent = restTemplate.getForObject(gpxPath, String.class);
             if (gpxContent == null || gpxContent.isEmpty()) {
-                log.warn("[Course ID: {}] GPX 파일이 비어있습니다. URL: {}", course.getId(), course.getGpxPath());
-                return;
+                log.warn("[두루누비 코스 동기화] GPX 파일이 비어있습니다. gpxPath: {}", gpxPath);
+                return List.of();
             }
 
             // Jackson을 사용한 XML 파싱
             GpxDto gpx = xmlMapper.readValue(gpxContent, GpxDto.class);
-
             List<GpxDto.Trkpt> allPoints = gpx.getTrk().getTrksegs().stream()
                     .flatMap(segment -> segment.getTrkpts().stream())
                     .toList();
 
             if (allPoints.isEmpty()) {
-                log.warn("[Course ID: {}] GPX 데이터에 트랙포인트가 없습니다.", course.getId());
-                return;
+                log.warn("[두루누비 코스 동기화] GPX 데이터에 트랙포인트가 없습니다.");
+                return List.of();
             }
 
-            // 시작점 저장
-            GpxDto.Trkpt firstPoint = allPoints.getFirst();
-            Point startPoint = geometryFactory.createPoint(new Coordinate(firstPoint.getLon(), firstPoint.getLat()));
-            course.setStartPoint(startPoint);
-
-            // 고도값 및 트랙포인트 저장
-            double minEle = Double.MAX_VALUE;
-            double maxEle = Double.MIN_VALUE;
-            List<TrackPoint> trackPointsToSave = new ArrayList<>();
+            // TrackPoint 엔티티 생성
             AtomicInteger sequence = new AtomicInteger(1);
-
             for (GpxDto.Trkpt point : allPoints) {
-                // 최대,최소 고도 업데이트
-                minEle = Math.min(minEle, point.getEle());
-                maxEle = Math.max(maxEle, point.getEle());
-
-                // 저장할 TrackPoint 엔티티 생성
                 TrackPoint trackPoint = TrackPoint.builder()
                         .lat(point.getLat())
                         .lon(point.getLon())
                         .ele(point.getEle())
                         .sequence(sequence.getAndIncrement())
                         .build();
-                trackPoint.setCourse(course);
-                trackPointsToSave.add(trackPoint);
+                trackPoints.add(trackPoint);
             }
-
-            course.updateElevation(minEle, maxEle);
-            trackPointRepository.saveAll(trackPointsToSave);
-            courseRepository.save(course);
-
             long endTime = System.currentTimeMillis();
-            log.info("[Course ID: {}] {}개의 트랙포인트 저장 완료. (소요 시간: {}ms)", course.getId(), trackPointsToSave.size(), (endTime - startTime));
+            log.info("[두루누비 코스 동기화] {}개의 트랙포인트 생성 완료 (소요 시간: {}ms)",trackPoints.size(), (endTime - startTime));
         } catch (Exception e) {
-            log.error("[Course ID: {}] 트랙포인트 동기화 중 오류 발생", course.getId(), e);
+            log.error("[두루누비 코스 동기화] 트랙포인트 파싱 중 오류 발생", e);
         }
+        return trackPoints;
     }
 
     /**
@@ -517,6 +522,10 @@ public class CourseDataService {
                 .maxElevation(maxElevation)
                 .minElevation(minElevation)
                 .build();
+
+        // 12. Theme 설정
+        String region2 = startAddress.path("address").path("region_2depth_name").asText(); // TODO 구 단위 변수명 수정
+        Theme.findBySubRegion(region2).forEach(course::addTheme);
 
         courseRepository.save(course);
         log.info("[GPX 코스 생성] Course 저장 완료 (ID: {})", course.getId());
@@ -732,14 +741,16 @@ public class CourseDataService {
         String region3 = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
 
         // Area 설정
-        for (Area area : Area.values()) {
-            if (area.getSubRegions().contains(region2) || area.getSubRegions().contains(region3)) {
-                return area;
-            }
+        Area area;
+        if (region3.equals("송정동")) {
+            area = Area.SONGJEONG_GIJANG;
+        } else {
+            area = Area.findBySubRegion(region2).orElseGet(() -> {
+                log.warn("[GPX 코스 생성] 행정구역 매칭 실패: region2='{}', region3='{}'. Area.UNKNOWN 반환", region2, region3);
+                return Area.UNKNOWN;
+            });
         }
-
-        log.warn("[GPX 코스 생성] 행정구역 매칭 실패: region2='{}', region3='{}'. Area.UNKNOWN 반환", region2, region3);
-        return Area.UNKNOWN;
+        return area;
     }
 
     /**
