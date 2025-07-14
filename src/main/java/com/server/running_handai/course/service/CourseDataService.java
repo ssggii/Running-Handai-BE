@@ -375,6 +375,12 @@ public class CourseDataService {
         log.info("[길 상태 수정] OpenAI 응답 수신: {}", openAiResponse);
         List<String> descriptions = parseResponse(openAiResponse, 5);
 
+        // Open API 응답 유효성 검증
+        if (descriptions.isEmpty()) {
+            log.error("[길 상태 수정] OpenAI로부터 유효한 응답을 받지 못했습니다. courseId={}", courseId);
+            throw new BusinessException(OPENAI_RESPONSE_INVALID);
+        }
+
         // 기존 데이터 일괄 삭제 후 새로 저장
         roadConditionRepository.deleteByCourseId(courseId);
         log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
