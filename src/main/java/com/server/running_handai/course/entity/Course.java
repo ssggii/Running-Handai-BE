@@ -72,7 +72,6 @@ public class Course extends BaseTimeEntity {
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RoadCondition> roadConditions = new ArrayList<>(); // 길 상태
 
-
     // TrackPoint와 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrackPoint> trackPoints = new ArrayList<>();
