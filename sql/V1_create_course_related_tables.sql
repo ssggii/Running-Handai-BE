@@ -66,7 +66,23 @@ CREATE TABLE road_condition
     CONSTRAINT FK_road_condition_to_course FOREIGN KEY (course_id) REFERENCES course (course_id)
 );
 
--- 5. course_themes 테이블 생성
+-- 5. member 테이블 생성
+CREATE TABLE member
+(
+    member_id      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    created_at     DATETIME(6) NOT NULL,
+    updated_at     DATETIME(6) NOT NULL,
+    nickname       VARCHAR(20)  NOT NULL,
+    email          VARCHAR(100) NOT NULL,
+    provider_id    VARCHAR(255) NOT NULL,
+    refresh_token  VARCHAR(255) DEFAULT NULL,
+    provider       ENUM('GOOGLE', 'KAKAO', 'NAVER') NOT NULL,
+    CONSTRAINT UK_member_nickname   UNIQUE (nickname),
+    CONSTRAINT UK_member_email      UNIQUE (email),
+    CONSTRAINT UK_member_providerid UNIQUE (provider_id)
+);
+
+-- 6. course_themes 테이블 생성
 CREATE TABLE course_themes
 (
     course_course_id BIGINT                                            not null,

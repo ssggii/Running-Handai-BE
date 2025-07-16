@@ -225,14 +225,14 @@ public class CourseDataService {
                 return null;
             }
 
-            String subRegionName = sigun.split(WHITE_SPACE)[1]; // 구 단위 행정구역명
+            String districtName = sigun.split(WHITE_SPACE)[1]; // 구 단위 행정구역명
             Area area;
-            if (subRegionName.equals("해운대구")) { // 해운대구인 경우, 카카오 지도 API 사용하여 동 단위 분류
+            if (districtName.equals("해운대구")) { // 해운대구인 경우, 카카오 지도 API 사용하여 동 단위 분류
                 JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
                 area = extractArea(startAddress);
             } else {
-                area = Area.findBySubRegion(subRegionName).orElseThrow(() -> {
-                    log.error("[두루누비 코스 동기화] 지역 파싱을 실패했습니다. subRegionName: {}", subRegionName);
+                area = Area.findBySubRegion(districtName).orElseThrow(() -> {
+                    log.error("[두루누비 코스 동기화] 지역 파싱을 실패했습니다. subRegionName: {}", districtName);
                     return new BusinessException(AREA_NOT_FOUND);
                 });
             }
@@ -251,7 +251,7 @@ public class CourseDataService {
                     .maxElevation(maxElevation)
                     .build();
 
-            Theme.findBySubRegion(subRegionName).forEach(course::addTheme);
+            Theme.findBySubRegion(districtName).forEach(course::addTheme);
             return course;
         } catch (Exception e) {
             log.error("[두루누비 코스 동기화] API 데이터 파싱 중 예상치 못한 예외가 발생했습니다. courseIndex: {}", item.getCourseIndex(), e);
@@ -380,14 +380,21 @@ public class CourseDataService {
         log.info("[길 상태 수정] OpenAI 응답 수신: {}", openAiResponse);
         List<String> descriptions = parseResponse(openAiResponse, 5);
 
+        // Open API 응답 유효성 검증
+        if (descriptions.isEmpty()) {
+            log.error("[길 상태 수정] OpenAI로부터 유효한 응답을 받지 못했습니다. courseId={}", courseId);
+            throw new BusinessException(OPENAI_RESPONSE_INVALID);
+        }
+
         // 기존 데이터 일괄 삭제 후 새로 저장
         roadConditionRepository.deleteByCourseId(courseId);
         log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
 
-        for (String descrption : descriptions) {
-            RoadCondition rc = new RoadCondition(course, descrption);
-            roadConditionRepository.save(rc);
-        }
+        List<RoadCondition> newRoadConditions = descriptions.stream()
+                .map(description -> new RoadCondition(course, description))
+                .toList();
+
+        roadConditionRepository.saveAll(newRoadConditions);
         log.info("[길 상태 수정] DB에 길 상태 정보 갱신 완료: courseId={}", courseId);
     }
 
@@ -402,23 +409,27 @@ public class CourseDataService {
     @Transactional
     public void updateCourseImage(Long courseId, MultipartFile courseImageFile) throws IOException {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        CourseImage courseImage = course.getCourseImage();
 
-        if (courseImage != null) {
-            fileService.deleteFile(course.getCourseImage().getImgUrl());
-            log.info("[코스 이미지 수정] S3에서 기존 이미지 삭제: Course Id={}, URL={}", course.getCourseImage().getCourseImageId(), course.getCourseImage().getImgUrl());
-        }
+        // 새 파일을 S3에 먼저 업로드
+        String newImageUrl = fileService.uploadFile(courseImageFile, "image");
+        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: {}", newImageUrl);
 
-        String imageUrl = fileService.uploadFile(courseImageFile, "image");
-        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: {}", imageUrl);
+        // 삭제할 기존 파일 URL을 임시 변수에 저장
+        String oldImageUrl = (course.getCourseImage() != null) ? course.getCourseImage().getImgUrl() : null;
 
-        if (courseImage != null) {
-            courseImage.updateImageUrl(imageUrl);
+        // DB 정보 업데이트
+        if (oldImageUrl != null) {
+            course.getCourseImage().updateImageUrl(newImageUrl);
         } else {
-            courseImage = new CourseImage(imageUrl);
-            course.updateCourseImage(courseImage);
+            course.updateCourseImage(new CourseImage(newImageUrl));
         }
         log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료 (Course ID: {})", courseId);
+
+        // 트랜잭션이 성공적으로 커밋된 후에 기존 파일 삭제
+        if (oldImageUrl != null) {
+            fileService.deleteFile(oldImageUrl);
+            log.info("[코스 이미지 수정] S3에서 기존 이미지 삭제: Course Id={}, URL={}", course.getCourseImage().getCourseImageId(), course.getCourseImage().getImgUrl());
+        }
     }
 
     /**
@@ -432,17 +443,7 @@ public class CourseDataService {
     public void createCourseToGpx(MultipartFile courseGpxFile) throws IOException {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
-        // 1. externalId 설정
-        String gpxExternalId;
-        Random random = new Random();
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 10; i++) {
-            sb.append(random.nextInt(10));
-        }
-        gpxExternalId = "A_CRS_MNG" + sb.toString();
-        log.debug("[GPX 코스 생성] externalId 생성: {}", gpxExternalId);
-
-        // 2. GPX 파일의 track point 파싱
+        // 1. GPX 파일의 track point 파싱
         List<TrackPoint> trackPoints;
         try {
             trackPoints = getTrackPoint(courseGpxFile);
@@ -452,20 +453,20 @@ public class CourseDataService {
             throw new BusinessException(GPX_FILE_PARSE_FAILED);
         }
 
-        // 3. 전체 거리 계산
+        // 2. 전체 거리 계산
         int distance = calculateDistance(trackPoints);
         log.info("[GPX 코스 생성] 전체 거리 계산 완료: {}km", distance);
 
-        // 4. 소요 시간 계산 (9km/h 속도 기준)
+        // 3. 소요 시간 계산 (9km/h 속도 기준)
         int duration = calculateDuration(distance, 9.0);
         log.info("[GPX 코스 생성] 소요 시간 계산 완료: {}분", duration);
 
-        // 5. 최대, 최소 고도 계산
+        // 4. 최대, 최소 고도 계산
         double maxElevation = calculateMaxElevation(trackPoints);
         double minElevation = calculateMinElevation(trackPoints);
         log.info("[GPX 코스 생성] 고도 계산 완료 (최대: {}, 최소: {})", maxElevation, minElevation);
 
-        // 6. 시작점, 종료점 좌표 가져온 후, 주소값을 위해 카카오 지도 API 호출
+        // 5. 시작점, 종료점 좌표 가져온 후, 주소값을 위해 카카오 지도 API 호출
         Point startPoint = extractStartPoint(trackPoints);
         Point endPoint = extractEndPoint(trackPoints);
         log.debug("[GPX 코스 생성] 시작점: {}, 종료점: {}", startPoint, endPoint);
@@ -474,16 +475,16 @@ public class CourseDataService {
         JsonNode endAddress = kakaoMapService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
         log.debug("[GPX 코스 생성] 시작점 주소: {}, 종료점 주소: {}", startAddress, endAddress);
 
-        // 7. 코스 이름 가져오기
+        // 6. 코스 이름 가져오기
         // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
         String courseName = extractCourseName(startAddress) + "~" + extractCourseName(endAddress);
         log.info("[GPX 코스 생성] 코스명 추출 완료: {}", courseName);
 
-        // 8. 시작점을 기준으로 Area 분류
+        // 7. 시작점을 기준으로 Area 분류
         Area area = extractArea(startAddress);
         log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
-        // 9. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
+        // 8. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
         Map<String, Object> variables = Map.of(
                 "name", courseName,
                 "distance", distance,
@@ -506,12 +507,11 @@ public class CourseDataService {
             level = CourseLevel.MEDIUM;
         }
 
-        // 10. AWS S3에 GPX 파일 업로드
+        // 9. AWS S3에 GPX 파일 업로드
         String gpxPath = fileService.uploadFile(courseGpxFile, "gpx");
 
-        // 11. course, road condition, track point DB에 저장
+        // 10. course, road condition, track point DB에 저장
         Course course = Course.builder()
-                .externalId(gpxExternalId)
                 .name(courseName)
                 .distance(distance)
                 .duration(duration)
@@ -524,18 +524,18 @@ public class CourseDataService {
                 .build();
 
         // 12. Theme 설정
-        String region2 = startAddress.path("address").path("region_2depth_name").asText(); // TODO 구 단위 변수명 수정
-        Theme.findBySubRegion(region2).forEach(course::addTheme);
+        String districtName = startAddress.path("address").path("region_2depth_name").asText(); // TODO 구 단위 변수명 수정
+        Theme.findBySubRegion(districtName).forEach(course::addTheme);
 
         courseRepository.save(course);
         log.info("[GPX 코스 생성] Course 저장 완료 (ID: {})", course.getId());
 
-        for (int i = 1; i < descriptions.size(); i++) {
-            String description = descriptions.get(i);
-            RoadCondition rc = new RoadCondition(course, description);
-            roadConditionRepository.save(rc);
-            log.debug("[GPX 코스 생성] RoadCondition 저장: {}", description);
-        }
+        List<RoadCondition> roadConditions = descriptions.stream()
+                .map(description -> new RoadCondition(course, description))
+                .toList();
+
+        roadConditionRepository.saveAll(roadConditions);
+        log.info("[GPX 코스 생성] RoadCondition {}개 저장 완료", roadConditions.size());
 
         for (TrackPoint trackPoint : trackPoints) {
             trackPoint.setCourse(course);
@@ -708,14 +708,14 @@ public class CourseDataService {
 
         // 지번 주소 조합 가져오기 (예: 기장읍 죽성리 30-35)
         JsonNode address = jsonNode.path("address"); // 지번 주소
-        String region3 = address.path("region_3depth_name").asText(); // 동 단위
-        String mainNo = address.path("main_address_no").asText(); // 지번 주 번지
-        String subNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
-        if (!region3.isBlank() && !mainNo.isBlank()) {
-            courseName = region3 + " " + mainNo + (subNo.isBlank() ? "" : "-" + subNo);
+        String dongName = address.path("region_3depth_name").asText(); // 동 단위
+        String mainAddressNo = address.path("main_address_no").asText(); // 지번 주 번지
+        String subAddressNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
+        if (!dongName.isBlank() && !mainAddressNo.isBlank()) {
+            courseName = dongName + " " + mainAddressNo + (subAddressNo.isBlank() ? "" : "-" + subAddressNo);
         } else {
-            log.warn("[GPX 코스 생성] 코스 이름 추출 실패: region3='{}', mainNo='{}', subNo='{}'. address: {}",
-                    region3, mainNo, subNo, address);
+            log.warn("[GPX 코스 생성] 코스 이름 추출 실패: dongName='{}', mainAddressNo='{}', subAddressNo='{}'. address: {}",
+                    dongName, mainAddressNo, subAddressNo, address);
             return "이름 없음";
         }
 
@@ -737,16 +737,16 @@ public class CourseDataService {
      * @return Area enum 값, 없으면 Area.UNKNOWN
      */
     private Area extractArea(JsonNode jsonNode) {
-        String region2 = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위
-        String region3 = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
+        String districtName = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위
+        String dongName = jsonNode.path("address").path("region_3depth_name").asText(); // 동 단위
 
         // Area 설정
         Area area;
-        if (region3.equals("송정동")) {
+        if (dongName.equals("송정동")) {
             area = Area.SONGJEONG_GIJANG;
         } else {
-            area = Area.findBySubRegion(region2).orElseGet(() -> {
-                log.warn("[GPX 코스 생성] 행정구역 매칭 실패: region2='{}', region3='{}'. Area.UNKNOWN 반환", region2, region3);
+            area = Area.findBySubRegion(districtName).orElseGet(() -> {
+                log.warn("[GPX 코스 생성] 행정구역 매칭 실패: districtName='{}', dongName='{}'. Area.UNKNOWN 반환", districtName, dongName);
                 return Area.UNKNOWN;
             });
         }
