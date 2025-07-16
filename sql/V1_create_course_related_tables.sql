@@ -65,3 +65,12 @@ CREATE TABLE road_condition
     description       TEXT        NOT NULL,
     CONSTRAINT FK_road_condition_to_course FOREIGN KEY (course_id) REFERENCES course (course_id)
 );
+
+-- 5. course_themes 테이블 생성
+CREATE TABLE course_themes
+(
+    course_course_id BIGINT                                            not null,
+    theme            ENUM ('DOWNTOWN', 'MOUNTAIN', 'RIVERSIDE', 'SEA') null,
+    CONSTRAINT FKlmlrl4xgc258abdvsrfh9pvft
+        FOREIGN KEY (course_course_id) REFERENCES course (course_id)
+);
