@@ -51,3 +51,9 @@ springdoc:
   default-produces-media-type: application/json
   paths-to-exclude:
     - /api/admin/** # Swagger UI에서 제외하는 엔드포인트
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [ReqId: %X{requestId:-EMPTY}] [ClientIp: %X{clientIp:-EMPTY}] - %msg%n"
+  level:
+    root: INFO
