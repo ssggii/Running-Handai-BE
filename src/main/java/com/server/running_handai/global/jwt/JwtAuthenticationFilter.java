@@ -1,6 +1,7 @@
 package com.server.running_handai.global.jwt;
 
 import com.server.running_handai.global.oauth.CustomOAuth2User;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import com.server.running_handai.member.entity.Member;
 import com.server.running_handai.member.repository.MemberRepository;
@@ -18,8 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Map;
-
-import static com.server.running_handai.global.response.ResponseCode.*;
 
 @Slf4j
 @Component
@@ -41,12 +40,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (token != null) {
                 if (!jwtProvider.isTokenValidate(token)) {
                     log.warn("[JWT 인증] 유효하지 않은 토큰 - URI: {}", requestURI);
-                    throw new BusinessException(INVALID_ACCESS_TOKEN);
+                    throw new BusinessException(ResponseCode.INVALID_ACCESS_TOKEN);
                 }
 
                 String id = jwtProvider.getId(token);
                 Long memberId = Long.parseLong(id);
-                Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+                Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
 
                 // Access Token에서 가져온 사용자 정보로 Authentication 객체 만들어 Security Context에 저장
                 CustomOAuth2User CustomOAuth2User = new CustomOAuth2User(member, Map.of());

@@ -2,6 +2,7 @@ package com.server.running_handai.member.service;
 
 import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import com.server.running_handai.member.dto.TokenRequestDto;
 import com.server.running_handai.member.dto.TokenResponseDto;
@@ -73,13 +74,13 @@ public class MemberService {
         try {
             if (!jwtProvider.isTokenValidate(refreshToken)) {
                 log.error("[액세스 토큰 재발급] 유효하지 않은 리프래시 토큰");
-                throw new BusinessException(INVALID_REFRESH_TOKEN);
+                throw new BusinessException(ResponseCode.INVALID_REFRESH_TOKEN);
             }
 
             Member member = memberRepository.findByRefreshToken(refreshToken)
                     .orElseThrow(() -> {
                         log.error("[액세스 토큰 재발급] 리프래시 토큰을 찾을 수 없음");
-                        return new BusinessException(REFRESH_TOKEN_NOT_FOUND);
+                        return new BusinessException(ResponseCode.REFRESH_TOKEN_NOT_FOUND);
                     });
 
             // Refresh Token Rotation(RTR) 방식을 적용하여 재발급 시 Access Token, Refresh Token 모두 재발급
@@ -91,7 +92,7 @@ public class MemberService {
             return new TokenResponseDto(newAccessToken, newRefreshToken);
         } catch (ExpiredJwtException e) {
             log.error("[액세스 토큰 재발급] 만료된 리프래시 토큰");
-            throw new BusinessException(REFRESH_TOKEN_EXPIRED);
+            throw new BusinessException(ResponseCode.REFRESH_TOKEN_EXPIRED);
         } catch (Exception e) {
             log.error("[액세스 토큰 재발급] 실패 - 오류: {}", e.getMessage());
             throw e;

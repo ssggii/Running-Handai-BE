@@ -3,6 +3,7 @@ package com.server.running_handai.global.config;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
@@ -33,7 +34,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(info)
                 .servers(List.of(localServer, prodServer))
-                .components(new Components().addSecuritySchemes("Bearer AccessToken", bearerAuth));
+                .components(new Components().addSecuritySchemes("Bearer AccessToken", bearerAuth))
+                .addSecurityItem(new SecurityRequirement().addList("Bearer AccessToken"));
     }
-
 }
