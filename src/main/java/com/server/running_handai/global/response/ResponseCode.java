@@ -34,6 +34,9 @@ public enum ResponseCode {
     ARGUMENT_TYPE_MISMATCH(BAD_REQUEST, "요청 매개변수의 타입이 올바르지 않습니다."),
     OPENAI_RESPONSE_INVALID(BAD_REQUEST, "OPEN AI 응답값이 유효하지 않습니다."),
 
+    // NOT_FOUND (404)
+    RESOURCE_NOT_FOUND(NOT_FOUND, "존재하지 않는 리소스입니다."),
+
     // METHOD_NOT_ALLOWED (405)
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
 

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -68,6 +69,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<CommonResponse<?>> handleHttpRequestMethodNotSupportedException(
             HttpRequestMethodNotSupportedException e) {
         return getErrorResponse(e, ResponseCode.HTTP_REQUEST_METHOD_NOT_SUPPORTED);
+    }
+
+    /**
+     * NOT_FOUND (404)
+     * NoResourceFoundException: 존재하지 않는 리소스를 요청할 경우
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<CommonResponse<?>> handleNoResourceFoundException(
+            NoResourceFoundException e) {
+        return getErrorResponse(e, ResponseCode.RESOURCE_NOT_FOUND);
     }
 
     /**
