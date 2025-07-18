@@ -3,8 +3,8 @@ package com.server.running_handai.member.service;
 import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
 import com.server.running_handai.global.response.exception.BusinessException;
-import com.server.running_handai.member.dto.TokenRequest;
-import com.server.running_handai.member.dto.TokenResponse;
+import com.server.running_handai.member.dto.TokenRequestDto;
+import com.server.running_handai.member.dto.TokenResponseDto;
 import com.server.running_handai.member.entity.Member;
 import com.server.running_handai.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,11 +59,11 @@ public class MemberService {
     /**
      * Refresh Token을 통해 Access Token을 재발급합니다.
      *
-     * @param tokenRequest refresh Token 포함
+     * @param tokenRequestDto refresh Token 포함
      * @return tokenResponse access Token 포함
      */
-    public TokenResponse createAccessToken(TokenRequest tokenRequest) {
-        String refreshToken = tokenRequest.getRefreshToken();
+    public TokenResponseDto createAccessToken(TokenRequestDto tokenRequestDto) {
+        String refreshToken = tokenRequestDto.refreshToken();
 
         try {
             if (!jwtProvider.isTokenValidate(refreshToken)) {
@@ -85,7 +85,7 @@ public class MemberService {
             String accessToken = jwtProvider.createAccessToken(member.getId());
             log.info("[액세스 토큰 재발급] 성공 - 사용자 ID: {}", member.getId());
 
-            return new TokenResponse(accessToken);
+            return new TokenResponseDto(accessToken);
         } catch (Exception e) {
             log.error("[액세스 토큰 재발급] 실패 - 오류: {}", e.getMessage());
             throw e;

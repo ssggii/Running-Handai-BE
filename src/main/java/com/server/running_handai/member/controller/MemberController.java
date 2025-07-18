@@ -2,8 +2,8 @@ package com.server.running_handai.member.controller;
 
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
-import com.server.running_handai.member.dto.TokenRequest;
-import com.server.running_handai.member.dto.TokenResponse;
+import com.server.running_handai.member.dto.TokenRequestDto;
+import com.server.running_handai.member.dto.TokenResponseDto;
 import com.server.running_handai.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,8 +28,8 @@ public class MemberController {
             @ApiResponse(responseCode = "404", description = "실패 (찾을 수 없는 리프래시 토큰)")
     })
     @PostMapping("/oauth/token")
-    public ResponseEntity<CommonResponse<TokenResponse>> createAccessToken(@RequestBody TokenRequest tokenRequest) {
-        TokenResponse tokenResponse =  memberService.createAccessToken(tokenRequest);
-        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS,tokenResponse));
+    public ResponseEntity<CommonResponse<TokenResponseDto>> createAccessToken(@RequestBody TokenRequestDto tokenRequestDto) {
+        TokenResponseDto tokenResponseDto =  memberService.createAccessToken(tokenRequestDto);
+        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, tokenResponseDto));
     }
 }
