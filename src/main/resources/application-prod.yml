@@ -5,11 +5,25 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD_PROD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-jpa:
-  hibernate:
-    ddl-auto: none
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: http://43.202.125.162/login/oauth2/code/kakao
 
 aws:
   region: ap-northeast-2
   s3:
     bucket-name: runninghandai-bucket
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:3000/auth
+
+cors:
+  allowed-origins: http://localhost:3000

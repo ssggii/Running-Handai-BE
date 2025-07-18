@@ -3,6 +3,7 @@ package com.server.running_handai.member.entity;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -32,4 +33,16 @@ public class Member extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "provider", nullable = false)
     private Provider provider; // 인증 제공자
+
+    @Builder
+    public Member(String providerId, String email, String nickname, Provider provider) {
+        this.providerId = providerId;
+        this.email = email;
+        this.nickname = nickname;
+        this.provider = provider;
+    }
+
+    public void updateRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
 }
