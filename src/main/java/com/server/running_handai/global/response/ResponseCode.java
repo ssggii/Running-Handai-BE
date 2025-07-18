@@ -27,6 +27,7 @@ public enum ResponseCode {
     // UNAUTHORIZED (401): 인증되지 않은 사용자
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
     INVALID_REFRESH_TOKEN(UNAUTHORIZED, "유효하지 않은 리프래시 토큰입니다."),
+    REFRESH_TOKEN_EXPIRED(UNAUTHORIZED, "만료된 리프래시 토큰입니다."),
 
     // NOT_FOUND (404)
     AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),

@@ -7,14 +7,14 @@ import com.server.running_handai.member.dto.TokenRequestDto;
 import com.server.running_handai.member.dto.TokenResponseDto;
 import com.server.running_handai.member.entity.Member;
 import com.server.running_handai.member.repository.MemberRepository;
+import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
-import static com.server.running_handai.global.response.ResponseCode.INVALID_REFRESH_TOKEN;
-import static com.server.running_handai.global.response.ResponseCode.REFRESH_TOKEN_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.*;
 
 @Slf4j
 @Service
@@ -77,15 +77,13 @@ public class MemberService {
                         return new BusinessException(REFRESH_TOKEN_NOT_FOUND);
                     });
 
-            if (!Objects.equals(member.getRefreshToken(), refreshToken)) {
-                log.error("[액세스 토큰 재발급] 저장된 리프래시 토큰과 불일치 - 사용자 ID: {}", member.getId());
-                throw new BusinessException(INVALID_REFRESH_TOKEN);
-            }
-
             String accessToken = jwtProvider.createAccessToken(member.getId());
             log.info("[액세스 토큰 재발급] 성공 - 사용자 ID: {}", member.getId());
 
             return new TokenResponseDto(accessToken);
+        } catch (ExpiredJwtException e) {
+            log.error("[액세스 토큰 재발급] 만료된 리프래시 토큰");
+            throw new BusinessException(REFRESH_TOKEN_EXPIRED);
         } catch (Exception e) {
             log.error("[액세스 토큰 재발급] 실패 - 오류: {}", e.getMessage());
             throw e;
