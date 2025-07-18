@@ -23,6 +23,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final JwtProvider jwtProvider;
 
+    public static final int NICKNAME_NUMBER = 10;
+
     /**
      * OAuth2 사용자 정보를 기반으로 회원을 생성하거나 기존 회원을 조회합니다.
      *
@@ -121,7 +123,7 @@ public class MemberService {
             String animal = animals.get(random.nextInt(animals.size()));
 
             int usedLength = adjective.length() + animal.length();
-            int remainLength = 10 - usedLength;
+            int remainLength = NICKNAME_NUMBER - usedLength;
 
             if (remainLength > 0) {
                 // 이미 선택된 형용사, 동물의 자리수를 확인하여, 남은 수를 숫자에 사용 (최소 1자리, 최대 remainLength)
