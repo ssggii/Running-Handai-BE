@@ -27,7 +27,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
             // Provider에 따라 사용자 정보 파싱
             OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(registrationId, oAuth2User.getAttributes());
-            Member member = memberService.createMember(oAuth2UserInfo);
+            Member member = memberService.createOrFindMember(oAuth2UserInfo);
             log.info("[OAuth2 로그인] 성공 - 사용자 ID: {}, Provider: {}", member.getId(), registrationId);
 
             // 반환하여 Security Context에 Authentication 객체 저장

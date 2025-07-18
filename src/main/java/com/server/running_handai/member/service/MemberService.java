@@ -29,7 +29,7 @@ public class MemberService {
      * @param oAuth2UserInfo OAuth2 Provider에게 받은 사용자 정보
      * @return 생성되거나 조회된 Member 엔티티
      */
-    public Member createMember(OAuth2UserInfo oAuth2UserInfo) {
+    public Member createOrFindMember(OAuth2UserInfo oAuth2UserInfo) {
         Optional<Member> memberOptional = memberRepository.findByProviderId(oAuth2UserInfo.getProviderId());
 
         if (memberOptional.isPresent()) {
