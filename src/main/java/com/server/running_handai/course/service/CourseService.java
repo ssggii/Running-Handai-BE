@@ -52,18 +52,8 @@ public class CourseService {
     @Transactional(readOnly = true)
     public List<CourseInfoDto> findCoursesByTheme(Theme theme, double lat, double lon) {
         log.info("테마 기반 코스 조회를 시작합니다. lat={}, lon={}, theme={}", lat, lon, theme.name());
-
-        List<String> matchingAreaNames = Arrays.stream(Area.values()) // 모든 Area Enum 상수 가져옴
-                .filter(area -> area.getTheme() == theme)   // theme이 일치하는 것만 필터링
-                .map(Enum::name)                                 // Enum 상수의 이름 추출(ex. "HAEUN_GWANGAN")
-                .toList();                                       // 리스트로 생성
-
-        if (matchingAreaNames.isEmpty()) { // 일치하는 지역이 없으면 빈 리스트 즉시 반환
-            return List.of();
-        }
-
         String userPoint = String.format(POINT_FORMAT, lat, lon);
-        List<CourseInfoDto> courseInfoDtoList = courseRepository.findCoursesInAreaList(userPoint, matchingAreaNames);
+        List<CourseInfoDto> courseInfoDtoList = courseRepository.findCoursesByTheme(userPoint, theme.name());
         log.info("{}개의 코스를 찾았습니다.", courseInfoDtoList.size());
         return courseInfoDtoList;
     }
@@ -86,7 +76,6 @@ public class CourseService {
         DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(originalLine); // 경로 단순화 (RDP 알고리즘 적용)
         simplifier.setDistanceTolerance(0.0001); // 이 값이 클수록 더 많이 단순화됨. 0.0001은 약 10m에 해당
         LineString simplifiedLine = (LineString) simplifier.getResultGeometry();
-
         log.info("[Course ID: {}] 트랙포인트 간소화 완료. 원본: {}개 -> 단순화: {}개",
                 courseId, originalLine.getNumPoints(), simplifiedLine.getNumPoints());
 

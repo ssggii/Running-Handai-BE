@@ -2,6 +2,7 @@ package com.server.running_handai.course.repository;
 
 import com.server.running_handai.course.dto.CourseInfoDto;
 import com.server.running_handai.course.entity.Course;
+import com.server.running_handai.course.entity.Theme;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,13 +14,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      * 두루누비 데이터로 생성한 모든 Course 엔티티 조회 (csv로 생성한 Course 제외)
      */
     List<Course> findByExternalIdIsNotNull();
-
-    /**
-     * gpxPath가 null이 아니면서 trackPoints 리스트가 비어있는 Course 목록을 조회합니다.
-     * @return TrackPoint 저장이 필요한 Course 리스트
-     */
-    @Query("SELECT c FROM Course c WHERE c.gpxPath IS NOT NULL AND c.trackPoints IS EMPTY")
-    List<Course> findCoursesWithEmptyTrackPoints();
 
     /**
      * 코스의 시작점을 기준으로 사용자의 현재 위치에서 10km 이내에 있는 Course 목록 조회
@@ -80,11 +74,13 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "    course c " +
                     "LEFT JOIN " +
                     "    course_image ci ON c.course_id = ci.course_id " +
+                    "JOIN " +
+                    "    course_themes ct ON ct.course_course_id = c.course_id " +
                     "WHERE " +
-                    "    c.area IN (:areaNames) " +
+                    "    ct.theme = :theme " +
                     "ORDER BY " +
                     "    distanceFromUser ASC",
             nativeQuery = true
     )
-    List<CourseInfoDto> findCoursesInAreaList(@Param("userPoint") String userPoint, @Param("areaNames") List<String> areaNames);
+    List<CourseInfoDto> findCoursesByTheme(@Param("userPoint") String userPoint, @Param("theme") String theme);
 }

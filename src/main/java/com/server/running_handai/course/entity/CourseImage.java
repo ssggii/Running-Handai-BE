@@ -14,7 +14,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Getter
@@ -36,6 +35,10 @@ public class CourseImage extends BaseTimeEntity {
 
     @Builder
     public CourseImage(String imgUrl) {
+        this.imgUrl = imgUrl;
+    }
+
+    public void updateImageUrl(String imgUrl) {
         this.imgUrl = imgUrl;
     }
 

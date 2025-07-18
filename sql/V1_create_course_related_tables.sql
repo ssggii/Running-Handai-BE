@@ -81,3 +81,12 @@ CREATE TABLE member
     CONSTRAINT UK_member_email      UNIQUE (email),
     CONSTRAINT UK_member_providerid UNIQUE (provider_id)
 );
+
+-- 6. course_themes 테이블 생성
+CREATE TABLE course_themes
+(
+    course_course_id BIGINT                                            not null,
+    theme            ENUM ('DOWNTOWN', 'MOUNTAIN', 'RIVERSIDE', 'SEA') null,
+    CONSTRAINT FKlmlrl4xgc258abdvsrfh9pvft
+        FOREIGN KEY (course_course_id) REFERENCES course (course_id)
+);

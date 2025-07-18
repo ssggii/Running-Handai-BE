@@ -1,16 +1,15 @@
 package com.server.running_handai.course.controller;
 
-import com.server.running_handai.course.dto.CourseImageResponseDto;
-import com.server.running_handai.course.dto.RoadConditionResponseDto;
 import com.server.running_handai.course.service.CourseDataService;
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/admin/courses")
@@ -26,12 +25,21 @@ public class CourseDataController {
     }
 
     @PutMapping("/{courseId}/condition")
-    public ResponseEntity<RoadConditionResponseDto> updateRoadCondition(@PathVariable Long courseId) {
-        return new ResponseEntity<>(courseDataService.updateRoadCondition(courseId), HttpStatus.OK);
+    public ResponseEntity<CommonResponse<?>> updateRoadCondition(@PathVariable Long courseId) {
+        courseDataService.updateRoadCondition(courseId);
+        return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 
     @PutMapping(value = "/{courseId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CourseImageResponseDto> updateCourseImage(@PathVariable Long courseId, @RequestParam MultipartFile courseImageFile) {
-        return new ResponseEntity<>(courseDataService.updateCourseImage(courseId, courseImageFile), HttpStatus.OK);
+    public ResponseEntity<CommonResponse<?>> updateCourseImage(@PathVariable Long courseId,
+                                                                    @RequestParam MultipartFile courseImageFile) throws IOException {
+        courseDataService.updateCourseImage(courseId, courseImageFile);
+        return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
+    }
+
+    @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestParam MultipartFile courseGpxFile) throws IOException {
+        courseDataService.createCourseToGpx(courseGpxFile);
+        return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 }

@@ -43,6 +43,7 @@ public enum ResponseCode {
     HTTP_MESSAGE_NOT_READABLE(BAD_REQUEST, "잘못된 요청 형식입니다."),
     MISSING_SERVLET_REQUEST_PARAMETER(BAD_REQUEST, "필수 요청 매개변수가 누락되었습니다."),
     ARGUMENT_TYPE_MISMATCH(BAD_REQUEST, "요청 매개변수의 타입이 올바르지 않습니다."),
+    OPENAI_RESPONSE_INVALID(BAD_REQUEST, "OPEN AI 응답값이 유효하지 않습니다."),
 
     // METHOD_NOT_ALLOWED (405)
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
@@ -50,7 +51,11 @@ public enum ResponseCode {
     // INTERNAL SERVER ERROR (500)
     REQUEST_SERVER(INTERNAL_SERVER_ERROR, "서버에 요청 부탁드립니다."),
     OPENAI_API_ERROR(INTERNAL_SERVER_ERROR, "OpenAI API 호출에 실패했습니다."),
-    FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "파일 업로드가 실패했습니다.");
+    FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "파일 업로드를 실패했습니다."),
+    FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
+    GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
+    ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
+    PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

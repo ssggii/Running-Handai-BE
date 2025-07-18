@@ -1,15 +1,12 @@
 package com.server.running_handai.course.repository;
 
-import com.server.running_handai.course.entity.Course;
 import com.server.running_handai.course.entity.TrackPoint;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
 
     /**
-     * 특정 코스의 시작 포인트를 반환
+     * 특정한 courseId의 트랙포인트 전체 삭제
      */
-    Optional<TrackPoint> findFirstByCourseOrderBySequenceAsc(Course course);
-
+    void deleteByCourseId(Long courseId);
 }
