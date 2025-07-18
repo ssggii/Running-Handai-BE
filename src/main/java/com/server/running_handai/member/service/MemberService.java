@@ -8,6 +8,7 @@ import com.server.running_handai.member.dto.TokenResponseDto;
 import com.server.running_handai.member.entity.Member;
 import com.server.running_handai.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,11 +61,13 @@ public class MemberService {
 
     /**
      * Refresh Token을 통해 Access Token을 재발급합니다.
+     * Refresh Token Rotation(RTR) 방식을 사용하여 사용된 Refresh Token 역시 재발급합니다.
      *
-     * @param tokenRequestDto refresh Token 포함
-     * @return tokenResponse access Token 포함
+     * @param tokenRequestDto 인증에 사용될 Refresh Token 포함
+     * @return tokenResponseDto 재발급된 Access Token, Refresh Token 포함
      */
-    public TokenResponseDto createAccessToken(TokenRequestDto tokenRequestDto) {
+    @Transactional
+    public TokenResponseDto createToken(TokenRequestDto tokenRequestDto) {
         String refreshToken = tokenRequestDto.refreshToken();
 
         try {
@@ -79,10 +82,13 @@ public class MemberService {
                         return new BusinessException(REFRESH_TOKEN_NOT_FOUND);
                     });
 
-            String accessToken = jwtProvider.createAccessToken(member.getId());
+            // Refresh Token Rotation(RTR) 방식을 적용하여 재발급 시 Access Token, Refresh Token 모두 재발급
+            String newAccessToken = jwtProvider.createAccessToken(member.getId());
+            String newRefreshToken = jwtProvider.createRefreshToken();
+            member.updateRefreshToken(newRefreshToken);
             log.info("[액세스 토큰 재발급] 성공 - 사용자 ID: {}", member.getId());
 
-            return new TokenResponseDto(accessToken);
+            return new TokenResponseDto(newAccessToken, newRefreshToken);
         } catch (ExpiredJwtException e) {
             log.error("[액세스 토큰 재발급] 만료된 리프래시 토큰");
             throw new BusinessException(REFRESH_TOKEN_EXPIRED);

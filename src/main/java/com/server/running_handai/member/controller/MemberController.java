@@ -20,16 +20,16 @@ import org.springframework.web.bind.annotation.*;
 public class MemberController {
     private final MemberService memberService;
 
-    @Operation(summary = "액세스 토큰 재발급",
-            description = "리프래쉬 토큰을 통해 만료된 액세스 토큰을 재발급합니다. 로그인은 /oauth2/authorization/{provider}로 요청해주세요.")
+    @Operation(summary = "토큰 재발급",
+            description = "리프래쉬 토큰을 통해 만료된 액세스 토큰을 재발급합니다. 인증에 사용된 리프래시 토큰 역시 액세스 토큰과 함께 재발급됩니다. 로그인은 /oauth2/authorization/{provider}로 요청해주세요.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "401", description = "실패 (유효하지 않은 토큰)"),
             @ApiResponse(responseCode = "404", description = "실패 (찾을 수 없는 리프래시 토큰)")
     })
     @PostMapping("/oauth/token")
-    public ResponseEntity<CommonResponse<TokenResponseDto>> createAccessToken(@RequestBody TokenRequestDto tokenRequestDto) {
-        TokenResponseDto tokenResponseDto =  memberService.createAccessToken(tokenRequestDto);
+    public ResponseEntity<CommonResponse<TokenResponseDto>> createToken(@RequestBody TokenRequestDto tokenRequestDto) {
+        TokenResponseDto tokenResponseDto =  memberService.createToken(tokenRequestDto);
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, tokenResponseDto));
     }
 }
