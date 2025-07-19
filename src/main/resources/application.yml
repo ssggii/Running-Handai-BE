@@ -39,6 +39,10 @@ spring:
             client-secret: ${KAKAO_CLIENT_SECRET}
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
+          google:
+            client-id: ${GOOGLE_API_KEY}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email
         provider:
           kakao:
             # (1) 사용자가 카카오 로그인 클릭 시
