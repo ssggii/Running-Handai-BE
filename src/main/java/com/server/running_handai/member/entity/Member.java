@@ -40,12 +40,17 @@ public class Member extends BaseTimeEntity {
     @Column(name = "provider", nullable = false)
     private Provider provider; // 인증 제공자
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private Role role; // 역할
+
     @Builder
-    public Member(String providerId, String email, String nickname, Provider provider) {
+    public Member(String providerId, String email, String nickname, Provider provider, Role role) {
         this.providerId = providerId;
         this.email = email;
         this.nickname = nickname;
         this.provider = provider;
+        this.role = role;
     }
 
     public void updateRefreshToken(String refreshToken) {

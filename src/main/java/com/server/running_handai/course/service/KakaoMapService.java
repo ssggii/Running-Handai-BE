@@ -1,5 +1,6 @@
 package com.server.running_handai.course.service;
 
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -9,12 +10,10 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import static com.server.running_handai.global.response.ResponseCode.ADDRESS_PARSE_FAILED;
-
 @Slf4j
 @Service
 public class KakaoMapService {
-    @Value("${KAKAO_API_KEY}")
+    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoApiKey;
 
     /**
@@ -56,7 +55,7 @@ public class KakaoMapService {
             }
         } catch (Exception e) {
             log.error("[카카오 지도 API 호출] 카카오 지도 API 파싱 실패: x={}, y={}", longitude, latitude, e);
-            throw new BusinessException(ADDRESS_PARSE_FAILED);
+            throw new BusinessException(ResponseCode.ADDRESS_PARSE_FAILED);
         }
 
         log.warn("[카카오 지도 API 호출] 카카오 지도 API에서 주소 정보 없음: x={}, y={}", longitude, latitude);

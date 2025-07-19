@@ -77,6 +77,7 @@ CREATE TABLE member
     provider_id    VARCHAR(255) NOT NULL,
     refresh_token  VARCHAR(255) DEFAULT NULL,
     provider       ENUM('GOOGLE', 'KAKAO', 'NAVER') NOT NULL,
+    role           ENUM('USER', 'ADMIN') NOT NULL,
     CONSTRAINT UK_member_nickname   UNIQUE (nickname),
     CONSTRAINT UK_member_provider_providerid UNIQUE (provider, provider_id)
 );

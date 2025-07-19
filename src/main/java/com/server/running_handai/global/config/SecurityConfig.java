@@ -46,11 +46,10 @@ public class SecurityConfig {
                                                 "/swagger-resources/**",
                                                 "/v3/api-docs/**",
                                                 "/api/courses/**",
-                                                "/api/admin/courses/**",
                                                 "/api/members/oauth/token")
                                         .permitAll()
-                                        .anyRequest()
-                                        .authenticated())
+                                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                        .anyRequest().authenticated())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

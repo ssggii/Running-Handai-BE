@@ -7,6 +7,7 @@ import com.server.running_handai.global.response.exception.BusinessException;
 import com.server.running_handai.member.dto.TokenRequestDto;
 import com.server.running_handai.member.dto.TokenResponseDto;
 import com.server.running_handai.member.entity.Member;
+import com.server.running_handai.member.entity.Role;
 import com.server.running_handai.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.transaction.Transactional;
@@ -47,6 +48,7 @@ public class MemberService {
                     .nickname(generateRandomNickname())
                     .provider(oAuth2UserInfo.getProvider())
                     .providerId(oAuth2UserInfo.getProviderId())
+                    .role(Role.USER)
                     .build();
 
             Member savedMember = memberRepository.save(member);
