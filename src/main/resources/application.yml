@@ -29,6 +29,28 @@ spring:
       s3:
         bucket: ${S3_BUCKET_NAME}
 
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-name: kakao
+            client-id: ${KAKAO_API_KEY}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+        provider:
+          kakao:
+            # (1) 사용자가 카카오 로그인 클릭 시
+            # (2) 인가코드를 서버에 전달 (redirect-uri)
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            # (3) 카카오 Access Token 발급
+            token-uri: https://kauth.kakao.com/oauth/token
+            # (4) 카카오 Access Token으로 사용자 정보 반환
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+            scope: account_email
+
   servlet:
     multipart:
       max-file-size: 5MB
@@ -51,6 +73,13 @@ springdoc:
   default-produces-media-type: application/json
   paths-to-exclude:
     - /api/admin/** # Swagger UI에서 제외하는 엔드포인트
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  # Access Token: 30분 (1,800,000ms)
+  access-expiration: 1800000
+  # Refresh Token: 14일 (1,209,600,000ms)
+  refresh-expiration: 1209600000
 
 logging:
   pattern:

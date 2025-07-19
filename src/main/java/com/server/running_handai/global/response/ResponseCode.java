@@ -13,6 +13,8 @@ public enum ResponseCode {
     SUCCESS(OK, "요청을 성공했습니다."),
     SUCCESS_EMPTY_COURSE_INFO(OK, "코스 조회 결과가 없습니다."),
     SUCCESS_COURSE_SYNC_ACCEPTED(ACCEPTED, "코스 데이터 동기화 작업이 시작되었습니다. 서버 로그를 통해 진행 상황을 확인하세요."),
+    SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
+    SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -20,10 +22,19 @@ public enum ResponseCode {
     INVALID_AREA_PARAMETER(BAD_REQUEST, "지역 파라미터가 올바르지 않습니다."),
     INVALID_THEME_PARAMETER(BAD_REQUEST, "테마 파라미터가 올바르지 않습니다."),
     INVALID_COURSE_FILTER_TYPE(BAD_REQUEST, "코스 필터링 옵션이 올바르지 않습니다."),
+    ALREADY_BOOKMARKED(BAD_REQUEST, "이미 북마크한 코스입니다."),
+
+    // UNAUTHORIZED (401): 인증되지 않은 사용자
+    INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
+    INVALID_REFRESH_TOKEN(UNAUTHORIZED, "유효하지 않은 리프래시 토큰입니다."),
+    REFRESH_TOKEN_EXPIRED(UNAUTHORIZED, "만료된 리프래시 토큰입니다."),
 
     // NOT_FOUND (404)
     AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),
+    MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
+    REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),
+    BOOKMARK_NOT_FOUND(NOT_FOUND, "찾을 수 없는 북마크입니다."),
 
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)

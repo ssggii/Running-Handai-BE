@@ -12,3 +12,17 @@ spring:
       hibernate:
         format_sql: true
         show-sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:3000/auth
+
+cors:
+  allowed-origins: http://localhost:3000
