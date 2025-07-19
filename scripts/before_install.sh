@@ -11,7 +11,7 @@ echo "Cleaning up target directory: $DEPLOY_DIR"
 
 # 디렉터리가 존재하면 내용물만 삭제하고, 디렉터리가 없으면 생성한다.
 if [ -d "$DEPLOY_DIR" ]; then
-    rm -rf "$DEPLOY_DIR"/*
+    sudo rm -rf "$DEPLOY_DIR"/*
 else
     mkdir -p "$DEPLOY_DIR"
 fi

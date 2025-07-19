@@ -54,6 +54,9 @@ docker rm "$TARGET_CONTAINER_NAME" 2>/dev/null || true
 echo "Running new container on port $NEW_PORT with name $TARGET_CONTAINER_NAME..."
 
 docker run -d -p "$NEW_PORT":"$NEW_PORT" --name "$TARGET_CONTAINER_NAME" \
+           --log-driver=awslogs \
+           --log-opt awslogs-region=ap-northeast-2 \
+           --log-opt awslogs-group="RunninghandaiLogs" \
            -e SERVER_PORT="$NEW_PORT" \
            --env-file /home/ubuntu/config/prod.env \
            "$ECR_IMAGE_URI"

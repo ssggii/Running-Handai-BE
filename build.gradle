@@ -42,6 +42,7 @@ dependencies {
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 	implementation 'com.mysql:mysql-connector-j'
 	implementation 'com.h2database:h2'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 	// S3
 	implementation platform("io.awspring.cloud:spring-cloud-aws-dependencies:${springCloudAwsVersion}")

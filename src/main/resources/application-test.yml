@@ -69,7 +69,7 @@ spring:
 external:
   api:
     durunubi:
-      service-key: "test-dummy-service-key"
+      service-key: "test-service-key"
 
 jwt:
   secret-key: "test-jwt-secret-key"
