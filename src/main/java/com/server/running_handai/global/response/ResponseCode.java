@@ -23,11 +23,16 @@ public enum ResponseCode {
     INVALID_THEME_PARAMETER(BAD_REQUEST, "테마 파라미터가 올바르지 않습니다."),
     INVALID_COURSE_FILTER_TYPE(BAD_REQUEST, "코스 필터링 옵션이 올바르지 않습니다."),
     ALREADY_BOOKMARKED(BAD_REQUEST, "이미 북마크한 코스입니다."),
+    INVALID_PROVIDER(BAD_REQUEST, "지원하지 않는 OAuth2 Provider입니다"),
 
-    // UNAUTHORIZED (401): 인증되지 않은 사용자
+    // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
     INVALID_REFRESH_TOKEN(UNAUTHORIZED, "유효하지 않은 리프래시 토큰입니다."),
     REFRESH_TOKEN_EXPIRED(UNAUTHORIZED, "만료된 리프래시 토큰입니다."),
+    UNAUTHORIZED_ACCESS(UNAUTHORIZED, "인증이 필요합니다."),
+
+    // FORBIDDEN (403)
+    ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
 
     // NOT_FOUND (404)
     AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),

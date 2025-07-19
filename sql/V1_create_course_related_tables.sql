@@ -77,9 +77,9 @@ CREATE TABLE member
     provider_id    VARCHAR(255) NOT NULL,
     refresh_token  VARCHAR(255) DEFAULT NULL,
     provider       ENUM('GOOGLE', 'KAKAO', 'NAVER') NOT NULL,
+    role           ENUM('USER', 'ADMIN') NOT NULL,
     CONSTRAINT UK_member_nickname   UNIQUE (nickname),
-    CONSTRAINT UK_member_email      UNIQUE (email),
-    CONSTRAINT UK_member_providerid UNIQUE (provider_id)
+    CONSTRAINT UK_member_provider_providerid UNIQUE (provider, provider_id)
 );
 
 -- 6. course_themes 테이블 생성

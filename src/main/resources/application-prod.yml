@@ -15,6 +15,8 @@ spring:
         registration:
           kakao:
             redirect-uri: http://43.202.125.162/login/oauth2/code/kakao
+          naver:
+            redirect-uri: http://43.202.125.162/login/oauth2/code/naver
 
 aws:
   region: ap-northeast-2

@@ -1,5 +1,6 @@
 package com.server.running_handai.course.service;
 
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,8 +20,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.time.Duration;
 import java.util.UUID;
-
-import static com.server.running_handai.global.response.ResponseCode.*;
 
 @Slf4j
 @Service
@@ -88,7 +87,7 @@ public class FileService {
             return fileUrl;
         } catch (IOException e) {
             log.error("[S3 파일 업로드] 업로드 실패: 파일명={}, 대상경로={}", originalFileName, fileName, e);
-            throw new BusinessException(FILE_UPLOAD_FAILED);
+            throw new BusinessException(ResponseCode.FILE_UPLOAD_FAILED);
         }
     }
 
@@ -127,7 +126,7 @@ public class FileService {
             return presignedUrl.toString();
         } catch (Exception e) {
             log.error("[S3 presigned URL 발급] 실패: key={}, duration={}분", key, minutes, e);
-            throw new BusinessException(PRESIGEND_URL_FAILED);
+            throw new BusinessException(ResponseCode.PRESIGEND_URL_FAILED);
         }
     }
 
@@ -148,7 +147,7 @@ public class FileService {
             s3Client.deleteObject(deleteObjectRequest);
         } catch (Exception e) {
             log.error("[S3 파일 삭제] 삭제 실패: key={}", key);
-            throw new BusinessException(FILE_DELETE_FAILED);
+            throw new BusinessException(ResponseCode.FILE_DELETE_FAILED);
         }
     }
 

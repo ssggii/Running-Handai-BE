@@ -1,5 +1,6 @@
 package com.server.running_handai.course.service;
 
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -9,8 +10,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-
-import static com.server.running_handai.global.response.ResponseCode.OPENAI_API_ERROR;
 
 @Slf4j
 @Service
@@ -40,7 +39,7 @@ public class OpenAiService {
                     .content();
         } catch (Exception e) {
             log.error("[OpenAI 호출] OpenAI 응답 실패", e);
-            throw new BusinessException(OPENAI_API_ERROR);
+            throw new BusinessException(ResponseCode.OPENAI_API_ERROR);
         }
     }
 }
