@@ -80,3 +80,9 @@ jwt:
   access-expiration: 1800000
   # Refresh Token: 14일 (1,209,600,000ms)
   refresh-expiration: 1209600000
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [ReqId: %X{requestId:-EMPTY}] [ClientIp: %X{clientIp:-EMPTY}] - %msg%n"
+  level:
+    root: INFO
