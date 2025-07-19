@@ -3,7 +3,7 @@ FROM gradle:jdk21 AS builder
 WORKDIR /build
 COPY build.gradle settings.gradle ./
 COPY src ./src
-RUN gradle bootJar
+RUN gradle build # 테스트 포함
 
 # 최종 이미지 생성
 FROM amazoncorretto:21-alpine-jdk

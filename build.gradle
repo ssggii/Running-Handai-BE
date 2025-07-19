@@ -27,6 +27,7 @@ repositories {
 
 ext {
 	set('springAiVersion', "1.0.0-M4")
+	set('springCloudAwsVersion', "3.4.0")
 }
 
 dependencies {
@@ -44,9 +45,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 	// S3
-	implementation platform('software.amazon.awssdk:bom:2.31.65')
-	implementation 'software.amazon.awssdk:s3'
-	implementation 'software.amazon.awssdk:netty-nio-client'
+	implementation platform("io.awspring.cloud:spring-cloud-aws-dependencies:${springCloudAwsVersion}")
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
 
 	// WebCleint
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -59,6 +59,17 @@ dependencies {
 
     // Spring AI
     implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter'
+
+	// Spring Security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// Oauth2
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+	// Jwt
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 }
 
 dependencyManagement {

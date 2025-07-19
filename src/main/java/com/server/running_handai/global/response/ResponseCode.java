@@ -13,6 +13,8 @@ public enum ResponseCode {
     SUCCESS(OK, "요청을 성공했습니다."),
     SUCCESS_EMPTY_COURSE_INFO(OK, "코스 조회 결과가 없습니다."),
     SUCCESS_COURSE_SYNC_ACCEPTED(ACCEPTED, "코스 데이터 동기화 작업이 시작되었습니다. 서버 로그를 통해 진행 상황을 확인하세요."),
+    SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
+    SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -20,10 +22,24 @@ public enum ResponseCode {
     INVALID_AREA_PARAMETER(BAD_REQUEST, "지역 파라미터가 올바르지 않습니다."),
     INVALID_THEME_PARAMETER(BAD_REQUEST, "테마 파라미터가 올바르지 않습니다."),
     INVALID_COURSE_FILTER_TYPE(BAD_REQUEST, "코스 필터링 옵션이 올바르지 않습니다."),
+    ALREADY_BOOKMARKED(BAD_REQUEST, "이미 북마크한 코스입니다."),
+    INVALID_PROVIDER(BAD_REQUEST, "지원하지 않는 OAuth2 Provider입니다"),
+
+    // UNAUTHORIZED (401)
+    INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
+    INVALID_REFRESH_TOKEN(UNAUTHORIZED, "유효하지 않은 리프래시 토큰입니다."),
+    REFRESH_TOKEN_EXPIRED(UNAUTHORIZED, "만료된 리프래시 토큰입니다."),
+    UNAUTHORIZED_ACCESS(UNAUTHORIZED, "인증이 필요합니다."),
+
+    // FORBIDDEN (403)
+    ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
 
     // NOT_FOUND (404)
     AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),
+    MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
+    REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),
+    BOOKMARK_NOT_FOUND(NOT_FOUND, "찾을 수 없는 북마크입니다."),
 
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)
@@ -32,13 +48,22 @@ public enum ResponseCode {
     HTTP_MESSAGE_NOT_READABLE(BAD_REQUEST, "잘못된 요청 형식입니다."),
     MISSING_SERVLET_REQUEST_PARAMETER(BAD_REQUEST, "필수 요청 매개변수가 누락되었습니다."),
     ARGUMENT_TYPE_MISMATCH(BAD_REQUEST, "요청 매개변수의 타입이 올바르지 않습니다."),
+    OPENAI_RESPONSE_INVALID(BAD_REQUEST, "OPEN AI 응답값이 유효하지 않습니다."),
+
+    // NOT_FOUND (404)
+    RESOURCE_NOT_FOUND(NOT_FOUND, "존재하지 않는 리소스입니다."),
 
     // METHOD_NOT_ALLOWED (405)
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
 
     // INTERNAL SERVER ERROR (500)
     REQUEST_SERVER(INTERNAL_SERVER_ERROR, "서버에 요청 부탁드립니다."),
-    OPENAI_API_ERROR(INTERNAL_SERVER_ERROR, "OpenAI API 호출에 실패했습니다.");
+    OPENAI_API_ERROR(INTERNAL_SERVER_ERROR, "OpenAI API 호출에 실패했습니다."),
+    FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "파일 업로드를 실패했습니다."),
+    FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
+    GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
+    ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
+    PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
