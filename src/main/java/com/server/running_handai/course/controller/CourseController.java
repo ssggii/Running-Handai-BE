@@ -4,6 +4,7 @@ import static com.server.running_handai.global.response.ResponseCode.*;
 
 import com.server.running_handai.course.dto.CourseDetailDto;
 import com.server.running_handai.course.dto.CourseInfoDto;
+import com.server.running_handai.course.dto.CourseWithPointDto;
 import com.server.running_handai.course.entity.Area;
 import com.server.running_handai.course.entity.Theme;
 import com.server.running_handai.course.entity.CourseFilter;
@@ -40,7 +41,7 @@ public class CourseController {
             @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)"),
     })
     @GetMapping
-    public ResponseEntity<CommonResponse<List<CourseInfoDto>>> getFilteredCourses(
+    public ResponseEntity<CommonResponse<List<CourseWithPointDto>>> getFilteredCourses(
             @Parameter(description = "코스 필터링 옵션", required = true)
             @RequestParam(value = "filter") CourseFilter filter,
 
@@ -62,7 +63,7 @@ public class CourseController {
             throw new BusinessException(INVALID_USER_POINT);
         }
 
-        List<CourseInfoDto> courseInfoDtoList = switch (filter) {
+        List<CourseWithPointDto> responseData = switch (filter) {
             case NEARBY -> // 사용자의 위치 기준 10km 이내의 코스 조회
                     courseService.findCoursesNearby(lat, lon);
             case AREA -> { // 특정 지역의 코스 조회
@@ -79,11 +80,11 @@ public class CourseController {
             }
         };
 
-        if (courseInfoDtoList.isEmpty()) {
-            return ResponseEntity.ok(CommonResponse.success(SUCCESS_EMPTY_COURSE_INFO, courseInfoDtoList));
+        if (responseData.isEmpty()) {
+            return ResponseEntity.ok(CommonResponse.success(SUCCESS_EMPTY_COURSE_INFO, responseData));
         }
 
-        return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseInfoDtoList));
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, responseData));
     }
 
     @Operation(summary = "추천코스 상세 조회", description = "특정 추천코스의 상세 정보를 조회합니다.")

@@ -2,15 +2,14 @@ package com.server.running_handai.course.dto;
 
 import java.util.List;
 
-public record CourseDetailDto(
-        Long courseId,
+public record CourseWithPointDto(
+        long courseId,
+        String thumbnailUrl,
         int distance,
         int duration,
-        Double minElevation,
-        Double maxElevation,
-        String level,
+        int maxElevation,
+        double distanceFromUser,
         int bookmarks,
-        List<String> roadConditions,
         List<TrackPointDto> trackPoints
 ) {
 }

@@ -83,4 +83,4 @@ app:
     redirect-uri: http://localhost:3000/auth
 
 cors:
-  allowed-origins: http://localhost:3000
+  allowed-origins: "test-cors-allowed-origins"
