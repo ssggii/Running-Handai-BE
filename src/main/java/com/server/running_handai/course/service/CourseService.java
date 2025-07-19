@@ -2,6 +2,7 @@ package com.server.running_handai.course.service;
 
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 
+import com.server.running_handai.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.course.dto.CourseDetailDto;
 import com.server.running_handai.course.dto.CourseInfoDto;
 import com.server.running_handai.course.dto.CourseWithPointDto;
@@ -33,6 +34,7 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Transactional(readOnly = true)
@@ -63,12 +65,14 @@ public class CourseService {
     }
 
     private List<CourseWithPointDto> combineCoursesWithPoints(List<CourseInfoDto> courseInfos) {
+
         return courseInfos.stream()
                 .map(courseInfo -> {
                     List<TrackPointDto> trackPoints = trackPointRepository.findByCourseId(courseInfo.getId())
                             .stream()
                             .map(TrackPointDto::from)
                             .toList();
+                    int bookmarks = bookmarkRepository.countByCourseId(courseInfo.getId());
                     return new CourseWithPointDto(
                             courseInfo.getId(),
                             courseInfo.getThumbnailUrl(),
@@ -76,6 +80,7 @@ public class CourseService {
                             courseInfo.getDuration(),
                             courseInfo.getMaxElevation(),
                             courseInfo.getDistanceFromUser(),
+                            bookmarks,
                             trackPoints
                     );
                 })

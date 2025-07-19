@@ -18,4 +18,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
      */
     Optional<Bookmark> findByMemberAndCourse(Member member, Course course);
 
+    /**
+     * 코스 id를 기준으로 북마크 수 조회
+     */
+    int countByCourseId(Long courseId);
 }

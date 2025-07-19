@@ -14,7 +14,7 @@ import static com.server.running_handai.global.response.ResponseCode.ADDRESS_PAR
 @Slf4j
 @Service
 public class KakaoMapService {
-    @Value("${KAKAO_API_KEY}")
+    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoApiKey;
 
     /**

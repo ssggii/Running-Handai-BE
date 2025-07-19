@@ -9,6 +9,7 @@ public record CourseWithPointDto(
         int duration,
         int maxElevation,
         double distanceFromUser,
+        int bookmarks,
         List<TrackPointDto> trackPoints
 ) {
 }
