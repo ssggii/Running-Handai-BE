@@ -2,8 +2,8 @@ package com.server.running_handai.global.oauth;
 
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfoFactory;
-import com.server.running_handai.member.entity.Member;
-import com.server.running_handai.member.service.MemberService;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;

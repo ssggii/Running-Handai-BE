@@ -1,6 +1,6 @@
 package com.server.running_handai.global.oauth.userInfo;
 
-import com.server.running_handai.member.entity.Provider;
+import com.server.running_handai.domain.member.entity.Provider;
 
 import java.util.Map;
 

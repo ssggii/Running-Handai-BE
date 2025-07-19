@@ -1,6 +1,6 @@
 package com.server.running_handai.global.oauth;
 
-import com.server.running_handai.member.entity.Member;
+import com.server.running_handai.domain.member.entity.Member;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

@@ -1,8 +1,8 @@
 package com.server.running_handai.global.oauth;
 
 import com.server.running_handai.global.jwt.JwtProvider;
-import com.server.running_handai.member.entity.Member;
-import com.server.running_handai.member.repository.MemberRepository;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
