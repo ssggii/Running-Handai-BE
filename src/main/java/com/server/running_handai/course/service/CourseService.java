@@ -112,9 +112,11 @@ public class CourseService {
                 .map(c -> new TrackPointDto(c.getY(), c.getX(), c.getZ()))
                 .toList();
 
+        int bookmarks = bookmarkRepository.countByCourseId(courseId);
+
         return new CourseDetailDto(course.getId(), course.getDistance(), course.getDuration(),
                 course.getMinElevation(), course.getMaxElevation(), course.getLevel().getDescription(),
-                roadConditions,  simplifiedTrackPoints);
+                bookmarks, roadConditions,  simplifiedTrackPoints);
     }
 
 }

@@ -9,6 +9,7 @@ public record CourseDetailDto(
         Double minElevation,
         Double maxElevation,
         String level,
+        int bookmarks,
         List<String> roadConditions,
         List<TrackPointDto> trackPoints
 ) {
