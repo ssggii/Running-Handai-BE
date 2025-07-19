@@ -9,7 +9,13 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name = "member")
+@Table(
+        name = "member",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"provider", "provider_id"}),
+                @UniqueConstraint(columnNames = {"nickname"})
+        }
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseTimeEntity {
 
@@ -18,13 +24,13 @@ public class Member extends BaseTimeEntity {
     @Column(name = "member_id")
     private Long id;
 
-    @Column(name = "provider_id", unique = true, nullable = false)
+    @Column(name = "provider_id", nullable = false)
     private String providerId; // 플랫폼에서 받아오는 회원 식별자
 
-    @Column(name = "email", unique = true, nullable = false, length = 100)
+    @Column(name = "email", nullable = false, length = 100)
     private String email; // 이메일
 
-    @Column(name = "nickname", unique = true, nullable = false, length = 20)
+    @Column(name = "nickname", nullable = false, length = 20)
     private String nickname; // 닉네임
 
     @Column(name = "refresh_token")
