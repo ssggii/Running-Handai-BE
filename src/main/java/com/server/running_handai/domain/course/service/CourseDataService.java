@@ -7,6 +7,7 @@ import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.domain.course.client.DurunubiApiClient;
 import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto;
 import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto.Item;
+import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.dto.GpxDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
@@ -444,13 +445,19 @@ public class CourseDataService {
      * S3 버킷의 디렉토리는 "gpx"로 지정합니다.
      * 데이터 저장 과정을 로그로 확인할 수 있습니다.
      *
+     * @param gpxCourseRequestDto 코스 출발지, 도착지 존재
      * @param courseGpxFile 업로드된 GPX 파일
      */
     @Transactional
-    public void createCourseToGpx(MultipartFile courseGpxFile) throws IOException {
+    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) throws IOException {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
-        // 1. GPX 파일의 track point 파싱
+        // 1. 코스 이름 조합
+        // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
+        String courseName = gpxCourseRequestDto.startPointName() + "-" + gpxCourseRequestDto.endPointName();
+        log.debug("[GPX 코스 생성] 코스명 조합 완료: {}", courseName);
+
+        // 2. GPX 파일의 track point 파싱
         List<TrackPoint> trackPoints;
         try {
             trackPoints = getTrackPoint(courseGpxFile);
@@ -460,38 +467,28 @@ public class CourseDataService {
             throw new BusinessException(GPX_FILE_PARSE_FAILED);
         }
 
-        // 2. 전체 거리 계산
+        // 3. 전체 거리 계산
         int distance = calculateDistance(trackPoints);
         log.info("[GPX 코스 생성] 전체 거리 계산 완료: {}km", distance);
 
-        // 3. 소요 시간 계산 (9km/h 속도 기준)
+        // 4. 소요 시간 계산 (9km/h 속도 기준)
         int duration = calculateDuration(distance, 9.0);
         log.info("[GPX 코스 생성] 소요 시간 계산 완료: {}분", duration);
 
-        // 4. 최대, 최소 고도 계산
+        // 5. 최대, 최소 고도 계산
         double maxElevation = calculateMaxElevation(trackPoints);
         double minElevation = calculateMinElevation(trackPoints);
         log.info("[GPX 코스 생성] 고도 계산 완료 (최대: {}, 최소: {})", maxElevation, minElevation);
 
-        // 5. 시작점, 종료점 좌표 가져온 후, 주소값을 위해 카카오 지도 API 호출
+        // 6. 시작점을 기준으로 Area 분류 (카카오 지도 API 호출)
         Point startPoint = extractStartPoint(trackPoints);
-        Point endPoint = extractEndPoint(trackPoints);
-        log.debug("[GPX 코스 생성] 시작점: {}, 종료점: {}", startPoint, endPoint);
-
         JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
-        JsonNode endAddress = kakaoMapService.getAddressFromCoordinate(endPoint.getX(), endPoint.getY());
-        log.debug("[GPX 코스 생성] 시작점 주소: {}, 종료점 주소: {}", startAddress, endAddress);
+        log.debug("[GPX 코스 생성] 시작점 주소: {}", startAddress);
 
-        // 6. 코스 이름 가져오기
-        // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
-        String courseName = extractCourseName(startAddress) + "~" + extractCourseName(endAddress);
-        log.info("[GPX 코스 생성] 코스명 추출 완료: {}", courseName);
-
-        // 7. 시작점을 기준으로 Area 분류
         Area area = extractArea(startAddress);
         log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
-        // 8. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
+        // 7. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
         Map<String, Object> variables = Map.of(
                 "name", courseName,
                 "distance", distance,
@@ -514,10 +511,10 @@ public class CourseDataService {
             level = CourseLevel.MEDIUM;
         }
 
-        // 9. AWS S3에 GPX 파일 업로드
+        // 8. AWS S3에 GPX 파일 업로드
         String gpxPath = fileService.uploadFile(courseGpxFile, "gpx");
 
-        // 10. course, road condition, track point DB에 저장
+        // 9. course, road condition, track point DB에 저장
         Course course = Course.builder()
                 .name(courseName)
                 .distance(distance)
@@ -530,7 +527,7 @@ public class CourseDataService {
                 .minElevation(minElevation)
                 .build();
 
-        // 12. Theme 설정
+        // 10. Theme 설정
         String districtName = startAddress.path("address").path("region_2depth_name").asText(); // TODO 구 단위 변수명 수정
         Theme.findBySubRegion(districtName).forEach(course::addTheme);
 
@@ -538,6 +535,8 @@ public class CourseDataService {
         log.info("[GPX 코스 생성] Course 저장 완료 (ID: {})", course.getId());
 
         List<RoadCondition> roadConditions = descriptions.stream()
+                .skip(1)
+                .limit(5)
                 .map(description -> new RoadCondition(course, description))
                 .toList();
 
@@ -693,55 +692,11 @@ public class CourseDataService {
     }
 
     /**
-     * 트랙포인트 리스트에서 종료점 좌표(endPoint)를 추출합니다.
-     *
-     * @param trackPoints 트랙포인트 리스트
-     * @return 종료점 좌표 (Point), 없으면 null
-     */
-    private Point extractEndPoint(List<TrackPoint> trackPoints) {
-        if (trackPoints == null || trackPoints.isEmpty()) return null;
-        TrackPoint last = trackPoints.getLast();
-        return geometryFactory.createPoint(new Coordinate(last.getLon(), last.getLat()));
-    }
-
-    /**
-     * 카카오 지도 API에서 가져온 주소 정보에서 코스 이름을 추출합니다.
-     *
-     * @param jsonNode 주소 정보 JSON
-     * @return 코스 이름 (지번 주소 조합(건물 이름)으로 구성, 없으면 "이름 없음")
-     */
-    private String extractCourseName(JsonNode jsonNode) {
-        String courseName = null;
-
-        // 지번 주소 조합 가져오기 (예: 기장읍 죽성리 30-35)
-        JsonNode address = jsonNode.path("address"); // 지번 주소
-        String dongName = address.path("region_3depth_name").asText(); // 동 단위
-        String mainAddressNo = address.path("main_address_no").asText(); // 지번 주 번지
-        String subAddressNo = address.path("sub_address_no").asText(); // 지번 부 번지, 없으면 빈 문자열("") 반환
-        if (!dongName.isBlank() && !mainAddressNo.isBlank()) {
-            courseName = dongName + " " + mainAddressNo + (subAddressNo.isBlank() ? "" : "-" + subAddressNo);
-        } else {
-            log.warn("[GPX 코스 생성] 코스 이름 추출 실패: dongName='{}', mainAddressNo='{}', subAddressNo='{}'. address: {}",
-                    dongName, mainAddressNo, subAddressNo, address);
-            return "이름 없음";
-        }
-
-        // 건물 이름 가져오기 (예: 무지개아파트)
-        JsonNode roadAddress = jsonNode.path("road_address"); // 도로명 주소
-        String buildingName = roadAddress.path("building_name").asText(); // 건물 이름
-        if (buildingName != null && !buildingName.isBlank()) {
-            return courseName + "(" + buildingName + ")";
-        } else {
-            return courseName;
-        }
-    }
-
-    /**
      * 카카오 지도 API에서 가져온 주소 정보에서 행정구역(Area)을 추출합니다.
      * 도로명 주소(road_address)는 좌표에 따라 반환되지 않을 수 있기 때문에 지번 주소(address)를 기준으로 합니다.
      *
      * @param jsonNode 주소 정보 JSON
-     * @return Area enum 값, 없으면 Area.UNKNOWN
+     * @return Area, 없으면 Area.UNKNOWN
      */
     private Area extractArea(JsonNode jsonNode) {
         String districtName = jsonNode.path("address").path("region_2depth_name").asText(); // 구 단위

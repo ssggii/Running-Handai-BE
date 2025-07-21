@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.controller;
 
+import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.service.CourseDataService;
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
@@ -32,14 +33,15 @@ public class CourseDataController {
 
     @PutMapping(value = "/{courseId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<?>> updateCourseImage(@PathVariable Long courseId,
-                                                                    @RequestParam MultipartFile courseImageFile) throws IOException {
+                                                               @RequestParam MultipartFile courseImageFile) throws IOException {
         courseDataService.updateCourseImage(courseId, courseImageFile);
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 
     @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestParam MultipartFile courseGpxFile) throws IOException {
-        courseDataService.createCourseToGpx(courseGpxFile);
+    public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestPart("courseInfo") GpxCourseRequestDto gpxCourseRequestDto,
+                                                               @RequestParam("courseGpxFile") MultipartFile courseGpxFile) throws IOException {
+        courseDataService.createCourseToGpx(gpxCourseRequestDto, courseGpxFile);
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 }
