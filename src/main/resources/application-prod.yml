@@ -25,7 +25,7 @@ aws:
 
 app:
   oauth2:
-    redirect-uri: http://localhost:3000/auth
+    redirect-uri: http://localhost:5173/auth
 
 cors:
-  allowed-origins: http://localhost:3000
+  allowed-origins: http://localhost:5173
