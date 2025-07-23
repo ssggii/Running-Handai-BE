@@ -8,6 +8,7 @@ import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Theme;
 import com.server.running_handai.domain.course.entity.CourseFilter;
 import com.server.running_handai.domain.course.service.CourseService;
+import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.exception.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,7 +56,9 @@ public class CourseController {
             @RequestParam(value = "area", required = false) Area area,
 
             @Parameter(description = "테마 필터링 시 사용할 테마 코드")
-            @RequestParam(value = "theme", required = false) Theme theme
+            @RequestParam(value = "theme", required = false) Theme theme,
+
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
 
         log.info("[코스 목록 조회 요청] filter: {}, lat: {}, lon: {}, area: {}, theme: {}", filter, lat, lon, area, theme);
@@ -62,20 +66,23 @@ public class CourseController {
             throw new BusinessException(INVALID_USER_POINT);
         }
 
+        // 회원인 경우 memberId를, 비회원인 경우 null을 서비스로 전달
+        Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
+
         List<CourseWithPointDto> responseData = switch (filter) {
             case NEARBY -> // 사용자의 위치 기준 10km 이내의 코스 조회
-                    courseService.findCoursesNearby(lat, lon);
+                    courseService.findCoursesNearby(lat, lon, memberId);
             case AREA -> { // 특정 지역의 코스 조회
                 if (area == null) {
                     throw new BusinessException(INVALID_AREA_PARAMETER);
                 }
-                yield courseService.findCoursesByArea(area, lat, lon);
+                yield courseService.findCoursesByArea(area, lat, lon, memberId);
             }
             case THEME -> { // 특정 테마의 코스 조회
                 if (theme == null) {
                     throw new BusinessException(INVALID_THEME_PARAMETER);
                 }
-                yield courseService.findCoursesByTheme(theme, lat, lon);
+                yield courseService.findCoursesByTheme(theme, lat, lon, memberId);
             }
         };
 
@@ -94,9 +101,12 @@ public class CourseController {
     @GetMapping("/{courseId}")
     public ResponseEntity<CommonResponse<CourseDetailDto>> getCourseDetails(
             @Parameter(description = "조회하려는 코스 ID", required = true)
-            @PathVariable("courseId") Long courseId) {
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
         log.info("[코스 상세정보 조회 요청] courseId: {}", courseId);
-        CourseDetailDto courseDetails = courseService.findCourseDetails(courseId);
+        Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
+        CourseDetailDto courseDetails = courseService.findCourseDetails(courseId, memberId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseDetails));
     }
 

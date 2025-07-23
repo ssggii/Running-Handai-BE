@@ -14,6 +14,11 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     boolean existsByMemberAndCourse(Member member, Course course);
 
     /**
+     * memberId와 courseId로 북마크 존재 여부 확인
+     */
+    boolean existsByCourseIdAndMemberId(Long memberId, Long courseId);
+
+    /**
      * 회원과 코스로 북마크 조회
      */
     Optional<Bookmark> findByMemberAndCourse(Member member, Course course);

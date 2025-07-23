@@ -38,41 +38,48 @@ public class CourseService {
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Transactional(readOnly = true)
-    public List<CourseWithPointDto> findCoursesNearby(double lat, double lon) {
+    public List<CourseWithPointDto> findCoursesNearby(double lat, double lon, Long memberId) {
         log.info("사용자 근방 10km 이내 코스 조회를 시작합니다. lat={}, lon={}", lat, lon);
         String userPoint = String.format(POINT_FORMAT, lat, lon);
         List<CourseInfoDto> courseInfoDtos = courseRepository.findCoursesNearbyUser(userPoint);
         log.info("{}개의 코스를 찾았습니다.", courseInfoDtos.size());
-        return combineCoursesWithPoints(courseInfoDtos);
+        return combineCoursesWithPoints(courseInfoDtos, memberId);
     }
 
     @Transactional(readOnly = true)
-    public List<CourseWithPointDto> findCoursesByArea(Area area, double lat, double lon) {
+    public List<CourseWithPointDto> findCoursesByArea(Area area, double lat, double lon, Long memberId) {
         log.info("지역 필터링 기반 코스 조회를 시작합니다. lat={}, lon={}, area={}", lat, lon, area.name());
         String userPoint = String.format(POINT_FORMAT, lat, lon);
         List<CourseInfoDto> courseInfoDtos = courseRepository.findCoursesByArea(userPoint, area.name());
         log.info("{}개의 코스를 찾았습니다.", courseInfoDtos.size());
-        return combineCoursesWithPoints(courseInfoDtos);
+        return combineCoursesWithPoints(courseInfoDtos, memberId);
     }
 
     @Transactional(readOnly = true)
-    public List<CourseWithPointDto> findCoursesByTheme(Theme theme, double lat, double lon) {
+    public List<CourseWithPointDto> findCoursesByTheme(Theme theme, double lat, double lon, Long memberId) {
         log.info("테마 기반 코스 조회를 시작합니다. lat={}, lon={}, theme={}", lat, lon, theme.name());
         String userPoint = String.format(POINT_FORMAT, lat, lon);
         List<CourseInfoDto> courseInfoDtos = courseRepository.findCoursesByTheme(userPoint, theme.name());
         log.info("{}개의 코스를 찾았습니다.", courseInfoDtos.size());
-        return combineCoursesWithPoints(courseInfoDtos);
+        return combineCoursesWithPoints(courseInfoDtos, memberId);
     }
 
-    private List<CourseWithPointDto> combineCoursesWithPoints(List<CourseInfoDto> courseInfos) {
-
+    private List<CourseWithPointDto> combineCoursesWithPoints(List<CourseInfoDto> courseInfos, Long memberId) {
         return courseInfos.stream()
                 .map(courseInfo -> {
+                    // 트랙포인트 데이터 결합
                     List<TrackPointDto> trackPoints = trackPointRepository.findByCourseId(courseInfo.getId())
                             .stream()
                             .map(TrackPointDto::from)
                             .toList();
+
+                    // 북마크 관련 데이터 결합
                     int bookmarks = bookmarkRepository.countByCourseId(courseInfo.getId());
+                    boolean isBookmarked = false;
+                    if (memberId != null) {
+                        isBookmarked = bookmarkRepository.existsByCourseIdAndMemberId(courseInfo.getId(), memberId);
+                    }
+
                     return new CourseWithPointDto(
                             courseInfo.getId(),
                             courseInfo.getThumbnailUrl(),
@@ -81,6 +88,7 @@ public class CourseService {
                             courseInfo.getMaxElevation(),
                             courseInfo.getDistanceFromUser(),
                             bookmarks,
+                            isBookmarked,
                             trackPoints
                     );
                 })
@@ -88,7 +96,7 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public CourseDetailDto findCourseDetails(Long courseId) {
+    public CourseDetailDto findCourseDetails(Long courseId, Long memberId) {
         log.info("코스 상세정보 조회를 시작합니다. courseId: {}", courseId);
 
         Course course = courseRepository.findById(courseId)
@@ -113,10 +121,14 @@ public class CourseService {
                 .toList();
 
         int bookmarks = bookmarkRepository.countByCourseId(courseId);
+        boolean isBookmarked = false;
+        if (memberId != null) {
+            isBookmarked = bookmarkRepository.existsByCourseIdAndMemberId(courseId, memberId);
+        }
 
         return new CourseDetailDto(course.getId(), course.getDistance(), course.getDuration(),
                 course.getMinElevation(), course.getMaxElevation(), course.getLevel().getDescription(),
-                bookmarks, roadConditions,  simplifiedTrackPoints);
+                bookmarks, isBookmarked, roadConditions,  simplifiedTrackPoints);
     }
 
 }
