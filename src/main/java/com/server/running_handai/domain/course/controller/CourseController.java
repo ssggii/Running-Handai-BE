@@ -104,9 +104,10 @@ public class CourseController {
             @PathVariable("courseId") Long courseId,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        log.info("[코스 상세정보 조회 요청] courseId: {}", courseId);
         Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
+        log.info("[코스 상세정보 조회 요청] 시작. courseId: {}, memberId: {}", courseId, memberId);
         CourseDetailDto courseDetails = courseService.findCourseDetails(courseId, memberId);
+        log.info("[코스 상세정보 조회 요청] 완료. courseId: {}, memberId: {}", courseId, memberId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseDetails));
     }
 
