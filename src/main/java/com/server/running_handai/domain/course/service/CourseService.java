@@ -36,7 +36,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final GeometryFactory geometryFactory = new GeometryFactory();
+    private final GeometryFactory geometryFactory;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
