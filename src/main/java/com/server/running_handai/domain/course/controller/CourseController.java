@@ -101,9 +101,12 @@ public class CourseController {
     @GetMapping("/{courseId}")
     public ResponseEntity<CommonResponse<CourseDetailDto>> getCourseDetails(
             @Parameter(description = "조회하려는 코스 ID", required = true)
-            @PathVariable("courseId") Long courseId) {
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
         log.info("[코스 상세정보 조회 요청] courseId: {}", courseId);
-        CourseDetailDto courseDetails = courseService.findCourseDetails(courseId);
+        Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
+        CourseDetailDto courseDetails = courseService.findCourseDetails(courseId, memberId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseDetails));
     }
 

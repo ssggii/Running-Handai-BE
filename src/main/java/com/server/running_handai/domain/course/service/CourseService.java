@@ -96,7 +96,7 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public CourseDetailDto findCourseDetails(Long courseId) {
+    public CourseDetailDto findCourseDetails(Long courseId, Long memberId) {
         log.info("코스 상세정보 조회를 시작합니다. courseId: {}", courseId);
 
         Course course = courseRepository.findById(courseId)
@@ -121,10 +121,14 @@ public class CourseService {
                 .toList();
 
         int bookmarks = bookmarkRepository.countByCourseId(courseId);
+        boolean isBookmarked = false;
+        if (memberId != null) {
+            isBookmarked = bookmarkRepository.existsByCourseIdAndMemberId(courseId, memberId);
+        }
 
         return new CourseDetailDto(course.getId(), course.getDistance(), course.getDuration(),
                 course.getMinElevation(), course.getMaxElevation(), course.getLevel().getDescription(),
-                bookmarks, roadConditions,  simplifiedTrackPoints);
+                bookmarks, isBookmarked, roadConditions,  simplifiedTrackPoints);
     }
 
 }
