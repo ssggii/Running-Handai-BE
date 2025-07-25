@@ -85,7 +85,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<CourseInfoDto> findCoursesByTheme(@Param("userPoint") String userPoint, @Param("theme") String theme);
 
     @Query("SELECT c FROM Course c " +
-           "LEFT JOIN FETCH c.roadConditions " +
            "JOIN FETCH c.trackPoints " +
            "WHERE c.id = :courseId")
     Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
