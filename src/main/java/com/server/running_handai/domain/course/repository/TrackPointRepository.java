@@ -18,10 +18,13 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
      */
     void deleteByCourseId(Long courseId);
 
-
     /**
      * 특정 코스의 전체 트랙포인트 목록 조회
      */
     List<TrackPoint> findByCourseId(Long courseId);
 
+    /**
+     * 코스 ID 목록으로 모든 트랙포인트를 한 번에 조회
+     */
+    List<TrackPoint> findByCourseIdInOrderBySequenceAsc(List<Long> courseIds);
 }

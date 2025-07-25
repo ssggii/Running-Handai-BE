@@ -58,7 +58,7 @@ class BookmarkServiceTest {
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
         given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-        given(bookmarkRepository.existsByMemberAndCourse(member, course)).willReturn(false);
+        given(bookmarkRepository.existsByCourseIdAndMemberId(memberId, courseId)).willReturn(false);
 
         // when
         bookmarkService.registerBookmark(memberId, courseId);
@@ -76,7 +76,7 @@ class BookmarkServiceTest {
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
         given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-        given(bookmarkRepository.existsByMemberAndCourse(member, course)).willReturn(true);
+        given(bookmarkRepository.existsByCourseIdAndMemberId(memberId, courseId)).willReturn(true);
 
         // when
         BusinessException exception = assertThrows(BusinessException.class,

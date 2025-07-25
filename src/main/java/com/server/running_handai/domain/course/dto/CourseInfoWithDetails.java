@@ -2,7 +2,7 @@ package com.server.running_handai.domain.course.dto;
 
 import java.util.List;
 
-public record CourseWithPointDto(
+public record CourseInfoWithDetails(
         long courseId,
         String thumbnailUrl,
         int distance,
