@@ -49,9 +49,9 @@ public class CourseService {
     private double distanceTolerance;
 
     /**
-     * 필터 조건에 맞는 코스를 전체 조회합니다.
+     * 필터링 조건에 맞는 코스를 전체 조회합니다.
      *
-     * @param filterOption 필터링 옵션
+     * @param filterOption 필터링 조건
      * @param memberId 조회 요청한 회원 ID (비회원은 null)
      * @return 조회된 코스 목록 DTO
      * @throws BusinessException Area 또는 Theme가 null인 경우
@@ -146,7 +146,8 @@ public class CourseService {
     }
 
     /**
-     * 특정 코스의 상세정보를 조회합니다. 코스 정보, 경로 좌표, 북마크 여부 등을 포함하며, N+1 문제 해결을 위해 Fetch Join을 사용합니다.
+     * 특정 코스의 상세정보를 조회합니다.
+     * 상세 정보에는 코스 정보, 경로 좌표, 북마크 여부 등을 포함합니다.
      *
      * @param courseId 조회하려는 코스의 ID
      * @param memberId 조회 요청한 회원 ID (비회원은 null)
@@ -174,7 +175,7 @@ public class CourseService {
         DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(originalLine); // RDP 알고리즘 사용하여 경로 단순화
         simplifier.setDistanceTolerance(distanceTolerance); // 이 값이 클수록 더 많이 단순화됨 (0.0001은 약 10m에 해당)
         LineString simplifiedLine = (LineString) simplifier.getResultGeometry();
-        log.info("트랙포인트 간소화 완료. courseId: {} (원본: {}개 → 단순화: {}개)",
+        log.info("[트랙포인트 간소화] courseId: {} (원본: {}개 → 단순화: {}개)",
                 course.getId(), originalLine.getNumPoints(), simplifiedLine.getNumPoints());
 
         return Arrays.stream(simplifiedLine.getCoordinates())
