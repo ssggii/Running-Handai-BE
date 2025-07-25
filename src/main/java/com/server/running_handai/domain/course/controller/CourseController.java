@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,7 +41,7 @@ public class CourseController {
     })
     @GetMapping
     public ResponseEntity<CommonResponse<List<CourseInfoWithDetails>>> getFilteredCourses(
-            @ModelAttribute CourseFilterRequestDto filterOption,
+            @ParameterObject @ModelAttribute CourseFilterRequestDto filterOption,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
