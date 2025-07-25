@@ -1,4 +1,4 @@
-package com.server.running_handai.bookmark.service;
+package com.server.running_handai.domain.bookmark.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 
 import com.server.running_handai.domain.bookmark.entity.Bookmark;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
-import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.global.response.ResponseCode;

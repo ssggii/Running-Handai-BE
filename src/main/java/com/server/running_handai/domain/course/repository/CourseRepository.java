@@ -3,6 +3,7 @@ package com.server.running_handai.domain.course.repository;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.entity.Course;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -82,4 +83,10 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
             nativeQuery = true
     )
     List<CourseInfoDto> findCoursesByTheme(@Param("userPoint") String userPoint, @Param("theme") String theme);
+
+    @Query("SELECT c FROM Course c " +
+           "LEFT JOIN FETCH c.roadConditions " +
+           "JOIN FETCH c.trackPoints " +
+           "WHERE c.id = :courseId")
+    Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
 }
