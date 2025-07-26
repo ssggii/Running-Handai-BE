@@ -1,14 +1,14 @@
 package com.server.running_handai.domain.course.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.domain.course.client.DurunubiApiClient;
-import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto;
+import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto.Item;
-import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
-import com.server.running_handai.domain.course.dto.GpxDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseImage;
@@ -26,13 +26,11 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.locationtech.jts.geom.*;
+import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.core.io.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -54,6 +52,7 @@ public class CourseDataService {
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final RestTemplate restTemplate = new RestTemplate();
     private final XmlMapper xmlMapper = new XmlMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
@@ -67,6 +66,12 @@ public class CourseDataService {
 
     @Value("classpath:prompt/save-level-and-road-condition.st")
     private Resource getLevelAndRoadConditionPrompt;
+
+    @Value("${spring.ai.openai.input-max-tokens}")
+    private int inputMaxToken;
+
+    @Value("${course.simplification.distance-tolerance}")
+    private double distanceTolerance;
 
     /**
      * 두루누비 API 관련
@@ -343,7 +348,7 @@ public class CourseDataService {
                 trackPoints.add(trackPoint);
             }
             long endTime = System.currentTimeMillis();
-            log.info("[두루누비 코스 동기화] {}개의 트랙포인트 생성 완료 (소요 시간: {}ms)",trackPoints.size(), (endTime - startTime));
+            log.info("[두루누비 코스 동기화] {}개의 트랙포인트 생성 완료 (소요 시간: {}ms)", trackPoints.size(), (endTime - startTime));
         } catch (Exception e) {
             log.error("[두루누비 코스 동기화] 트랙포인트 파싱 중 오류 발생", e);
         }
@@ -352,40 +357,39 @@ public class CourseDataService {
 
     /**
      * 코스의 길 상태(road_condition) 정보를 OpenAI API 호출을 통해 저장합니다.
+     * OpenAI API의 경우, 예상 토큰 값을 계산하여 최대 토큰 값을 넘으면 RDP 단순화 알고리즘을 적용하여 요청합니다.
      * 기존 데이터가 있는 경우, 일괄 삭제 후 새로 생성된 설명을 저장됩니다.
      * 하나의 코스 데이터 당 5개의 길 상태 정보가 생성됩니다.
-     * 데이터 처리 과정을 로그로 확인할 수 있습니다.
      *
      * @param courseId 길 상태를 수정할 course Id
      */
     @Transactional
     public void updateRoadCondition(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        List<TrackPoint> trackPoints = course.getTrackPoints();
+        List<SequenceTrackPointDto> trackPointDtoList = course.getTrackPoints().stream()
+                .map(SequenceTrackPointDto::sequenceTrackPointDto)
+                .toList();
 
         // 프롬프트 변수 준비
-        List<Map<String, Object>> trackPointData = trackPoints.stream()
-                .map(tp -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("lat", tp.getLat());
-                    map.put("lon", tp.getLon());
-                    map.put("ele", tp.getEle());
-                    map.put("sequence", tp.getSequence());
-                    return map;
-                })
-                .collect(Collectors.toList());
+        Map<String,Object> variables = new HashMap<>();
+        variables.put("name", course.getName());
+        variables.put("distance", course.getDistance());
+        variables.put("duration", course.getDuration());
+        variables.put("level", course.getLevel().toString());
+        variables.put("trackPoint", convertTrackPointToJson(trackPointDtoList));
 
-        Map<String, Object> variables = Map.of(
-                "name", course.getName(),
-                "distance", course.getDistance(),
-                "duration", course.getDuration(),
-                "level", course.getLevel().toString(),
-                "trackPoint", trackPointData
-        );
+        // 요청 프롬프트 토큰 수 확인 후 초과할 경우 RDP 알고리즘 적용
+        int requestToken = openAiService.calculateRequestToken(getRoadConditionPrompt, variables);
+        if (requestToken > inputMaxToken) {
+            log.info("[길 상태 수정] 토큰 초과, RDP 적용 시작: courseId={} requestToken={}", courseId, requestToken);
+            variables = simplifyTrackPoint(getRoadConditionPrompt, trackPointDtoList, variables);
+        } else {
+            log.info("[길 상태 수정] 토큰 초과하지 않아 원본 데이터 사용: courseId={} requestToken={}", courseId, requestToken);
+        }
 
         // OpenAI API 호출 후 파싱 (응답은 "|"로 구분된 5개 설명으로 이루어짐)
         String openAiResponse = openAiService.getOpenAiResponse(getRoadConditionPrompt, variables);
-        log.info("[길 상태 수정] OpenAI 응답 수신: {}", openAiResponse);
+        log.info("[길 상태 수정] OpenAI 응답 수신: response={}", openAiResponse);
         List<String> descriptions = parseResponse(openAiResponse, 5);
 
         // Open API 응답 유효성 검증
@@ -410,7 +414,6 @@ public class CourseDataService {
      * 저장된 코스의 썸네일 이미지를 S3 버킷에 저장 후, DB에 저장합니다.
      * Course와 CourseImage는 1:1 관계이므로 이미 저장된 이미지가 있을 경우, 이전 이미지는 S3 버킷 내에서 삭제합니다.
      * S3 버킷의 디렉토리는 "image"로 지정합니다.
-     * 데이터 저장 과정을 로그로 확인할 수 있습니다.
      *
      * @param courseImageFile 업로드된 이미지 파일
      */
@@ -420,7 +423,7 @@ public class CourseDataService {
 
         // 새 파일을 S3에 먼저 업로드
         String newImageUrl = fileService.uploadFile(courseImageFile, "image");
-        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: {}", newImageUrl);
+        log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: newImageUrl={}", newImageUrl);
 
         // 삭제할 기존 파일 URL을 임시 변수에 저장
         String oldImageUrl = (course.getCourseImage() != null) ? course.getCourseImage().getImgUrl() : null;
@@ -431,7 +434,7 @@ public class CourseDataService {
         } else {
             course.updateCourseImage(new CourseImage(newImageUrl));
         }
-        log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료 (Course ID: {})", courseId);
+        log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료: Course ID={}", courseId);
 
         // 트랜잭션이 성공적으로 커밋된 후에 기존 파일 삭제
         if (oldImageUrl != null) {
@@ -442,8 +445,8 @@ public class CourseDataService {
 
     /**
      * GPX 파일을 받아 코스 정보를 생성하고 저장합니다.
+     * OpenAI API의 경우, 예상 토큰 값을 계산하여 최대 토큰 값을 넘으면 RDP 단순화 알고리즘을 적용하여 요청합니다.
      * S3 버킷의 디렉토리는 "gpx"로 지정합니다.
-     * 데이터 저장 과정을 로그로 확인할 수 있습니다.
      *
      * @param gpxCourseRequestDto 코스 출발지, 도착지 존재
      * @param courseGpxFile 업로드된 GPX 파일
@@ -455,7 +458,6 @@ public class CourseDataService {
         // 1. 코스 이름 조합
         // todo: 코스명 이름이 중복되는 경우 추가적인 처리 필요
         String courseName = gpxCourseRequestDto.startPointName() + "-" + gpxCourseRequestDto.endPointName();
-        log.debug("[GPX 코스 생성] 코스명 조합 완료: {}", courseName);
 
         // 2. GPX 파일의 track point 파싱
         List<TrackPoint> trackPoints;
@@ -483,19 +485,30 @@ public class CourseDataService {
         // 6. 시작점을 기준으로 Area 분류 (카카오 지도 API 호출)
         Point startPoint = extractStartPoint(trackPoints);
         JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
-        log.debug("[GPX 코스 생성] 시작점 주소: {}", startAddress);
-
         Area area = extractArea(startAddress);
         log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
         // 7. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
-        Map<String, Object> variables = Map.of(
-                "name", courseName,
-                "distance", distance,
-                "duration", duration,
-                "trackPoint", trackPoints
-        );
+        List<SequenceTrackPointDto> trackPointDtoList = trackPoints.stream()
+                .map(SequenceTrackPointDto::sequenceTrackPointDto)
+                .toList();
 
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("name", courseName);
+        variables.put("distance", distance);
+        variables.put("duration", duration);
+        variables.put("trackPoint", convertTrackPointToJson(trackPointDtoList));
+
+        // 요청 프롬프트 토큰 수 확인 후 초과할 경우 RDP 알고리즘 적용
+        int requestToken = openAiService.calculateRequestToken(getLevelAndRoadConditionPrompt, variables);
+        if (requestToken > inputMaxToken) {
+            log.info("[GPX 코스 생성] 토큰 초과, RDP 적용 시작: requestToken={}", requestToken);
+            variables = simplifyTrackPoint(getLevelAndRoadConditionPrompt, trackPointDtoList, variables);
+        } else {
+            log.info("[GPX 코스 생성] 토큰 초과하지 않아 원본 데이터 사용: requestToken={}", requestToken);
+        }
+
+        // OpenAI API 호출
         String openAiResponse = openAiService.getOpenAiResponse(getLevelAndRoadConditionPrompt, variables);
         log.info("[GPX 코스 생성] OpenAI 응답 수신: {}", openAiResponse);
         List<String> descriptions = parseResponse(openAiResponse, 6);
@@ -532,7 +545,7 @@ public class CourseDataService {
         Theme.findBySubRegion(districtName).forEach(course::addTheme);
 
         courseRepository.save(course);
-        log.info("[GPX 코스 생성] Course 저장 완료 (ID: {})", course.getId());
+        log.info("[GPX 코스 생성] Course 저장 완료: ID={}", course.getId());
 
         List<RoadCondition> roadConditions = descriptions.stream()
                 .skip(1)
@@ -549,7 +562,7 @@ public class CourseDataService {
         trackPointRepository.saveAll(trackPoints);
         log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
 
-        log.info("[GPX 코스 생성] 전체 작업 완료! (코스명: {})", courseName);
+        log.info("[GPX 코스 생성] 전체 작업 완료: 코스명={})", courseName);
     }
 
     /**
@@ -741,9 +754,70 @@ public class CourseDataService {
         }
 
         if (parseData.size() < parseNumber) {
-            log.warn("[OpenAI 응답 파싱] 파싱 개수 부족. 기대치: {}, 실제: {}, 원본 응답: {}", parseNumber, parseData.size(), response);
+            log.warn("[OpenAI 응답 파싱] 파싱 개수 부족: 기대치={}, 실제={}, 원본 응답={}", parseNumber, parseData.size(), response);
         }
 
         return parseData;
+    }
+
+    /**
+     * 토큰을 초과하지 않을 때까지 RDP 알고리즘을 적용합니다.
+     *
+     * @param promptTemplate 프롬프트 템플릿
+     * @param trackPointDtoList 트랙포인트 Dto
+     * @param variables 프롬프트 변수
+     * @return newVariables 새로운 프롬프트 변수
+     */
+    private Map<String, Object> simplifyTrackPoint(Resource promptTemplate, List<SequenceTrackPointDto> trackPointDtoList, Map<String, Object> variables) {
+        double tolerance = distanceTolerance;
+        List<SequenceTrackPointDto> newTrackPointDtoList = trackPointDtoList;
+
+        while (true) {
+            // Dto를 Coordinate 좌표 배열로 변환
+            Coordinate[] coordinates = newTrackPointDtoList.stream()
+                    .map(dto -> new Coordinate(dto.lon(), dto.lat(), dto.ele()))
+                    .toArray(Coordinate[]::new);
+
+            // LineString으로 변환 후 RDP 알고리즘 적용
+            LineString originalLine = geometryFactory.createLineString(coordinates);
+            DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(originalLine);
+            simplifier.setDistanceTolerance(tolerance);
+            LineString simplifiedLine = (LineString) simplifier.getResultGeometry();
+
+            // 단순화된 좌표를 다시 DTO로 변환
+            // 순서대로 적용되어 있기 때문에 단순화된 것으로 sequence 재부여
+            AtomicInteger index = new AtomicInteger(0);
+            newTrackPointDtoList = Arrays.stream(simplifiedLine.getCoordinates())
+                    .map(c -> SequenceTrackPointDto.sequenceTrackPointDto(c, index.getAndIncrement()))
+                    .toList();
+
+            // 단순화된 트랙 포인트로 프롬프트 변수 업데이트
+            Map<String, Object> newVariables = new HashMap<>(variables);
+            newVariables.put("trackPoint", convertTrackPointToJson(newTrackPointDtoList));
+
+            int requestToken = openAiService.calculateRequestToken(promptTemplate, newVariables);
+            if (requestToken <= inputMaxToken) {
+                log.info("[RDP 알고리즘 적용] 적용 완료: tolearance={} trackPoint={} requestToken={}", tolerance, newTrackPointDtoList.size(), requestToken);
+                return newVariables;
+            }
+
+            // 토큰이 여전히 초과할 경우, tolerance를 증가시켜 더 단순화
+            tolerance *= 2;
+        }
+    }
+
+    /**
+     * OpenAI API 요청 시 모델 인식률을 높이기 위해 JSON 문자열로 변환합니다.
+     *
+     * @param trackPointDtoList 트랙 포인트 Dto
+     * @return JSON
+     */
+    private String convertTrackPointToJson(List<SequenceTrackPointDto> trackPointDtoList) {
+        try {
+            return objectMapper.writeValueAsString(trackPointDtoList);
+        } catch (JsonProcessingException e){
+            log.warn("[트랙포인트 JSON 변환] 실패: message={}", e.getMessage());
+            return trackPointDtoList.toString();
+        }
     }
 }

@@ -10,6 +10,7 @@ spring:
   ai:
     openai:
       api-key: "test-openai-key"
+      input-max-tokens: 126000
 
   cloud:
     aws:
@@ -84,3 +85,7 @@ app:
 
 cors:
   allowed-origins: "test-cors-allowed-origins"
+
+course:
+  simplification:
+    distance-tolerance: 0.0001

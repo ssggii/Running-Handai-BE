@@ -17,7 +17,9 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
-          model: gpt-3.5-turbo
+          model: gpt-4o-mini
+          max-tokens: 2000
+      input-max-tokens: 126000
 
   cloud:
     aws:
@@ -106,3 +108,7 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [ReqId: %X{requestId:-EMPTY}] [ClientIp: %X{clientIp:-EMPTY}] - %msg%n"
   level:
     root: INFO
+
+course:
+  simplification:
+    distance-tolerance: 0.0001 # 경로 단순화 허용 오차 (RDP 알고리즘), 약 10m
