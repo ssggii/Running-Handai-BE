@@ -7,7 +7,7 @@ public record CourseInfoWithDetailsDto(
         String thumbnailUrl,
         int distance,
         int duration,
-        int maxElevation,
+        double maxElevation,
         double distanceFromUser,
         int bookmarks,
         boolean isBookmarked,
