@@ -6,6 +6,7 @@ import java.util.List;
 
 public record CourseDetailDto(
         Long courseId,
+        String courseName,
         int distance,
         int duration,
         Double minElevation,
@@ -22,6 +23,7 @@ public record CourseDetailDto(
 
         return new CourseDetailDto(
                 course.getId(),
+                course.getName(),
                 course.getDistance(),
                 course.getDuration(),
                 course.getMinElevation(),
