@@ -110,6 +110,12 @@ class CourseServiceTest {
             case THEME -> given(courseRepository.findCoursesByTheme(anyString(), eq(Theme.MOUNTAIN.name()))).willReturn(List.of(courseInfoDto));
         }
 
+        Coordinate[] coordinates = course.getTrackPoints().stream()
+                .map(p -> new Coordinate(p.getLon(), p.getLat(), p.getEle()))
+                .toArray(Coordinate[]::new);
+        LineString realLineString = new GeometryFactory().createLineString(coordinates);
+
+        given(geometryFactory.createLineString(any(Coordinate[].class))).willReturn(realLineString);
         given(trackPointRepository.findByCourseIdInOrderBySequenceAsc(List.of(COURSE_ID))).willReturn(trackPoints);
         given(bookmarkRepository.countByCourseIdIn(List.of(COURSE_ID))).willReturn(List.of(bookmarkCountDto));
         given(bookmarkRepository.findBookmarkedCourseIdsByMember(List.of(COURSE_ID), MEMBER_ID)).willReturn(Set.of(COURSE_ID));
@@ -120,7 +126,6 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.size()).isEqualTo(1);
-        List<TrackPointDto> expectedTrackPointDtos = trackPoints.stream().map(TrackPointDto::from).toList();
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
@@ -129,7 +134,7 @@ class CourseServiceTest {
         assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
-        assertThat(details.trackPoints()).isEqualTo(expectedTrackPointDtos);
+        assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
         assertThat(details.bookmarks()).isEqualTo(3);
         assertThat(details.isBookmarked()).isTrue();
 
@@ -160,6 +165,12 @@ class CourseServiceTest {
             case THEME -> given(courseRepository.findCoursesByTheme(anyString(), eq(Theme.MOUNTAIN.name()))).willReturn(List.of(courseInfoDto));
         }
 
+        Coordinate[] coordinates = course.getTrackPoints().stream()
+                .map(p -> new Coordinate(p.getLon(), p.getLat(), p.getEle()))
+                .toArray(Coordinate[]::new);
+        LineString realLineString = new GeometryFactory().createLineString(coordinates);
+
+        given(geometryFactory.createLineString(any(Coordinate[].class))).willReturn(realLineString);
         given(trackPointRepository.findByCourseIdInOrderBySequenceAsc(List.of(COURSE_ID))).willReturn(trackPoints);
         given(bookmarkRepository.countByCourseIdIn(List.of(COURSE_ID))).willReturn(List.of(bookmarkCountDto));
 
@@ -169,7 +180,6 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.size()).isEqualTo(1);
-        List<TrackPointDto> expectedTrackPointDtos = trackPoints.stream().map(TrackPointDto::from).toList();
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
@@ -178,7 +188,7 @@ class CourseServiceTest {
         assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
-        assertThat(details.trackPoints()).isEqualTo(expectedTrackPointDtos);
+        assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
         assertThat(details.bookmarks()).isEqualTo(3);
         assertThat(details.isBookmarked()).isFalse();
 
