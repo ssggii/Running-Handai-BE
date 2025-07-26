@@ -366,7 +366,8 @@ public class CourseDataService {
     @Transactional
     public void updateRoadCondition(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        List<SequenceTrackPointDto> trackPointDtoList = course.getTrackPoints().stream()
+        List<SequenceTrackPointDto> trackPointDtoList = trackPointRepository.findByCourseIdOrderBySequenceAsc(courseId)
+                .stream()
                 .map(SequenceTrackPointDto::sequenceTrackPointDto)
                 .toList();
 

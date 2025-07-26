@@ -24,4 +24,8 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
      */
     List<TrackPoint> findByCourseId(Long courseId);
 
+    /**
+     * 특정 코스의 트랙 포인트를 순서대로 조회
+     */
+    List<TrackPoint> findByCourseIdOrderBySequenceAsc(Long courseId);
 }
