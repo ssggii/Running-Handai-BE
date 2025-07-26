@@ -4,7 +4,7 @@ import static com.server.running_handai.global.response.ResponseCode.*;
 
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetails;
+import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
@@ -40,13 +40,13 @@ public class CourseController {
             @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)"),
     })
     @GetMapping
-    public ResponseEntity<CommonResponse<List<CourseInfoWithDetails>>> getFilteredCourses(
+    public ResponseEntity<CommonResponse<List<CourseInfoWithDetailsDto>>> getFilteredCourses(
             @ParameterObject @ModelAttribute CourseFilterRequestDto filterOption,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
         log.info("[코스 전체조회] Filter: {}, Member ID: {}", filterOption, memberId);
-        List<CourseInfoWithDetails> responseData = courseService.findCourses(filterOption, memberId);
+        List<CourseInfoWithDetailsDto> responseData = courseService.findCourses(filterOption, memberId);
 
         if (responseData.isEmpty()) {
             return ResponseEntity.ok(CommonResponse.success(SUCCESS_EMPTY_COURSE_INFO, responseData));

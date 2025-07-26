@@ -6,11 +6,11 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_THE
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.BookmarkCountDto;
-import com.server.running_handai.domain.course.dto.BookmarkInfo;
+import com.server.running_handai.domain.course.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetails;
+import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.repository.CourseRepository;
@@ -56,7 +56,7 @@ public class CourseService {
      * @return 조회된 코스 목록 DTO
      * @throws BusinessException Area 또는 Theme가 null인 경우
      */
-    public List<CourseInfoWithDetails> findCourses(CourseFilterRequestDto filterOption, Long memberId) {
+    public List<CourseInfoWithDetailsDto> findCourses(CourseFilterRequestDto filterOption, Long memberId) {
         List<CourseInfoDto> courseInfos = switch (filterOption.filter()) {
             case NEARBY -> findCoursesNearby(filterOption);
             case AREA -> findCoursesByArea(filterOption);
@@ -88,7 +88,7 @@ public class CourseService {
         return String.format(MYSQL_POINT_FORMAT, request.lat(), request.lon());
     }
 
-    private List<CourseInfoWithDetails> buildCourseWithDetails(List<CourseInfoDto> courseInfos, Long memberId) {
+    private List<CourseInfoWithDetailsDto> buildCourseWithDetails(List<CourseInfoDto> courseInfos, Long memberId) {
         if (courseInfos.isEmpty()) {
             return Collections.emptyList();
         }
@@ -105,7 +105,7 @@ public class CourseService {
                     int bookmarks = bookmarkCountMap.getOrDefault(courseId, 0L).intValue();
                     boolean isBookmarked = bookmarkedCourseIds.contains(courseId);
 
-                    return new CourseInfoWithDetails(
+                    return new CourseInfoWithDetailsDto(
                             courseId,
                             courseInfo.getThumbnailUrl(),
                             courseInfo.getDistance(),
@@ -157,8 +157,8 @@ public class CourseService {
     public CourseDetailDto findCourseDetails(Long courseId, Long memberId) {
         Course course = findCourseByIdWithDetails(courseId);
         List<TrackPointDto> trackPoints = simplifyTrackPoints(course);
-        BookmarkInfo bookmarkInfo = getBookmarkInfo(courseId, memberId);
-        return CourseDetailDto.of(course, trackPoints, bookmarkInfo);
+        BookmarkInfoDto bookmarkInfoDto = getBookmarkInfo(courseId, memberId);
+        return CourseDetailDto.of(course, trackPoints, bookmarkInfoDto);
     }
 
     private Course findCourseByIdWithDetails(Long courseId) {
@@ -183,9 +183,9 @@ public class CourseService {
                 .toList();
     }
 
-    private BookmarkInfo getBookmarkInfo(Long courseId, Long memberId) {
+    private BookmarkInfoDto getBookmarkInfo(Long courseId, Long memberId) {
         int totalBookmarks = bookmarkRepository.countByCourseId(courseId);
         boolean isBookmarkedByUser = (memberId != null) && bookmarkRepository.existsByCourseIdAndMemberId(courseId, memberId);
-        return new BookmarkInfo(totalBookmarks, isBookmarkedByUser);
+        return new BookmarkInfoDto(totalBookmarks, isBookmarkedByUser);
     }
 }
