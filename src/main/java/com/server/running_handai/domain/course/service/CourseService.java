@@ -13,6 +13,7 @@ import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Course;
+import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
@@ -94,7 +95,7 @@ public class CourseService {
         }
 
         List<Long> courseIds = courseInfos.stream().map(CourseInfoDto::getId).toList();
-        Map<Long, List<TrackPointDto>> trackPointMap = getTrackPointMap(courseIds);
+        Map<Long, List<TrackPointDto>> trackPointMap = getSimplifiedTrackPointMap(courseIds);
         Map<Long, Long> bookmarkCountMap = getBookmarkCountMap(courseIds);
         Set<Long> bookmarkedCourseIds = getBookmarkedCourseIds(memberId, courseIds);
 
@@ -120,14 +121,18 @@ public class CourseService {
                 .toList();
     }
 
-    private Map<Long, List<TrackPointDto>> getTrackPointMap(List<Long> courseIds) {
-        return trackPointRepository.findByCourseIdInOrderBySequenceAsc(courseIds)
+    private Map<Long, List<TrackPointDto>> getSimplifiedTrackPointMap(List<Long> courseIds) {
+        Map<Long, List<TrackPoint>> trackPointMap = trackPointRepository.findByCourseIdInOrderBySequenceAsc(courseIds)
                 .stream()
+                .collect(Collectors.groupingBy(trackPoint -> trackPoint.getCourse().getId()));
+
+        return trackPointMap.entrySet().stream()
                 .collect(
-                        Collectors.groupingBy(
-                                trackPoint -> trackPoint.getCourse().getId(),
-                                Collectors.mapping(TrackPointDto::from, Collectors.toList())
-                        ));
+                        Collectors.toMap(
+                                Map.Entry::getKey, // courseId
+                                entry -> simplifyTrackPoints(entry.getValue()) // List<TrackPointDto>
+                        )
+                );
     }
 
     private Map<Long, Long> getBookmarkCountMap(List<Long> courseIds) {
@@ -156,7 +161,7 @@ public class CourseService {
      */
     public CourseDetailDto findCourseDetails(Long courseId, Long memberId) {
         Course course = findCourseByIdWithDetails(courseId);
-        List<TrackPointDto> trackPoints = simplifyTrackPoints(course);
+        List<TrackPointDto> trackPoints = simplifyTrackPoints(course.getTrackPoints());
         BookmarkInfoDto bookmarkInfoDto = getBookmarkInfo(courseId, memberId);
         return CourseDetailDto.of(course, trackPoints, bookmarkInfoDto);
     }
@@ -166,8 +171,12 @@ public class CourseService {
                 .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
     }
 
-    private List<TrackPointDto> simplifyTrackPoints(Course course) {
-        Coordinate[] originalCoordinates = course.getTrackPoints().stream()
+    private List<TrackPointDto> simplifyTrackPoints(List<TrackPoint> trackPoints) {
+        if (trackPoints.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Coordinate[] originalCoordinates = trackPoints.stream()
                 .map(point -> new Coordinate(point.getLon(), point.getLat(), point.getEle()))
                 .toArray(Coordinate[]::new);
 
@@ -175,8 +184,7 @@ public class CourseService {
         DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(originalLine); // RDP 알고리즘 사용하여 경로 단순화
         simplifier.setDistanceTolerance(distanceTolerance); // 이 값이 클수록 더 많이 단순화됨 (0.0001은 약 10m에 해당)
         LineString simplifiedLine = (LineString) simplifier.getResultGeometry();
-        log.info("[트랙포인트 간소화] courseId: {} (원본: {}개 → 단순화: {}개)",
-                course.getId(), originalLine.getNumPoints(), simplifiedLine.getNumPoints());
+        log.info("[트랙포인트 간소화] 원본: {}개 → 단순화: {}개)", originalLine.getNumPoints(), simplifiedLine.getNumPoints());
 
         return Arrays.stream(simplifiedLine.getCoordinates())
                 .map(TrackPointDto::from)
