@@ -253,6 +253,7 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
+        assertThat(result.courseName()).isEqualTo("courseName1");
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -285,6 +286,7 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
+        assertThat(result.courseName()).isEqualTo("courseName1");
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -316,6 +318,7 @@ class CourseServiceTest {
     private Course createMockCourse(Long courseId) {
         // Course 객체 생성 (빌더로 설정 가능한 필드 우선 설정)
         Course course = Course.builder()
+                .name("courseName1")
                 .distance(15)
                 .duration(120)
                 .minElevation(30.0)
