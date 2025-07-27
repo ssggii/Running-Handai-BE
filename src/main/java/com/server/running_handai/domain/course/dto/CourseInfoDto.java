@@ -1,10 +1,10 @@
 package com.server.running_handai.domain.course.dto;
 
 public interface CourseInfoDto {
-    Long getId();
+    long getId();
     String getThumbnailUrl();
-    Integer getDistance();
-    Integer getDuration();
-    Integer getMaxElevation();
+    int getDistance();
+    int getDuration();
+    double getMaxElevation();
     double getDistanceFromUser(); // 코스 시작점과 사용자의 거리
 }

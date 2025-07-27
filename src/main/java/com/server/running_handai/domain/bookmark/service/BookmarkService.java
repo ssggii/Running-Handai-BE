@@ -29,7 +29,7 @@ public class BookmarkService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
 
         // 이미 북마크한 코스인지 확인
-        if (bookmarkRepository.existsByMemberAndCourse(member, course)) {
+        if (bookmarkRepository.existsByCourseIdAndMemberId(memberId, courseId)) {
             throw new BusinessException(ResponseCode.ALREADY_BOOKMARKED);
         }
 

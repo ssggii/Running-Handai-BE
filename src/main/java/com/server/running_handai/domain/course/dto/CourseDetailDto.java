@@ -16,7 +16,7 @@ public record CourseDetailDto(
         List<String> roadConditions,
         List<TrackPointDto> trackPoints
 ) {
-    public static CourseDetailDto of(Course course, List<TrackPointDto> trackPoints, BookmarkInfo bookmarkInfo) {
+    public static CourseDetailDto of(Course course, List<TrackPointDto> trackPoints, BookmarkInfoDto bookmarkInfoDto) {
         List<String> roadConditions = course.getRoadConditions().stream()
                 .map(RoadCondition::getDescription).toList();
 
@@ -27,8 +27,8 @@ public record CourseDetailDto(
                 course.getMinElevation(),
                 course.getMaxElevation(),
                 course.getLevel().getDescription(),
-                bookmarkInfo.totalCount(),
-                bookmarkInfo.isBookmarked(),
+                bookmarkInfoDto.totalCount(),
+                bookmarkInfoDto.isBookmarked(),
                 roadConditions,
                 trackPoints
         );
