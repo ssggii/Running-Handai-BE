@@ -96,9 +96,9 @@ springdoc:
   paths-to-exclude:
     - /api/admin/** # Swagger UI에서 제외하는 엔드포인트
   swagger-ui:
-    path: /teamchunk/docs
+    path: /teamchuck/docs
   api-docs:
-    path: /teamchunk/v3/api-docs
+    path: /teamchuck/v3/api-docs
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}

@@ -55,7 +55,7 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(
                                                 "/health",
-                                                "/teamchunk/**",
+                                                "/teamchuck/**",
                                                 "/api/courses/**",
                                                 "/api/members/oauth/token")
                                         .permitAll()
