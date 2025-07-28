@@ -18,10 +18,12 @@ import java.util.Map;
 @Slf4j
 @Service
 public class OpenAiService {
-    private final ChatClient.Builder chatClientBuilder;
+    private final ChatClient chatClient;
+    private final TokenCountEstimator tokenCountEstimator;
 
     public OpenAiService(ChatClient.Builder chatClientBuilder) {
-        this.chatClientBuilder = chatClientBuilder;
+        this.chatClient = chatClientBuilder.build();
+        this.tokenCountEstimator = new JTokkitTokenCountEstimator();
     }
 
     /**
@@ -34,7 +36,6 @@ public class OpenAiService {
      */
     public String getOpenAiResponse(Resource promptResource, Map<String, Object> variables) {
         try {
-            ChatClient chatClient = chatClientBuilder.build();
             Prompt prompt = createPrompt(promptResource, variables);
 
             ChatResponse response = chatClient
@@ -71,7 +72,6 @@ public class OpenAiService {
             String requestPrompt = prompt.getInstructions().getFirst().getContent();
 
             // 예상 토큰값 계산
-            TokenCountEstimator tokenCountEstimator = new JTokkitTokenCountEstimator();
             return tokenCountEstimator.estimate(requestPrompt);
         } catch (Exception e) {
             log.error("[OpenAI 호출] 프롬프트 템플릿 처리 실패: message={}", e.getMessage());

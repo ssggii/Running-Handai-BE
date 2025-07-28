@@ -2,6 +2,7 @@ package com.server.running_handai.domain.course.service;
 
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,7 +13,11 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class KakaoMapService {
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoApiKey;
 
@@ -34,7 +39,6 @@ public class KakaoMapService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        RestTemplate restTemplate = new RestTemplate();
 
         ResponseEntity<String> response = restTemplate.exchange(
                 requestUrl,
@@ -44,7 +48,6 @@ public class KakaoMapService {
         );
 
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
             JsonNode root = objectMapper.readTree(response.getBody());
 
             // documents 안에 도로명 주소(road_address)와 지번 주소(address)가 포함되어 응답

@@ -49,10 +49,10 @@ public class CourseDataService {
     public static final String TARGET_REGION = "부산";
     public static final int RUNNING_SPEED = 9;
 
-    private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final XmlMapper xmlMapper = new XmlMapper();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GeometryFactory geometryFactory;
+    private final RestTemplate restTemplate;
+    private final XmlMapper xmlMapper;
+    private final ObjectMapper objectMapper;
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
@@ -574,8 +574,6 @@ public class CourseDataService {
      * @return 추출된 TrackPoint 리스트 (lat, lon, ele, sequence)
      */
     private List<TrackPoint> getTrackPoint(MultipartFile courseGpxFile) throws Exception {
-        XmlMapper xmlMapper = new XmlMapper();
-
         // DTO에 정의되지 않은 필드 무시
         xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         xmlMapper.configure(FromXmlParser.Feature.EMPTY_ELEMENT_AS_NULL, true);
