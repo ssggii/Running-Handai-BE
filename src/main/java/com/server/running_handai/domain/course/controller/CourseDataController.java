@@ -25,9 +25,9 @@ public class CourseDataController {
         return ResponseEntity.accepted().body(CommonResponse.success(ResponseCode.SUCCESS_COURSE_SYNC_ACCEPTED, null));
     }
 
-    @PutMapping("/{courseId}/condition")
-    public ResponseEntity<CommonResponse<?>> updateRoadCondition(@PathVariable Long courseId) {
-        courseDataService.updateRoadCondition(courseId);
+    @PutMapping("/{courseId}/conditions")
+    public ResponseEntity<CommonResponse<?>> updateRoadConditions(@PathVariable Long courseId) {
+        courseDataService.updateRoadConditions(courseId);
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 

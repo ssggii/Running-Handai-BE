@@ -19,6 +19,7 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.course.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.exception.BusinessException;
 
 import java.io.IOException;
@@ -27,7 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.*;
-import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.core.io.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +53,7 @@ public class CourseDataService {
     private final RestTemplate restTemplate;
     private final XmlMapper xmlMapper;
     private final ObjectMapper objectMapper;
+
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
@@ -364,7 +365,7 @@ public class CourseDataService {
      * @param courseId 길 상태를 수정할 course Id
      */
     @Transactional
-    public void updateRoadCondition(Long courseId) {
+    public void updateRoadConditions(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
         List<SequenceTrackPointDto> trackPointDtoList = trackPointRepository.findByCourseIdOrderBySequenceAsc(courseId)
                 .stream()
@@ -377,13 +378,13 @@ public class CourseDataService {
         variables.put("distance", course.getDistance());
         variables.put("duration", course.getDuration());
         variables.put("level", course.getLevel().toString());
-        variables.put("trackPoint", convertTrackPointToJson(trackPointDtoList));
+        variables.put("trackPoints", convertTrackPointToJson(trackPointDtoList));
 
         // 요청 프롬프트 토큰 수 확인 후 초과할 경우 RDP 알고리즘 적용
         int requestToken = openAiService.calculateRequestToken(getRoadConditionPrompt, variables);
         if (requestToken > inputMaxToken) {
             log.info("[길 상태 수정] 토큰 초과, RDP 적용 시작: courseId={} requestToken={}", courseId, requestToken);
-            variables = simplifyTrackPoint(getRoadConditionPrompt, trackPointDtoList, variables);
+            variables = simplifyTrackPointsWhileTokenLimit(getRoadConditionPrompt, trackPointDtoList, variables);
         } else {
             log.info("[길 상태 수정] 토큰 초과하지 않아 원본 데이터 사용: courseId={} requestToken={}", courseId, requestToken);
         }
@@ -463,7 +464,7 @@ public class CourseDataService {
         // 2. GPX 파일의 track point 파싱
         List<TrackPoint> trackPoints;
         try {
-            trackPoints = getTrackPoint(courseGpxFile);
+            trackPoints = getTrackPoints(courseGpxFile);
             log.info("[GPX 코스 생성] 트랙포인트 파싱 완료 ({}개)", trackPoints.size());
         } catch (Exception e) {
             log.error("[GPX 코스 생성] 트랙포인트 파싱 실패", e);
@@ -498,13 +499,13 @@ public class CourseDataService {
         variables.put("name", courseName);
         variables.put("distance", distance);
         variables.put("duration", duration);
-        variables.put("trackPoint", convertTrackPointToJson(trackPointDtoList));
+        variables.put("trackPoints", convertTrackPointToJson(trackPointDtoList));
 
         // 요청 프롬프트 토큰 수 확인 후 초과할 경우 RDP 알고리즘 적용
         int requestToken = openAiService.calculateRequestToken(getLevelAndRoadConditionPrompt, variables);
         if (requestToken > inputMaxToken) {
             log.info("[GPX 코스 생성] 토큰 초과, RDP 적용 시작: requestToken={}", requestToken);
-            variables = simplifyTrackPoint(getLevelAndRoadConditionPrompt, trackPointDtoList, variables);
+            variables = simplifyTrackPointsWhileTokenLimit(getLevelAndRoadConditionPrompt, trackPointDtoList, variables);
         } else {
             log.info("[GPX 코스 생성] 토큰 초과하지 않아 원본 데이터 사용: requestToken={}", requestToken);
         }
@@ -573,7 +574,7 @@ public class CourseDataService {
      * @param courseGpxFile 업로드된 GPX 파일
      * @return 추출된 TrackPoint 리스트 (lat, lon, ele, sequence)
      */
-    private List<TrackPoint> getTrackPoint(MultipartFile courseGpxFile) throws Exception {
+    private List<TrackPoint> getTrackPoints(MultipartFile courseGpxFile) throws Exception {
         // DTO에 정의되지 않은 필드 무시
         xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         xmlMapper.configure(FromXmlParser.Feature.EMPTY_ELEMENT_AS_NULL, true);
@@ -767,32 +768,16 @@ public class CourseDataService {
      * @param variables 프롬프트 변수
      * @return newVariables 새로운 프롬프트 변수
      */
-    private Map<String, Object> simplifyTrackPoint(Resource promptTemplate, List<SequenceTrackPointDto> trackPointDtoList, Map<String, Object> variables) {
+    private Map<String, Object> simplifyTrackPointsWhileTokenLimit(Resource promptTemplate, List<SequenceTrackPointDto> trackPointDtoList, Map<String, Object> variables) {
         double tolerance = distanceTolerance;
         List<SequenceTrackPointDto> newTrackPointDtoList = trackPointDtoList;
 
         while (true) {
-            // Dto를 Coordinate 좌표 배열로 변환
-            Coordinate[] coordinates = newTrackPointDtoList.stream()
-                    .map(dto -> new Coordinate(dto.lon(), dto.lat(), dto.ele()))
-                    .toArray(Coordinate[]::new);
-
-            // LineString으로 변환 후 RDP 알고리즘 적용
-            LineString originalLine = geometryFactory.createLineString(coordinates);
-            DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(originalLine);
-            simplifier.setDistanceTolerance(tolerance);
-            LineString simplifiedLine = (LineString) simplifier.getResultGeometry();
-
-            // 단순화된 좌표를 다시 DTO로 변환
-            // 순서대로 적용되어 있기 때문에 단순화된 것으로 sequence 재부여
-            AtomicInteger index = new AtomicInteger(0);
-            newTrackPointDtoList = Arrays.stream(simplifiedLine.getCoordinates())
-                    .map(c -> SequenceTrackPointDto.sequenceTrackPointDto(c, index.getAndIncrement()))
-                    .toList();
+            newTrackPointDtoList = TrackPointSimplificationUtil.simplifyTrackPoints(newTrackPointDtoList, tolerance, geometryFactory);
 
             // 단순화된 트랙 포인트로 프롬프트 변수 업데이트
             Map<String, Object> newVariables = new HashMap<>(variables);
-            newVariables.put("trackPoint", convertTrackPointToJson(newTrackPointDtoList));
+            newVariables.put("trackPoints", convertTrackPointToJson(newTrackPointDtoList));
 
             int requestToken = openAiService.calculateRequestToken(promptTemplate, newVariables);
             if (requestToken <= inputMaxToken) {
@@ -813,7 +798,7 @@ public class CourseDataService {
      */
     private String convertTrackPointToJson(List<SequenceTrackPointDto> trackPointDtoList) {
         try {
-            return objectMapper.writeValueAsString(trackPointDtoList);
+            return objectMapper.writeValueAsString(trackPointDtoList).replace("\"", "\\\"");
         } catch (JsonProcessingException e){
             log.warn("[트랙포인트 JSON 변환] 실패: message={}", e.getMessage());
             return trackPointDtoList.toString();

@@ -1,5 +1,6 @@
 package com.server.running_handai.global.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +25,10 @@ public class AppConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
+        // OpenAI API 관련에서 발생하는 알 수 없는 필드가 있다는 예외를 무시하기 위함
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return objectMapper;
     }
 
     @Bean

@@ -6,7 +6,7 @@
 코스 전체 거리(km): {distance}
 소요 시간(분): {duration}
 난이도: {level}
-트랙 포인트: {trackPoint}
+트랙 포인트: {trackPoints}
 
 아래 다섯 가지 기준에 따라, 각 항목에 대한 상태 설명을 작성하세요.
 
