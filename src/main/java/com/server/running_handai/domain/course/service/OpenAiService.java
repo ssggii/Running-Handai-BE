@@ -35,8 +35,7 @@ public class OpenAiService {
     public String getOpenAiResponse(Resource promptResource, Map<String, Object> variables) {
         try {
             ChatClient chatClient = chatClientBuilder.build();
-            PromptTemplate promptTemplate = new PromptTemplate(promptResource);
-            Prompt prompt = promptTemplate.create(variables);
+            Prompt prompt = createPrompt(promptResource, variables);
 
             ChatResponse response = chatClient
                     .prompt(prompt)
@@ -68,8 +67,7 @@ public class OpenAiService {
      */
     public int calculateRequestToken(Resource promptResource, Map<String, Object> variables) {
         try {
-            PromptTemplate promptTemplate = new PromptTemplate(promptResource);
-            Prompt prompt = promptTemplate.create(variables);
+            Prompt prompt = createPrompt(promptResource, variables);
             String requestPrompt = prompt.getInstructions().getFirst().getContent();
 
             // 예상 토큰값 계산
@@ -79,5 +77,17 @@ public class OpenAiService {
             log.error("[OpenAI 호출] 프롬프트 템플릿 처리 실패: message={}", e.getMessage());
             throw new BusinessException(ResponseCode.OPENAI_API_ERROR);
         }
+    }
+
+    /**
+     * 프롬프트 템플릿과 변수를 바인딩하여 Prompt 객체를 생성합니다.
+     *
+     * @param promptResource 프롬프트 템플릿
+     * @param variables 프롬프트에 바인딩할 변수
+     * @return 생성된 Prompt 객체
+     */
+    private Prompt createPrompt(Resource promptResource, Map<String, Object> variables) {
+        PromptTemplate promptTemplate = new PromptTemplate(promptResource);
+        return promptTemplate.create(variables);
     }
 }
