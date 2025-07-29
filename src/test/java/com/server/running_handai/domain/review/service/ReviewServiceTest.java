@@ -27,6 +27,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -168,7 +169,7 @@ class ReviewServiceTest {
     }
 
     @Nested
-    @DisplayName("리뷰 요청 DTO 유효성 검사 테스트")
+    @DisplayName("리뷰 생성 요청 DTO 유효성 검사 테스트")
     class ReviewCreateRequestDtoValidationTest {
 
         private static Validator validator;
@@ -421,8 +422,8 @@ class ReviewServiceTest {
         }
 
         @Test
-        @DisplayName("리뷰 수정 실패 - 리뷰 수정을 요청한 회원이 리뷰 작성자가 아님")
-        void updateReview_Fail_AccessDenied() {
+        @DisplayName("리뷰 수정 실패 - 접근 권한 없음")
+        void updateReview_fail_accessDenied() {
             // given
             Member anotherMember = Member.builder()
                     .nickname("nickname2")
@@ -461,7 +462,7 @@ class ReviewServiceTest {
 
         @Test
         @DisplayName("리뷰 수정 실패: 리뷰 내용 공백")
-        void updateReview_Fail_EmptyContents() {
+        void updateReview_fail_emptyContents() {
             // given
             ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(null, "  ");
 
@@ -473,5 +474,61 @@ class ReviewServiceTest {
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.EMPTY_REVIEW_CONTENTS);
         }
+    }
+
+    @Nested
+    @DisplayName("리뷰 삭제 테스트")
+    class DeleteReviewTest {
+
+        @Test
+        @DisplayName("리뷰 삭제 성공")
+        void deleteReview_success() {
+            // given
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+
+            // when
+            reviewService.deleteReview(review.getId(), member);
+
+            // then
+            verify(reviewRepository).findById(review.getId());
+            verify(reviewRepository).delete(review);
+        }
+
+        @Test
+        @DisplayName("리뷰 삭제 실패 - 존재하지 않는 리뷰")
+        void deleteReview_fail_reviewNotFound() {
+            // given
+            Long nonExistentReviewId = 999L;
+            given(reviewRepository.findById(nonExistentReviewId)).willReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.deleteReview(nonExistentReviewId, member));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.REVIEW_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("리뷰 삭제 실패 - 접근 권한 없음")
+        void deleteReview_fail_accessDenied() {
+            // given
+            Member anotherMember = Member.builder()
+                    .nickname("nickname2")
+                    .email("member2@email.com")
+                    .role(Role.USER)
+                    .provider(Provider.GOOGLE)
+                    .providerId("member2_providerId")
+                    .build();
+            ReflectionTestUtils.setField(anotherMember, "id", 30L);
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.deleteReview(review.getId(), anotherMember));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.ACCESS_DENIED);
+        }
+
     }
 }

@@ -116,4 +116,22 @@ public class ReviewService {
         return ReviewInfoDto.from(reviewRepository.save(review));
     }
 
+    /**
+     * 코스의 리뷰를 삭제합니다.
+     *
+     * @param reviewId 삭제하려는 리뷰 ID
+     * @param member 리뷰 삭제를 요청한 회원
+     */
+    @Transactional
+    public void deleteReview(Long reviewId, Member member) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.REVIEW_NOT_FOUND));
+
+        if (!review.getWriter().getId().equals(member.getId())) {
+            throw new BusinessException(ResponseCode.ACCESS_DENIED); // 작성자가 아니라면 접근 권한 없음
+        }
+
+        reviewRepository.delete(review);
+    }
+
 }
