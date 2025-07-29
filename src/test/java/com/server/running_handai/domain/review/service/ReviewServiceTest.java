@@ -14,6 +14,7 @@ import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Provider;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewRequestDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
@@ -23,6 +24,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
@@ -246,6 +248,86 @@ class ReviewServiceTest {
             // then
             assertThat(violations).isNotEmpty();
             assertThat(violations.iterator().next().getMessage()).isEqualTo("리뷰 내용은 최대 2000자까지 작성할 수 있습니다.");
+        }
+    }
+
+    @Nested
+    @DisplayName("리뷰 조회 테스트")
+    class FindAllReviewsByCourseTest {
+
+        @Test
+        @DisplayName("리뷰 조회 성공")
+        void findAllReviews_success_withReviews() {
+            // given
+            Long courseId = course.getId();
+            
+            Review review1 = Review.builder().stars(VALID_REVIEW_STARS).contents(VALID_REVIEW_CONTENTS).build();
+            ReflectionTestUtils.setField(review1, "id", 101L);
+            review1.setWriter(member);
+            review1.setCourse(course);
+
+            Review review2 = Review.builder().stars(VALID_REVIEW_STARS - 1).contents(VALID_REVIEW_CONTENTS).build();
+            ReflectionTestUtils.setField(review2, "id", 102L);
+            review2.setWriter(member);
+            review2.setCourse(course);
+
+            List<Review> reviews = List.of(review1, review2);
+
+            given(courseRepository.existsById(courseId)).willReturn(true);
+            given(reviewRepository.findAllByCourseId(courseId)).willReturn(reviews);
+
+            // when
+            ReviewInfoListDto result = reviewService.findAllReviewsByCourse(courseId);
+
+            // then
+            double expectedAverage = 4.0;
+            assertThat(result).isNotNull();
+            assertThat(result.starAverage()).isEqualTo(expectedAverage);
+            assertThat(result.reviewCount()).isEqualTo(2);
+            assertThat(result.reviewInfoDtoList().getFirst().reviewId()).isEqualTo(review1.getId());
+            assertThat(result.reviewInfoDtoList().getLast().reviewId()).isEqualTo(review2.getId());
+
+            verify(courseRepository).existsById(courseId);
+            verify(reviewRepository).findAllByCourseId(courseId);
+        }
+
+        @Test
+        @DisplayName("리뷰 조회 성공 - 리뷰 없음")
+        void findAllReviews_success_noReviews() {
+            // given
+            Long courseId = course.getId();
+
+            // Mock 객체 동작 정의
+            given(courseRepository.existsById(courseId)).willReturn(true);
+            given(reviewRepository.findAllByCourseId(courseId)).willReturn(List.of());
+
+            // when
+            ReviewInfoListDto result = reviewService.findAllReviewsByCourse(courseId);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.starAverage()).isEqualTo(0.0);
+            assertThat(result.reviewCount()).isEqualTo(0);
+            assertThat(result.reviewInfoDtoList()).isEmpty();
+
+            verify(courseRepository).existsById(courseId);
+            verify(reviewRepository).findAllByCourseId(courseId);
+        }
+
+        @Test
+        @DisplayName("리뷰 조회 실패 - 존재하지 않는 코스")
+        void findAllReviews_fail_courseNotFound() {
+            // given
+            Long nonExistentCourseId = 999L;
+
+            given(courseRepository.existsById(nonExistentCourseId)).willReturn(false);
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.findAllReviewsByCourse(nonExistentCourseId));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
+            verify(courseRepository).existsById(nonExistentCourseId);
         }
     }
 }

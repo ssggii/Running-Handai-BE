@@ -15,6 +15,7 @@ public enum ResponseCode {
     SUCCESS_COURSE_SYNC_ACCEPTED(ACCEPTED, "코스 데이터 동기화 작업이 시작되었습니다. 서버 로그를 통해 진행 상황을 확인하세요."),
     SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
+    SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
