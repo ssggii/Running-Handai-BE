@@ -1,0 +1,50 @@
+package com.server.running_handai.domain.review.controller;
+
+import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.review.dto.ReviewRequestDto;
+import com.server.running_handai.domain.review.entity.Review;
+import com.server.running_handai.domain.review.service.ReviewService;
+import com.server.running_handai.global.oauth.CustomOAuth2User;
+import com.server.running_handai.global.response.CommonResponse;
+import com.server.running_handai.global.response.ResponseCode;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/courses/{courseId}/reviews")
+@RequiredArgsConstructor
+@Tag(name = "Review", description = "리뷰 관련 API")
+public class ReviewController {
+
+    private final ReviewService reviewService;
+
+    @Operation(summary = "리뷰 등록", description = "코스의 리뷰를 등록합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)"),
+            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)"),
+    })
+    @PostMapping
+    public ResponseEntity<CommonResponse<ReviewInfoDto>> createReview(
+            @PathVariable Long courseId,
+            @ParameterObject @Valid @RequestBody ReviewRequestDto reviewRequest,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        ReviewInfoDto responseData = reviewService.createReview(courseId, reviewRequest, customOAuth2User.getMember());
+        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
+    }
+}
