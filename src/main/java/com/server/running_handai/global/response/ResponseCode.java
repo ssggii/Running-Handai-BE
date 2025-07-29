@@ -26,6 +26,7 @@ public enum ResponseCode {
     ALREADY_BOOKMARKED(BAD_REQUEST, "이미 북마크한 코스입니다."),
     INVALID_PROVIDER(BAD_REQUEST, "지원하지 않는 OAuth2 Provider입니다"),
     INVALID_REVIEW_STARS(BAD_REQUEST, "별점은 0.5점 단위여야합니다."),
+    EMPTY_REVIEW_CONTENTS(BAD_REQUEST, "리뷰 내용은 비워둘 수 없습니다"),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
@@ -42,6 +43,7 @@ public enum ResponseCode {
     MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
     REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),
     BOOKMARK_NOT_FOUND(NOT_FOUND, "찾을 수 없는 북마크입니다."),
+    REVIEW_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리뷰입니다."),
 
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)

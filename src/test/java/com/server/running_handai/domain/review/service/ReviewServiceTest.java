@@ -15,7 +15,8 @@ import com.server.running_handai.domain.member.entity.Provider;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
-import com.server.running_handai.domain.review.dto.ReviewRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.global.response.ResponseCode;
@@ -104,6 +105,7 @@ class ReviewServiceTest {
         review.setCourse(course);
 
         ReflectionTestUtils.setField(review, "id", 100L);
+        ReflectionTestUtils.setField(member, "id", 50L);
     }
 
     @Nested
@@ -114,7 +116,7 @@ class ReviewServiceTest {
         @DisplayName("리뷰 등록 성공 - 유효한 요청 시 리뷰를 성공적으로 생성한다.")
         void createReview_success() {
             // given
-            ReviewRequestDto reviewRequest = new ReviewRequestDto(VALID_REVIEW_STARS, VALID_REVIEW_CONTENTS);
+            ReviewCreateRequestDto reviewRequest = new ReviewCreateRequestDto(VALID_REVIEW_STARS, VALID_REVIEW_CONTENTS);
             Long courseId = course.getId();
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
@@ -138,7 +140,7 @@ class ReviewServiceTest {
         @DisplayName("리뷰 등록 실패 - 0.5점 단위가 아닌 별점")
         void createReview_fail_invalidStars() {
             // given
-            ReviewRequestDto requestWithInvalidStars = new ReviewRequestDto(4.2, VALID_REVIEW_CONTENTS);
+            ReviewCreateRequestDto requestWithInvalidStars = new ReviewCreateRequestDto(4.2, VALID_REVIEW_CONTENTS);
             Long courseId = course.getId();
 
             // when, then
@@ -152,7 +154,7 @@ class ReviewServiceTest {
         @DisplayName("리뷰 등록 실패 - 존재하지 않는 코스")
         void createReview_fail_courseNotFound() {
             // given
-            ReviewRequestDto request = new ReviewRequestDto(VALID_REVIEW_STARS, VALID_REVIEW_CONTENTS);
+            ReviewCreateRequestDto request = new ReviewCreateRequestDto(VALID_REVIEW_STARS, VALID_REVIEW_CONTENTS);
             Long nonExistentCourseId = 999L;
 
             given(courseRepository.findById(nonExistentCourseId)).willReturn(Optional.empty());
@@ -167,7 +169,7 @@ class ReviewServiceTest {
 
     @Nested
     @DisplayName("리뷰 요청 DTO 유효성 검사 테스트")
-    class ReviewRequestDtoValidationTest {
+    class ReviewCreateRequestDtoValidationTest {
 
         private static Validator validator;
 
@@ -183,10 +185,10 @@ class ReviewServiceTest {
         @DisplayName("리뷰 요청 DTO 유효성 검증 실패 - 별점이 null")
         void failWhenStarsIsNull() {
             // given
-            ReviewRequestDto request = new ReviewRequestDto(null, VALID_REVIEW_CONTENTS);
+            ReviewCreateRequestDto request = new ReviewCreateRequestDto(null, VALID_REVIEW_CONTENTS);
 
             // when
-            Set<ConstraintViolation<ReviewRequestDto>> violations = validator.validate(request);
+            Set<ConstraintViolation<ReviewCreateRequestDto>> violations = validator.validate(request);
 
             // then
             assertThat(violations).isNotEmpty();
@@ -197,10 +199,10 @@ class ReviewServiceTest {
         @DisplayName("리뷰 요청 DTO 유효성 검증 실패 - 별점이 0.5 미만")
         void failWhenStarsIsTooLow() {
             // given
-            ReviewRequestDto request = new ReviewRequestDto(0.4, VALID_REVIEW_CONTENTS);
+            ReviewCreateRequestDto request = new ReviewCreateRequestDto(0.4, VALID_REVIEW_CONTENTS);
 
             // when
-            Set<ConstraintViolation<ReviewRequestDto>> violations = validator.validate(request);
+            Set<ConstraintViolation<ReviewCreateRequestDto>> violations = validator.validate(request);
 
             // then
             assertThat(violations).isNotEmpty();
@@ -211,10 +213,10 @@ class ReviewServiceTest {
         @DisplayName("리뷰 요청 DTO 유효성 검증 실패 - 별점이 5.0 초과")
         void failWhenStarsIsTooHigh() {
             // given
-            ReviewRequestDto request = new ReviewRequestDto(5.1, VALID_REVIEW_CONTENTS);
+            ReviewCreateRequestDto request = new ReviewCreateRequestDto(5.1, VALID_REVIEW_CONTENTS);
 
             // when
-            Set<ConstraintViolation<ReviewRequestDto>> violations = validator.validate(request);
+            Set<ConstraintViolation<ReviewCreateRequestDto>> violations = validator.validate(request);
 
             // then
             assertThat(violations).isNotEmpty();
@@ -225,10 +227,10 @@ class ReviewServiceTest {
         @DisplayName("리뷰 요청 DTO 유효성 검증 실패 - 리뷰 내용이 blank")
         void failWhenContentsIsBlank() {
             // given
-            ReviewRequestDto request = new ReviewRequestDto(VALID_REVIEW_STARS, " ");
+            ReviewCreateRequestDto request = new ReviewCreateRequestDto(VALID_REVIEW_STARS, " ");
 
             // when
-            Set<ConstraintViolation<ReviewRequestDto>> violations = validator.validate(request);
+            Set<ConstraintViolation<ReviewCreateRequestDto>> violations = validator.validate(request);
 
             // then
             assertThat(violations).isNotEmpty();
@@ -240,10 +242,10 @@ class ReviewServiceTest {
         void failWhenContentsIsTooLong() {
             // given
             String longContents = "a".repeat(2001);
-            ReviewRequestDto request = new ReviewRequestDto(VALID_REVIEW_STARS, longContents);
+            ReviewCreateRequestDto request = new ReviewCreateRequestDto(VALID_REVIEW_STARS, longContents);
 
             // when
-            Set<ConstraintViolation<ReviewRequestDto>> violations = validator.validate(request);
+            Set<ConstraintViolation<ReviewCreateRequestDto>> violations = validator.validate(request);
 
             // then
             assertThat(violations).isNotEmpty();
@@ -328,6 +330,148 @@ class ReviewServiceTest {
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
             verify(courseRepository).existsById(nonExistentCourseId);
+        }
+    }
+
+    @Nested
+    @DisplayName("리뷰 수정 테스트")
+    class UpdateReviewTest {
+
+        @Test
+        @DisplayName("리뷰 수정 성공 - 별점, 내용 모두 수정")
+        void updateReview_success_allFields() {
+            // given
+            Double newStars = 4.5;
+            String newContents = "수정된 내용입니다.";
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(newStars, newContents);
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+            given(reviewRepository.save(any(Review.class))).willReturn(review);
+
+            // when
+            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.stars()).isEqualTo(newStars);
+            assertThat(result.contents()).isEqualTo(newContents);
+
+            verify(reviewRepository).findById(review.getId());
+            verify(reviewRepository).save(review);
+        }
+
+        @Test
+        @DisplayName("리뷰 수정 성공 - 별점만 수정")
+        void updateReview_success_onlyStars() {
+            // given
+            Double newStars = 3.0;
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(newStars, null);
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+            given(reviewRepository.save(any(Review.class))).willReturn(review);
+
+            // when
+            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.stars()).isEqualTo(newStars); // 별점은 변경
+            assertThat(result.contents()).isEqualTo(review.getContents()); // 기존 내용 유지
+
+            verify(reviewRepository).findById(review.getId());
+            verify(reviewRepository).save(review);
+        }
+
+        @Test
+        @DisplayName("리뷰 수정 성공 - 내용만 수정")
+        void updateReview_success_onlyContents() {
+            // given
+            String newContents = "내용만 수정했어요.";
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(null, newContents);
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+            given(reviewRepository.save(any(Review.class))).willReturn(review);
+
+            // when
+            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.stars()).isEqualTo(review.getStars()); // 기존 별점 유지
+            assertThat(result.contents()).isEqualTo(newContents); // 내용은 변경
+
+            verify(reviewRepository).findById(review.getId());
+            verify(reviewRepository).save(review);
+        }
+
+        @Test
+        @DisplayName("리뷰 수정 실패 - 존재하지 않는 리뷰")
+        void updateReview_fail_reviewNotFound() {
+            // given
+            Long nonExistentReviewId = 999L;
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(5.0, "내용");
+
+            given(reviewRepository.findById(nonExistentReviewId)).willReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.updateReview(nonExistentReviewId, requestDto, member));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.REVIEW_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("리뷰 수정 실패 - 리뷰 수정을 요청한 회원이 리뷰 작성자가 아님")
+        void updateReview_Fail_AccessDenied() {
+            // given
+            Member anotherMember = Member.builder()
+                    .nickname("nickname2")
+                    .email("member2@email.com")
+                    .role(Role.USER)
+                    .provider(Provider.GOOGLE)
+                    .providerId("member2_providerId")
+                    .build();
+            ReflectionTestUtils.setField(anotherMember, "id", 30L);
+
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(5.0, "내용");
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.updateReview(review.getId(), requestDto, anotherMember));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("리뷰 수정 실패 - 0.5점 단위가 아닌 별점")
+        void updateReview_fail_invalidStars() {
+            // given
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(4.2, "내용");
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.updateReview(review.getId(), requestDto, member));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.INVALID_REVIEW_STARS);
+        }
+
+        @Test
+        @DisplayName("리뷰 수정 실패: 리뷰 내용 공백")
+        void updateReview_Fail_EmptyContents() {
+            // given
+            ReviewUpdateRequestDto requestDto = new ReviewUpdateRequestDto(null, "  ");
+
+            given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> reviewService.updateReview(review.getId(), requestDto, member));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.EMPTY_REVIEW_CONTENTS);
         }
     }
 }

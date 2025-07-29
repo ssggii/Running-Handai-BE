@@ -56,6 +56,14 @@ public class Review extends BaseTimeEntity {
         this.contents = contents;
     }
 
+    public void updateStars(Double stars) {
+        this.stars = stars;
+    }
+
+    public void updateContents(String contents) {
+        this.contents = contents;
+    }
+
     // ==== 연관관계 편의 메서드 ==== //
     public void setCourse(Course course) {
         // 기존 Course와의 연관관계 제거

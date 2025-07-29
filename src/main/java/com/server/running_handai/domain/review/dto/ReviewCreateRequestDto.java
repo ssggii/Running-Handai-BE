@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record ReviewRequestDto(
+public record ReviewCreateRequestDto(
         @Parameter(description = "별점 (0.5점 단위)", required = true)
         @NotNull(message = "별점은 필수 항목입니다.")
         @DecimalMin(value = "0.5", message = "별점은 0.5 이상이어야 합니다.")
