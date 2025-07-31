@@ -10,7 +10,8 @@ import java.util.Optional;
 @Getter
 @RequiredArgsConstructor
 public enum Category {
-    NATURE("자연관광지", List.of("A01010100", "A01010200", "A01010300", "A01010400", "A01010500", "A01010600", "A01010700", "A01010800", "A01010900", "A01011000", "A01020100", "A01020200")),
+    NATURE("자연관광지", List.of("A01010100", "A01010200", "A01010300", "A01010400", "A01010500", "A01010600", "A01010700", "A01010800", "A01010900", "A01011000",
+            "A01011100", "A01011200", "A01011300", "A01011400", "A01011600", "A01011700", "A01011800", "A01011900", "A01020100", "A01020200")),
     HISTORY("역사관광지", List.of("A02010100", "A02010200", "A02010300", "A02010400", "A02010500", "A02010600", "A02010700", "A02010800", "A02010900", "A02011000")),
     RECREATION("휴양관광지", List.of("A02020200", "A02020300", "A02020400", "A02020500", "A02020600", "A02020700", "A02020800")),
     EXPERIENCE("체험관광지", List.of("A02030100", "A02030200", "A02030300", "A02030400", "A02030600")),
@@ -22,7 +23,8 @@ public enum Category {
     CHINESE_FOOD("중식", List.of("A05020400")),
     GLOBAL_FOOD("이색음식점", List.of("A05020700")),
     CAFE("카페", List.of("A05020900")),
-    CLUB("클럽", List.of("A05021000"));
+    CLUB("클럽", List.of("A05021000")),
+    UNKNOWN("알수없음", List.of());
 
     private final String description;
     private final List<String> categoryNumber;

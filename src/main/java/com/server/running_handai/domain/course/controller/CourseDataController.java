@@ -38,6 +38,12 @@ public class CourseDataController {
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 
+    @PutMapping("/{courseId}/spots")
+    public ResponseEntity<CommonResponse<?>> updateSpots(@PathVariable Long courseId) {
+        courseDataService.updateSpots(courseId);
+        return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
+    }
+
     @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestPart("courseInfo") GpxCourseRequestDto gpxCourseRequestDto,
                                                                @RequestParam("courseGpxFile") MultipartFile courseGpxFile) throws IOException {

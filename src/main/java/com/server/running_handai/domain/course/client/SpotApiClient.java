@@ -22,9 +22,6 @@ public class SpotApiClient {
     @Value("${external.api.spot.service-key}")
     private String serviceKey;
 
-    @Value("${external.api.spot.radius}")
-    private String radius;
-
     /**
      * [국문 관광정보] 공통정보 조회 API를 요청합니다.
      *
@@ -42,7 +39,6 @@ public class SpotApiClient {
                 .queryParam("serviceKey", serviceKey);
 
         URI uri = builder.build(true).toUri();
-        log.info(String.valueOf(uri));
 
         // API 호출
         return webClient.get()

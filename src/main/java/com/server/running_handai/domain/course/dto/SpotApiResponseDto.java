@@ -74,19 +74,19 @@ public class SpotApiResponseDto {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Item {
         @JsonProperty("contentid")
-        private String spotIndex; // 장소 고유번호 (Spot.externalId)
+        private String spotExternalId; // 장소 고유번호 (Spot.externalId)
 
         @JsonProperty("title")
         private String spotName; // 장소 이름 (Spot.name)
 
         @JsonProperty("overview")
-        private String description; // 장소 설명 (Spot.description)
+        private String spotDescription; // 장소 설명 (Spot.description)
 
         @JsonProperty("addr1")
         private String spotAddress; // 장소 주소 (Spot.address)
 
         @JsonProperty("cat3")
-        private String category; // 장소 카테고리 (Spot.category)
+        private String spotCategoryNumber; // 장소 카테고리 (Spot.category)
 
         @JsonProperty("firstimage")
         private String spotOriginalImage; // 대표 이미지 - 원본 (SpotImage.imageUrl)

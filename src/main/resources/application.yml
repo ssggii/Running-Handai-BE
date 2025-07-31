@@ -93,7 +93,7 @@ external:
     spot:
       base-url: http://apis.data.go.kr/B551011/KorService2
       service-key: ${SPOT_SERVICE_KEY}
-      radius: 5000
+      radius: 50000 # [국문 관광정보] 위치기반 관광정보 조회 API 거리 반경 (50000m = 5km)
 
 springdoc:
   default-produces-media-type: application/json
@@ -120,7 +120,3 @@ logging:
 course:
   simplification:
     distance-tolerance: 0.0001 # 경로 단순화 허용 오차 (RDP 알고리즘), 약 10m
-
-spot:
-  search:
-    radius: 50000  # [국문 관광정보] 위치기반 관광정보 조회 API 거리 반경

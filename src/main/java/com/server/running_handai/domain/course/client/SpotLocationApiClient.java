@@ -33,7 +33,6 @@ public class SpotLocationApiClient {
      * @param arrange 정렬 구분 (E: 거리순, S: 대표 이미지가 반드시 있는 거리순)
      * @param lon 경도 (x)
      * @param lat 위도 (y)
-     * @param radius 거리 반경 (50000m = 5km)
      * @param contentTypeId 관광 타입 (12: 관광지, 39: 음식점)
      * @return SpotLocationResponseDto
      */
@@ -43,7 +42,6 @@ public class SpotLocationApiClient {
             String arrange,
             double lon,
             double lat,
-            int radius,
             int contentTypeId
     ) {
         // URL 생성
@@ -57,12 +55,11 @@ public class SpotLocationApiClient {
                 .queryParam("arrange", arrange)
                 .queryParam("mapX", String.valueOf(lon))
                 .queryParam("mapY", String.valueOf(lat))
-                .queryParam("radius", String.valueOf(radius))
+                .queryParam("radius", radius)
                 .queryParam("contentTypeId", String.valueOf(contentTypeId))
                 .queryParam("serviceKey", serviceKey);
 
         URI uri = builder.build(true).toUri();
-        log.info(String.valueOf(uri));
 
         // API 호출
         return webClient.get()

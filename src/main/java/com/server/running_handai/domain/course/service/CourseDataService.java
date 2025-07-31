@@ -7,19 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.domain.course.client.DurunubiApiClient;
+import com.server.running_handai.domain.course.client.SpotApiClient;
 import com.server.running_handai.domain.course.client.SpotLocationApiClient;
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto.Item;
-import com.server.running_handai.domain.course.entity.Area;
-import com.server.running_handai.domain.course.entity.Course;
-import com.server.running_handai.domain.course.entity.CourseImage;
-import com.server.running_handai.domain.course.entity.CourseLevel;
-import com.server.running_handai.domain.course.entity.RoadCondition;
-import com.server.running_handai.domain.course.entity.Theme;
-import com.server.running_handai.domain.course.entity.TrackPoint;
-import com.server.running_handai.domain.course.repository.CourseRepository;
-import com.server.running_handai.domain.course.repository.RoadConditionRepository;
-import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.course.entity.*;
+import com.server.running_handai.domain.course.repository.*;
 import com.server.running_handai.domain.course.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.exception.BusinessException;
 
@@ -57,9 +50,12 @@ public class CourseDataService {
 
     private final DurunubiApiClient durunubiApiClient;
     private final SpotLocationApiClient spotLocationApiClient;
+    private final SpotApiClient spotApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final RoadConditionRepository roadConditionRepository;
+    private final CourseSpotRepository courseSpotRepository;
+    private final SpotRepository spotRepository;
     private final KakaoMapService kakaoMapService;
     private final OpenAiService openAiService;
     private final FileService fileService;
@@ -75,9 +71,6 @@ public class CourseDataService {
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
-
-    @Value("${spot.search.radius}")
-    private int radius;
 
     /**
      * 두루누비 API 관련
@@ -456,24 +449,64 @@ public class CourseDataService {
      * @param courseId 코스 id
      */
     @Transactional
-    public void createSpots(Long courseId) {
+    public void updateSpots(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         List<TrackPoint> trackPoints = trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId());
         TrackPoint startPoint = trackPoints.getFirst();
         TrackPoint endPoint = trackPoints.getLast();
+
+        // 1. 장소 externalId 수집
+        // 조회 조건: 시작점, 출발점, 관광지(12), 음식점(39)
         Set<String> externalIds = new HashSet<>();
 
-        // contentTypeId: 12 (관광지)
         externalIds.addAll(fetchSpotsByLocation(startPoint.getLon(), startPoint.getLat(), 12));
         externalIds.addAll(fetchSpotsByLocation(endPoint.getLon(), endPoint.getLat(), 12));
-
-        // contentTypeId: 39 (음식점)
         externalIds.addAll(fetchSpotsByLocation(startPoint.getLon(), startPoint.getLat(), 39));
         externalIds.addAll(fetchSpotsByLocation(endPoint.getLon(), endPoint.getLat(), 39));
 
-        log.info("[즐길거리 생성] 수집된 고유 externalId 개수: {}", externalIds.size());
-        log.info("[즐길거리 생성] externalIds: {}", externalIds);
+        log.info("[즐길거리 수정] 수집된 고유 externalId 개수: {}", externalIds.size());
+
+        // 2. 수집된 externalId로 장소 정보 수집
+        // 이미 externalId에 해당하는 Spot 정보가 있을 경우, 해당 정보를 가져옴
+        List<Spot> existingSpots = spotRepository.findByExternalIdIn(externalIds);
+        List<Spot> spots = new ArrayList<>(existingSpots);
+
+        Set<String> existingIds = existingSpots.stream()
+                .map(Spot::getExternalId)
+                .collect(Collectors.toSet());
+        externalIds.removeAll(existingIds);
+
+        for (String externalId : externalIds) {
+            fetchSpot(externalId).ifPresent(item -> {
+                    Spot spot = Spot.builder()
+                            .externalId(item.getSpotExternalId())
+                            .name(item.getSpotName())
+                            .address(item.getSpotAddress())
+                            .description(item.getSpotDescription())
+                            .category(Category.findByCategoryNumber(item.getSpotCategoryNumber())
+                                    .orElse(Category.UNKNOWN))
+                            .lat(Double.parseDouble(item.getSpotLatitude()))
+                            .lon(Double.parseDouble(item.getSpotLongitude()))
+                            .build();
+
+                    spots.add(spot);
+            });
+        }
+
+        // 3. 기존 데이터 일괄 삭제
+        courseSpotRepository.deleteByCourseId(courseId);
+        log.info("[즐길거리 수정] 기존 즐길거리 데이터 삭제 완료: courseId={}", courseId);
+
+        // 4. Spot, CourseSpot DB 저장
+        List<Spot> newSpots = spotRepository.saveAll(spots);
+
+        List<CourseSpot> courseSpots = newSpots.stream()
+                .map(spot -> new CourseSpot(course, spot))
+                .collect(Collectors.toList());
+
+        courseSpotRepository.saveAll(courseSpots);
+        log.info("[즐길거리 수정] DB에 즐길거리 정보 갱신 완료: courseId={}, 개수={}", courseId, spots.size());
     }
 
     /**
@@ -845,15 +878,16 @@ public class CourseDataService {
      * @return externalId의 Set
      */
     private Set<String> fetchSpotsByLocation(double lon, double lat, int contentTypeId) {
-        SpotLocationApiResponseDto response = spotLocationApiClient.fetchSpotLocationData(1, 5, "E", lon, lat, radius, contentTypeId);
+        SpotLocationApiResponseDto spotLocationApiResponseDto = spotLocationApiClient.fetchSpotLocationData(1, 5, "E", lon, lat, contentTypeId);
 
-        if (response.getResponse() == null || response.getResponse().getBody() == null || response.getResponse().getBody().getItems() == null) {
+        if (spotLocationApiResponseDto == null || spotLocationApiResponseDto.getResponse() == null ||
+                spotLocationApiResponseDto.getResponse().getBody() == null || spotLocationApiResponseDto.getResponse().getBody().getItems() == null) {
             return Collections.emptySet();
         }
 
-        List<SpotLocationApiResponseDto.Item> items = response.getResponse().getBody().getItems().getItemList();
+        List<SpotLocationApiResponseDto.Item> items = spotLocationApiResponseDto.getResponse().getBody().getItems().getItemList();
 
-        if (items == null) {
+        if (items == null || items.isEmpty()) {
             return Collections.emptySet();
         }
 
@@ -861,5 +895,28 @@ public class CourseDataService {
                 .map(SpotLocationApiResponseDto.Item::getSpotExternalId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * externalId에 대해 상세 SpotApiResponseDto.Item을 조회해 반환합니다.
+     *
+     * @param externalId 장소 고유번호
+     * @return SpotApiResponseDto.Item 정보, 없으면 Optional.empty()
+     */
+    public Optional<SpotApiResponseDto.Item> fetchSpot(String externalId) {
+        SpotApiResponseDto spotApiResponseDto = spotApiClient.fetchSpotData(externalId);
+
+        if (spotApiResponseDto == null || spotApiResponseDto.getResponse() == null ||
+                spotApiResponseDto.getResponse().getBody() == null || spotApiResponseDto.getResponse().getBody().getItems() == null) {
+            return Optional.empty();
+        }
+
+        List<SpotApiResponseDto.Item> items = spotApiResponseDto.getResponse().getBody().getItems().getItemList();
+
+        if (items == null || items.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(items.getFirst());
     }
 }

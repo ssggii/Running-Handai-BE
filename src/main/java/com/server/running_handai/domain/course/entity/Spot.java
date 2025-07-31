@@ -3,6 +3,7 @@ package com.server.running_handai.domain.course.entity;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,7 +30,7 @@ public class Spot extends BaseTimeEntity {
     @Column(name = "address", nullable = false)
     private String address; // 주소
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description; // 설명
 
     @Enumerated(EnumType.STRING)
@@ -49,4 +50,16 @@ public class Spot extends BaseTimeEntity {
     // SpotImage와 일대일 관계
     @OneToOne(mappedBy = "spot", cascade = CascadeType.ALL, orphanRemoval = true)
     private SpotImage spotImage;
+
+    @Builder
+    public Spot(String externalId, String name, String address, String description,
+                Category category, double lat, double lon) {
+        this.externalId = externalId;
+        this.name = name;
+        this.address = address;
+        this.description = description;
+        this.category = category;
+        this.lat = lat;
+        this.lon = lon;
+    }
 }

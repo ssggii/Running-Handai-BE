@@ -20,6 +20,9 @@ public class SpotImage extends BaseTimeEntity {
     @Column(name = "img_url", nullable = false)
     private String imgUrl; // s3 url
 
+    @Column(name = "original_url", nullable = false)
+    private String originalUrl; // [국문 관광정보 API]에서 제공하는 이미지 url
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "spot_id", unique = true, nullable = false)
     private Spot spot;
