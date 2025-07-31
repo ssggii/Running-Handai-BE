@@ -71,6 +71,8 @@ external:
   api:
     durunubi:
       service-key: "test-service-key"
+    spot:
+      service-key: "test-spot-service-key"
 
 jwt:
   secret-key: "test-jwt-secret-key"
@@ -89,3 +91,7 @@ cors:
 course:
   simplification:
     distance-tolerance: 0.0001
+
+spot:
+  search:
+    radius: 50000
