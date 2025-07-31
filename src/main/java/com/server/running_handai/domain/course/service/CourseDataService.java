@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.domain.course.client.DurunubiApiClient;
+import com.server.running_handai.domain.course.client.SpotLocationApiClient;
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto.Item;
 import com.server.running_handai.domain.course.entity.Area;
@@ -55,6 +56,7 @@ public class CourseDataService {
     private final ObjectMapper objectMapper;
 
     private final DurunubiApiClient durunubiApiClient;
+    private final SpotLocationApiClient spotLocationApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final RoadConditionRepository roadConditionRepository;
@@ -73,6 +75,9 @@ public class CourseDataService {
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
+
+    @Value("${spot.search.radius}")
+    private int radius;
 
     /**
      * 두루누비 API 관련
@@ -446,6 +451,32 @@ public class CourseDataService {
     }
 
     /**
+     * 코스에 맞는 즐길거리 정보를 [국문 관광정보]의 위치기반 관광정보 API와 공통정보조회 API를 통해 가져옵니다.
+     *
+     * @param courseId 코스 id
+     */
+    @Transactional
+    public void createSpots(Long courseId) {
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        List<TrackPoint> trackPoints = trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId());
+        TrackPoint startPoint = trackPoints.getFirst();
+        TrackPoint endPoint = trackPoints.getLast();
+        Set<String> externalIds = new HashSet<>();
+
+        // contentTypeId: 12 (관광지)
+        externalIds.addAll(fetchSpotsByLocation(startPoint.getLon(), startPoint.getLat(), 12));
+        externalIds.addAll(fetchSpotsByLocation(endPoint.getLon(), endPoint.getLat(), 12));
+
+        // contentTypeId: 39 (음식점)
+        externalIds.addAll(fetchSpotsByLocation(startPoint.getLon(), startPoint.getLat(), 39));
+        externalIds.addAll(fetchSpotsByLocation(endPoint.getLon(), endPoint.getLat(), 39));
+
+        log.info("[즐길거리 생성] 수집된 고유 externalId 개수: {}", externalIds.size());
+        log.info("[즐길거리 생성] externalIds: {}", externalIds);
+    }
+
+    /**
      * GPX 파일을 받아 코스 정보를 생성하고 저장합니다.
      * OpenAI API의 경우, 예상 토큰 값을 계산하여 최대 토큰 값을 넘으면 RDP 단순화 알고리즘을 적용하여 요청합니다.
      * S3 버킷의 디렉토리는 "gpx"로 지정합니다.
@@ -803,5 +834,32 @@ public class CourseDataService {
             log.warn("[트랙포인트 JSON 변환] 실패: message={}", e.getMessage());
             return trackPointDtoList.toString();
         }
+    }
+
+    /**
+     * [국문 관광정보] 위치기반 관광정보 조회 API를 요청해 장소의 externalId를 수집합니다.
+     *
+     * @param lon 경도 (x)
+     * @param lat 위도 (y)
+     * @param contentTypeId 관광 타입 (12: 관광지, 39: 음식점)
+     * @return externalId의 Set
+     */
+    private Set<String> fetchSpotsByLocation(double lon, double lat, int contentTypeId) {
+        SpotLocationApiResponseDto response = spotLocationApiClient.fetchSpotLocationData(1, 5, "E", lon, lat, radius, contentTypeId);
+
+        if (response.getResponse() == null || response.getResponse().getBody() == null || response.getResponse().getBody().getItems() == null) {
+            return Collections.emptySet();
+        }
+
+        List<SpotLocationApiResponseDto.Item> items = response.getResponse().getBody().getItems().getItemList();
+
+        if (items == null) {
+            return Collections.emptySet();
+        }
+
+        return items.stream()
+                .map(SpotLocationApiResponseDto.Item::getSpotExternalId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 }
