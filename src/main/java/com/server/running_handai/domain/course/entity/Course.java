@@ -87,6 +87,10 @@ public class Course extends BaseTimeEntity {
     @OneToOne(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private CourseImage courseImage; // 썸네일 이미지
 
+    // CourseSpot과 일대다 관계
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CourseSpot> courseSpots = new ArrayList<>();
+
     @Builder
     public Course(String externalId, String name, int distance, int duration,
                   CourseLevel level, String tourPoint, Area area, String gpxPath,
