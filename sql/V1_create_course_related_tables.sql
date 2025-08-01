@@ -114,3 +114,22 @@ create table track_point
     constraint FKpupqiw5q83q159swqraqw9hpm
         foreign key (course_id) references course (course_id)
 );
+
+-- 8. review 테이블 생성
+create table review
+(
+    review_id  bigint auto_increment
+        primary key,
+    created_at datetime(6)   not null,
+    updated_at datetime(6)   not null,
+    contents   varchar(2000) not null,
+    stars      double        not null,
+    course_id  bigint        not null,
+    member_id  bigint        null,
+    constraint FKk0ccx5i4ci2wd70vegug074w1
+        foreign key (member_id) references member (member_id)
+            on delete set null,
+    constraint FKprox8elgnr8u5wrq1983degk
+        foreign key (course_id) references course (course_id)
+            on delete cascade
+);
