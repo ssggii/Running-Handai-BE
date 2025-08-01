@@ -37,7 +37,7 @@ public class CourseController {
     @Operation(summary = "추천코스 전체 조회", description = "추천코스를 다양한 필터 옵션으로 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
-            @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)"),
+            @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)")
     })
     @GetMapping
     public ResponseEntity<CommonResponse<List<CourseInfoWithDetailsDto>>> getFilteredCourses(
@@ -57,7 +57,7 @@ public class CourseController {
     @Operation(summary = "추천코스 상세 조회", description = "특정 추천코스의 상세 정보를 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
-            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)"),
+            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)")
     })
     @GetMapping("/{courseId}")
     public ResponseEntity<CommonResponse<CourseDetailDto>> getCourseDetails(

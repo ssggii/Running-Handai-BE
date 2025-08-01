@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.entity;
 
+import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -61,7 +62,7 @@ public class Course extends BaseTimeEntity {
     private String gpxPath; // gpx 파일
 
     @Setter
-    @Column(columnDefinition = "POINT SRID 4326", name = "start_point", nullable = false)
+    @Column(columnDefinition = "GEOMETRY", name = "start_point", nullable = false)
     private Point startPoint; // 시작 포인트
 
     @Column(name = "max_ele", nullable = false)
@@ -75,6 +76,10 @@ public class Course extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private List<Theme> themes = new ArrayList<>(); // 테마
 
+    // CourseImage와 일대일 관계
+    @OneToOne(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CourseImage courseImage; // 썸네일 이미지
+
     // CourseRoadCondition과 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RoadCondition> roadConditions = new ArrayList<>(); // 길 상태
@@ -83,9 +88,9 @@ public class Course extends BaseTimeEntity {
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrackPoint> trackPoints = new ArrayList<>();
 
-    // CourseImage와 일대일 관계
-    @OneToOne(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
-    private CourseImage courseImage; // 썸네일 이미지
+    // Review와 일대다 관계
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Review> reviews = new ArrayList<>();
 
     @Builder
     public Course(String externalId, String name, int distance, int duration,
