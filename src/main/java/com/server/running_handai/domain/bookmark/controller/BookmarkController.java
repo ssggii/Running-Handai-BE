@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/courses/{courseId}/bookmarks ")
+@RequestMapping("/api/courses/{courseId}/bookmarks")
 @Tag(name = "Bookmark", description = "북마크 관련 API")
 public class BookmarkController {
 
