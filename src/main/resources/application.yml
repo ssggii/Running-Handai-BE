@@ -117,3 +117,8 @@ logging:
 course:
   simplification:
     distance-tolerance: 0.0001 # 경로 단순화 허용 오차 (RDP 알고리즘), 약 10m
+
+swagger:
+  server:
+    local: http://localhost:8080
+    prod: https://api.runninghandai.com
