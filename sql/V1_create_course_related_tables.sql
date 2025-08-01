@@ -114,3 +114,42 @@ create table track_point
     constraint FKpupqiw5q83q159swqraqw9hpm
         foreign key (course_id) references course (course_id)
 );
+
+-- 8. Spot 테이블 생성
+create table spot (
+    spot_id      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    external_id  VARCHAR(255) NOT NULL UNIQUE,
+    name         VARCHAR(255) NOT NULL,
+    address      VARCHAR(255) NOT NULL,
+    description  TEXT,
+    category     ENUM('NATURE', 'HISTORY', 'RECREATION', 'EXPERIENCE', 'INDUSTRIAL', 'ARCHITECTURE',
+                   'KOREAN_FOOD', 'WESTERN_FOOD', 'JAPANESE_FOOD', 'CHINESE_FOOD', 'GLOBAL_FOOD',
+                   'CAFE', 'CLUB', 'UNKNOWN') NOT NULL,
+    lat          DOUBLE NOT NULL,
+    lon          DOUBLE NOT NULL,
+    created_at   DATETIME(6) NOT NULL,
+    updated_at   DATETIME(6) NOT NULL
+);
+
+-- 9. CourseSpot 테이블 생성
+CREATE TABLE course_spot (
+    course_spot_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    course_id      BIGINT NOT NULL,
+    spot_id        BIGINT NOT NULL,
+    created_at     DATETIME(6) NOT NULL,
+    updated_at     DATETIME(6) NOT NULL,
+    CONSTRAINT course_spot_uk UNIQUE (course_id, spot_id),
+    CONSTRAINT fk_course FOREIGN KEY (course_id) REFERENCES course(course_id),
+    CONSTRAINT fk_spot FOREIGN KEY (spot_id) REFERENCES spot(spot_id)
+);
+
+-- 10. CourseImage 테이블 생성
+CREATE TABLE spot_image (
+    spot_img_id   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    img_url       VARCHAR(255) NOT NULL,
+    original_url  VARCHAR(255) NOT NULL,
+    spot_id       BIGINT NOT NULL UNIQUE,
+    created_at    DATETIME(6) NOT NULL,
+    updated_at    DATETIME(6) NOT NULL,
+    CONSTRAINT fk_spot_image_spot FOREIGN KEY (spot_id) REFERENCES spot(spot_id)
+);
