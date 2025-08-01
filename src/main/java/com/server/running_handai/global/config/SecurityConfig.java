@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/health",
                                 "/teamchuck/docs/**",
+                                "/teamchuck/swagger-ui/**",
                                 "/teamchuck/v3/api-docs/**",
                                 "/swagger-resources/**",
                                 "/api/members/oauth/token"
