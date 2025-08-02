@@ -22,7 +22,3 @@ aws:
   region: ap-northeast-2
   s3:
     bucket-name: runninghandai-bucket
-
-app:
-  oauth2:
-    redirect-uri: http://localhost:5173/auth

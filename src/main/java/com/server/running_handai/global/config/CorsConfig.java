@@ -21,11 +21,11 @@ public class CorsConfig {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
         // 쉼표(,) 기준으로 공백 제거 후 나누기
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+        List<String> allowedOriginsList = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .toList();
 
-        corsConfiguration.setAllowedOrigins(origins);
+        corsConfiguration.setAllowedOrigins(allowedOriginsList);
         corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
         corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         corsConfiguration.setExposedHeaders(List.of("Authorization"));

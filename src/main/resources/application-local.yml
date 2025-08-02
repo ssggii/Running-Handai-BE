@@ -21,7 +21,3 @@ spring:
             redirect-uri: http://localhost:8080/login/oauth2/code/kakao
           naver:
             redirect-uri: http://localhost:8080/login/oauth2/code/naver
-
-app:
-  oauth2:
-    redirect-uri: http://localhost:5173/auth

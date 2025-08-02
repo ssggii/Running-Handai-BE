@@ -27,6 +27,7 @@ public enum ResponseCode {
     INVALID_PROVIDER(BAD_REQUEST, "지원하지 않는 OAuth2 Provider입니다"),
     INVALID_REVIEW_STARS(BAD_REQUEST, "별점은 0.5점 단위여야합니다."),
     EMPTY_REVIEW_CONTENTS(BAD_REQUEST, "리뷰 내용은 비워둘 수 없습니다"),
+    BAD_REQUEST_STATE_PARAMETER(BAD_REQUEST, "로그인 요청 시 state 값이 필요합니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),

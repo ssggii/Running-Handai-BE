@@ -119,3 +119,7 @@ course:
 
 cors:
   allowed-origins: http://localhost:5173, https://runninghandai.com
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:5173/auth, https://runninghandai.com/auth
