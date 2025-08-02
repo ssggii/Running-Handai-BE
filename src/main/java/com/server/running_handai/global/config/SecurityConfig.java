@@ -20,6 +20,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import com.server.running_handai.global.oauth.CustomAuthorizationRequestResolver;
+
 import java.io.IOException;
 
 @Configuration
@@ -33,18 +37,26 @@ public class SecurityConfig {
     private final OAuth2FailureHandler oAuth2FailureHandler;
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public OAuth2AuthorizationRequestResolver customAuthorizationRequestResolver(ClientRegistrationRepository clientRegistrationRepository) {
+        return new CustomAuthorizationRequestResolver(clientRegistrationRepository, "/oauth2/authorization");
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, OAuth2AuthorizationRequestResolver customAuthorizationRequestResolver) throws Exception {
         httpSecurity
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .oauth2Login(
-                        oauth2 ->
-                                oauth2
-                                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
-                                        .successHandler(oAuth2SuccessHandler)
-                                        .failureHandler(oAuth2FailureHandler))
+                .oauth2Login(oauth2 ->
+                        oauth2
+                                .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
+                                .successHandler(oAuth2SuccessHandler)
+                                .failureHandler(oAuth2FailureHandler)
+                                .authorizationEndpoint(endpoint ->
+                                        endpoint.authorizationRequestResolver(customAuthorizationRequestResolver)
+                                )
+                )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
                             returnErrorResponse(response, ResponseCode.UNAUTHORIZED_ACCESS);

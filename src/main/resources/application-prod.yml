@@ -14,18 +14,11 @@ spring:
       client:
         registration:
           kakao:
-            redirect-uri: http://43.202.125.162/login/oauth2/code/kakao
+            redirect-uri: https://api.runninghandai.com/login/oauth2/code/kakao
           naver:
-            redirect-uri: http://43.202.125.162/login/oauth2/code/naver
+            redirect-uri: https://api.runninghandai.com/login/oauth2/code/naver
 
 aws:
   region: ap-northeast-2
   s3:
     bucket-name: runninghandai-bucket
-
-app:
-  oauth2:
-    redirect-uri: http://localhost:5173/auth
-
-cors:
-  allowed-origins: http://localhost:5173

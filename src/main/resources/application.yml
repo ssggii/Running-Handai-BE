@@ -118,6 +118,13 @@ course:
   simplification:
     distance-tolerance: 0.0001 # 경로 단순화 허용 오차 (RDP 알고리즘), 약 10m
 
+cors:
+  allowed-origins: http://localhost:5173, https://runninghandai.com
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:5173/auth, https://runninghandai.com/auth
+
 swagger:
   server:
     local: http://localhost:8080
