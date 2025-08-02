@@ -4,6 +4,7 @@ import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
 import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateResponseDto;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
@@ -76,12 +77,12 @@ public class ReviewController {
             @ApiResponse(responseCode = "403", description = "접근 권한 없음")
     })
     @PatchMapping("/api/reviews/{reviewId}")
-    public ResponseEntity<CommonResponse<ReviewInfoDto>> updateReview(
+    public ResponseEntity<CommonResponse<ReviewUpdateResponseDto>> updateReview(
             @PathVariable Long reviewId,
             @ParameterObject @Valid @RequestBody ReviewUpdateRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        ReviewInfoDto responseData = reviewService.updateReview(reviewId, requestDto, customOAuth2User.getMember());
+        ReviewUpdateResponseDto responseData = reviewService.updateReview(reviewId, requestDto, customOAuth2User.getMember());
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
     }
 

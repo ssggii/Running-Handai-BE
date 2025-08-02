@@ -7,6 +7,7 @@ import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
 import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateResponseDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.global.response.ResponseCode;
@@ -86,7 +87,7 @@ public class ReviewService {
      * @return 수정된 리뷰 정보를 담은 DTO
      */
     @Transactional
-    public ReviewInfoDto updateReview(Long reviewId, ReviewUpdateRequestDto requestDto, Member member) {
+    public ReviewUpdateResponseDto updateReview(Long reviewId, ReviewUpdateRequestDto requestDto, Member member) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.REVIEW_NOT_FOUND));
 
@@ -113,7 +114,7 @@ public class ReviewService {
             review.updateContents(newContents);
         }
 
-        return ReviewInfoDto.from(reviewRepository.save(review));
+        return ReviewUpdateResponseDto.from(reviewRepository.save(review));
     }
 
     /**

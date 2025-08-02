@@ -17,6 +17,7 @@ import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
 import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateResponseDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.global.response.ResponseCode;
@@ -350,7 +351,7 @@ class ReviewServiceTest {
             given(reviewRepository.save(any(Review.class))).willReturn(review);
 
             // when
-            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+            ReviewUpdateResponseDto result = reviewService.updateReview(review.getId(), requestDto, member);
 
             // then
             assertThat(result).isNotNull();
@@ -372,7 +373,7 @@ class ReviewServiceTest {
             given(reviewRepository.save(any(Review.class))).willReturn(review);
 
             // when
-            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+            ReviewUpdateResponseDto result = reviewService.updateReview(review.getId(), requestDto, member);
 
             // then
             assertThat(result).isNotNull();
@@ -394,7 +395,7 @@ class ReviewServiceTest {
             given(reviewRepository.save(any(Review.class))).willReturn(review);
 
             // when
-            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+            ReviewUpdateResponseDto result = reviewService.updateReview(review.getId(), requestDto, member);
 
             // then
             assertThat(result).isNotNull();
