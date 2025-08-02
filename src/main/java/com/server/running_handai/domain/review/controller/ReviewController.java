@@ -1,9 +1,10 @@
 package com.server.running_handai.domain.review.controller;
 
-import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
 import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateResponseDto;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
@@ -41,12 +42,13 @@ public class ReviewController {
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)")
     })
     @PostMapping("/api/courses/{courseId}/reviews")
-    public ResponseEntity<CommonResponse<ReviewInfoDto>> createReview(
+    public ResponseEntity<CommonResponse<ReviewCreateResponseDto>> createReview(
             @PathVariable Long courseId,
-            @ParameterObject @Valid @RequestBody ReviewCreateRequestDto requestDto,
+            @Valid @RequestBody ReviewCreateRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        ReviewInfoDto responseData = reviewService.createReview(courseId, requestDto, customOAuth2User.getMember());
+        Long memberId = customOAuth2User.getMember().getId();
+        ReviewCreateResponseDto responseData = reviewService.createReview(courseId, requestDto, memberId);
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
     }
 
@@ -58,9 +60,11 @@ public class ReviewController {
     })
     @GetMapping("/api/courses/{courseId}/reviews")
     public ResponseEntity<CommonResponse<ReviewInfoListDto>> getReviewsByCourse(
-            @PathVariable Long courseId
+            @PathVariable Long courseId,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        ReviewInfoListDto responseData = reviewService.findAllReviewsByCourse(courseId);
+        Long memberId = customOAuth2User.getMember().getId();
+        ReviewInfoListDto responseData = reviewService.findAllReviewsByCourse(courseId, memberId);
 
         if (responseData.reviewCount() == 0) {
             return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
@@ -76,12 +80,12 @@ public class ReviewController {
             @ApiResponse(responseCode = "403", description = "접근 권한 없음")
     })
     @PatchMapping("/api/reviews/{reviewId}")
-    public ResponseEntity<CommonResponse<ReviewInfoDto>> updateReview(
+    public ResponseEntity<CommonResponse<ReviewUpdateResponseDto>> updateReview(
             @PathVariable Long reviewId,
-            @ParameterObject @Valid @RequestBody ReviewUpdateRequestDto requestDto,
+            @Valid @RequestBody ReviewUpdateRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        ReviewInfoDto responseData = reviewService.updateReview(reviewId, requestDto, customOAuth2User.getMember());
+        ReviewUpdateResponseDto responseData = reviewService.updateReview(reviewId, requestDto, customOAuth2User.getMember());
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
     }
 
@@ -96,7 +100,7 @@ public class ReviewController {
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        reviewService.deleteReview(reviewId, customOAuth2User.getMember());
+        reviewService.deleteReview(reviewId, customOAuth2User.getMember().getId());
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 

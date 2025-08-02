@@ -3,25 +3,20 @@ package com.server.running_handai.domain.review.dto;
 import com.server.running_handai.domain.review.entity.Review;
 import java.time.format.DateTimeFormatter;
 
-public record ReviewInfoDto(
+public record ReviewUpdateResponseDto(
         long reviewId,
         double stars,
         String contents,
-        String writerNickname,
-        boolean isMyReview,
-        String createdAt
+        String updatedAt
 ) {
-    public static ReviewInfoDto from(Review review, boolean isMyReview) {
+    public static ReviewUpdateResponseDto from(Review review) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String formattedCreatedAt = review.getCreatedAt().format(formatter);
-
-        return new ReviewInfoDto(
+        String formattedUpdatedAt = review.getUpdatedAt().format(formatter);
+        return new ReviewUpdateResponseDto(
                 review.getId(),
                 review.getStars(),
                 review.getContents(),
-                review.getWriter().getNickname(),
-                isMyReview,
-                formattedCreatedAt
+                formattedUpdatedAt
         );
     }
 }

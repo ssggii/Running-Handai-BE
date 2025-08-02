@@ -13,10 +13,12 @@ import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Provider;
 import com.server.running_handai.domain.member.entity.Role;
-import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.member.repository.MemberRepository;
+import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
 import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateResponseDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.global.response.ResponseCode;
@@ -25,9 +27,9 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +60,9 @@ class ReviewServiceTest {
 
     @Mock
     private CourseRepository courseRepository;
+
+    @Mock
+    private MemberRepository memberRepository;
 
     private static final String POINT = "POINT(127.027621 37.497928)";
     private static final double VALID_REVIEW_STARS = 4.5;
@@ -107,6 +112,8 @@ class ReviewServiceTest {
 
         ReflectionTestUtils.setField(review, "id", 100L);
         ReflectionTestUtils.setField(member, "id", 50L);
+        ReflectionTestUtils.setField(review, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(review, "updatedAt", LocalDateTime.now());
     }
 
     @Nested
@@ -122,9 +129,10 @@ class ReviewServiceTest {
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
             given(reviewRepository.save(any(Review.class))).willReturn(review);
+            given(memberRepository.findById(member.getId())).willReturn(Optional.of(member));
 
             // when
-            ReviewInfoDto result = reviewService.createReview(courseId, reviewRequest, member);
+            ReviewCreateResponseDto result = reviewService.createReview(courseId, reviewRequest, member.getId());
 
             // then
             assertThat(result).isNotNull();
@@ -146,7 +154,7 @@ class ReviewServiceTest {
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class,
-                    () -> reviewService.createReview(courseId, requestWithInvalidStars, member));
+                    () -> reviewService.createReview(courseId, requestWithInvalidStars, member.getId()));
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.INVALID_REVIEW_STARS);
         }
@@ -162,7 +170,7 @@ class ReviewServiceTest {
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class,
-                    () -> reviewService.createReview(nonExistentCourseId, request, member));
+                    () -> reviewService.createReview(nonExistentCourseId, request, member.getId()));
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
         }
@@ -266,11 +274,13 @@ class ReviewServiceTest {
             
             Review review1 = Review.builder().stars(VALID_REVIEW_STARS).contents(VALID_REVIEW_CONTENTS).build();
             ReflectionTestUtils.setField(review1, "id", 101L);
+            ReflectionTestUtils.setField(review1, "createdAt", LocalDateTime.now());
             review1.setWriter(member);
             review1.setCourse(course);
 
             Review review2 = Review.builder().stars(VALID_REVIEW_STARS - 1).contents(VALID_REVIEW_CONTENTS).build();
             ReflectionTestUtils.setField(review2, "id", 102L);
+            ReflectionTestUtils.setField(review2, "createdAt", LocalDateTime.now());
             review2.setWriter(member);
             review2.setCourse(course);
 
@@ -278,17 +288,21 @@ class ReviewServiceTest {
 
             given(courseRepository.existsById(courseId)).willReturn(true);
             given(reviewRepository.findAllByCourseId(courseId)).willReturn(reviews);
+            given(reviewRepository.existsByIdAndWriterId(review1.getId(), member.getId())).willReturn(true);
+            given(reviewRepository.existsByIdAndWriterId(review2.getId(), member.getId())).willReturn(true);
 
             // when
-            ReviewInfoListDto result = reviewService.findAllReviewsByCourse(courseId);
+            ReviewInfoListDto result = reviewService.findAllReviewsByCourse(courseId, member.getId());
 
             // then
             double expectedAverage = 4.0;
             assertThat(result).isNotNull();
             assertThat(result.starAverage()).isEqualTo(expectedAverage);
             assertThat(result.reviewCount()).isEqualTo(2);
-            assertThat(result.reviewInfoDtoList().getFirst().reviewId()).isEqualTo(review1.getId());
-            assertThat(result.reviewInfoDtoList().getLast().reviewId()).isEqualTo(review2.getId());
+            assertThat(result.reviewInfoDtos().getFirst().reviewId()).isEqualTo(review1.getId());
+            assertThat(result.reviewInfoDtos().getFirst().isMyReview()).isEqualTo(true);
+            assertThat(result.reviewInfoDtos().getLast().reviewId()).isEqualTo(review2.getId());
+            assertThat(result.reviewInfoDtos().getFirst().isMyReview()).isEqualTo(true);
 
             verify(courseRepository).existsById(courseId);
             verify(reviewRepository).findAllByCourseId(courseId);
@@ -305,13 +319,13 @@ class ReviewServiceTest {
             given(reviewRepository.findAllByCourseId(courseId)).willReturn(List.of());
 
             // when
-            ReviewInfoListDto result = reviewService.findAllReviewsByCourse(courseId);
+            ReviewInfoListDto result = reviewService.findAllReviewsByCourse(courseId, member.getId());
 
             // then
             assertThat(result).isNotNull();
             assertThat(result.starAverage()).isEqualTo(0.0);
             assertThat(result.reviewCount()).isEqualTo(0);
-            assertThat(result.reviewInfoDtoList()).isEmpty();
+            assertThat(result.reviewInfoDtos()).isEmpty();
 
             verify(courseRepository).existsById(courseId);
             verify(reviewRepository).findAllByCourseId(courseId);
@@ -327,7 +341,7 @@ class ReviewServiceTest {
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class,
-                    () -> reviewService.findAllReviewsByCourse(nonExistentCourseId));
+                    () -> reviewService.findAllReviewsByCourse(nonExistentCourseId, member.getId()));
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
             verify(courseRepository).existsById(nonExistentCourseId);
@@ -350,7 +364,7 @@ class ReviewServiceTest {
             given(reviewRepository.save(any(Review.class))).willReturn(review);
 
             // when
-            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+            ReviewUpdateResponseDto result = reviewService.updateReview(review.getId(), requestDto, member);
 
             // then
             assertThat(result).isNotNull();
@@ -372,7 +386,7 @@ class ReviewServiceTest {
             given(reviewRepository.save(any(Review.class))).willReturn(review);
 
             // when
-            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+            ReviewUpdateResponseDto result = reviewService.updateReview(review.getId(), requestDto, member);
 
             // then
             assertThat(result).isNotNull();
@@ -394,7 +408,7 @@ class ReviewServiceTest {
             given(reviewRepository.save(any(Review.class))).willReturn(review);
 
             // when
-            ReviewInfoDto result = reviewService.updateReview(review.getId(), requestDto, member);
+            ReviewUpdateResponseDto result = reviewService.updateReview(review.getId(), requestDto, member);
 
             // then
             assertThat(result).isNotNull();
@@ -487,7 +501,7 @@ class ReviewServiceTest {
             given(reviewRepository.findById(review.getId())).willReturn(Optional.of(review));
 
             // when
-            reviewService.deleteReview(review.getId(), member);
+            reviewService.deleteReview(review.getId(), member.getId());
 
             // then
             verify(reviewRepository).findById(review.getId());
@@ -503,7 +517,7 @@ class ReviewServiceTest {
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class,
-                    () -> reviewService.deleteReview(nonExistentReviewId, member));
+                    () -> reviewService.deleteReview(nonExistentReviewId, member.getId()));
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.REVIEW_NOT_FOUND);
         }
@@ -525,7 +539,7 @@ class ReviewServiceTest {
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class,
-                    () -> reviewService.deleteReview(review.getId(), anotherMember));
+                    () -> reviewService.deleteReview(review.getId(), anotherMember.getId()));
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.ACCESS_DENIED);
         }
