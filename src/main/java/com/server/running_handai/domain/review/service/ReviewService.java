@@ -3,6 +3,8 @@ package com.server.running_handai.domain.review.service;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.repository.MemberRepository;
+import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
@@ -27,17 +29,18 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final CourseRepository courseRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * 코스의 리뷰를 생성합니다.
      *
      * @param courseId 리뷰 대상인 코스의 ID
      * @param requestDto 리뷰 등록 요청 DTO
-     * @param member 리뷰를 작성한 회원
+     * @param memberId 리뷰를 작성한 회원의 ID
      * @return 생성된 리뷰 정보를 담은 DTO
      */
     @Transactional
-    public ReviewInfoDto createReview(Long courseId, ReviewCreateRequestDto requestDto, Member member) {
+    public ReviewCreateResponseDto createReview(Long courseId, ReviewCreateRequestDto requestDto, Long memberId) {
         if ((requestDto.stars() * 2) % 1 != 0) {
             throw new BusinessException(ResponseCode.INVALID_REVIEW_STARS);
         }
@@ -45,14 +48,16 @@ public class ReviewService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
 
+        Member writer = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+
         Review review = Review.builder()
                 .stars(requestDto.stars())
                 .contents(requestDto.contents())
                 .build();
 
         review.setCourse(course);
-        review.setWriter(member);
-        return ReviewInfoDto.from(reviewRepository.save(review));
+        review.setWriter(writer);
+        return ReviewCreateResponseDto.from(reviewRepository.save(review));
     }
 
     /**
@@ -61,7 +66,7 @@ public class ReviewService {
      * @param courseId 리뷰 대상인 코스의 ID
      * @return 조회된 리뷰 목록을 담는 DTO
      */
-    public ReviewInfoListDto findAllReviewsByCourse(Long courseId) {
+    public ReviewInfoListDto findAllReviewsByCourse(Long courseId, Long memberId) {
         if (!courseRepository.existsById(courseId)) {
             throw new BusinessException(ResponseCode.COURSE_NOT_FOUND);
         }
@@ -71,9 +76,15 @@ public class ReviewService {
             return ReviewInfoListDto.from(0, Collections.emptyList());
         }
 
-        List<ReviewInfoDto> reviewInfoDtos = reviews.stream().map(ReviewInfoDto::from).toList();
         double averageStars = reviews.stream().mapToDouble(Review::getStars).average().orElse(0.0);
         averageStars = Math.round(averageStars * 10) / 10.0; // 소수 첫째 자리까지 반올림
+
+        List<ReviewInfoDto> reviewInfoDtos = reviews.stream()
+                .map(review -> {
+                    boolean isMyReview = reviewRepository.existsByIdAndWriterId(review.getId(), memberId);
+                    return ReviewInfoDto.from(review, isMyReview);
+                })
+                .toList();
 
         return ReviewInfoListDto.from(averageStars, reviewInfoDtos);
     }
@@ -121,14 +132,14 @@ public class ReviewService {
      * 코스의 리뷰를 삭제합니다.
      *
      * @param reviewId 삭제하려는 리뷰 ID
-     * @param member 리뷰 삭제를 요청한 회원
+     * @param memberId 리뷰 삭제를 요청한 회원의 ID
      */
     @Transactional
-    public void deleteReview(Long reviewId, Member member) {
+    public void deleteReview(Long reviewId, Long memberId) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.REVIEW_NOT_FOUND));
 
-        if (!review.getWriter().getId().equals(member.getId())) {
+        if (!review.getWriter().getId().equals(memberId)) {
             throw new BusinessException(ResponseCode.ACCESS_DENIED); // 작성자가 아니라면 접근 권한 없음
         }
 

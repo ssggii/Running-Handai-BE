@@ -10,4 +10,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
      * courseId로 리뷰 전체 조회
      */
     List<Review> findAllByCourseId(Long courseId);
+
+    /**
+     * memberId가 리뷰 작성자의 id와 일치하는지 조회
+     */
+    boolean existsByIdAndWriterId(Long reviewId, Long writerId);
+
 }
