@@ -63,7 +63,7 @@ public class ReviewController {
             @PathVariable Long courseId,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        Long memberId = customOAuth2User.getMember().getId();
+        Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
         ReviewInfoListDto responseData = reviewService.findAllReviewsByCourse(courseId, memberId);
 
         if (responseData.reviewCount() == 0) {
