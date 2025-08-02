@@ -17,6 +17,8 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
 import java.util.UUID;
@@ -50,41 +52,21 @@ public class FileService {
      * @param directory S3 버킷 내 디렉토리
      * @return 업로드된 파일의 S3 URL
      */
-    public String uploadFile(MultipartFile multipartFile, String directory) throws IOException {
+    public String uploadFile(MultipartFile multipartFile, String directory) {
         String originalFileName = multipartFile.getOriginalFilename();
-        String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
-        String contentType = multipartFile.getContentType();
-
-        String lowerName = fileName.toLowerCase();
-        if (lowerName.endsWith(".png")) {
-            contentType = "image/png";
-        } else if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
-            contentType = "image/jpeg";
-        } else if (lowerName.endsWith(".gpx")) {
-            contentType = "application/gpx+xml";
-        } else {
-            throw new IllegalArgumentException("지원하지 않는 파일 형식입니다.");
+        if (originalFileName == null || originalFileName.isBlank()) {
+            originalFileName = "no-name";
         }
 
+        String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
+        String contentType = multipartFile.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            contentType = guessContentType(originalFileName);
+        }
+        validateFileType(contentType, originalFileName);
+
         try {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(fileName)
-                    .contentType(contentType)
-                    .build();
-
-            s3Client.putObject(
-                    putObjectRequest,
-                    software.amazon.awssdk.core.sync.RequestBody.fromInputStream(multipartFile.getInputStream(), multipartFile.getSize())
-            );
-
-            String fileUrl = String.format(
-                    "https://%s.s3.%s.amazonaws.com/%s",
-                    bucket,
-                    region,
-                    fileName
-            );
-            return fileUrl;
+            return uploadToS3(fileName, contentType, multipartFile.getInputStream(), multipartFile.getSize());
         } catch (IOException e) {
             log.error("[S3 파일 업로드] 업로드 실패: 파일명={}, 대상경로={}", originalFileName, fileName, e);
             throw new BusinessException(ResponseCode.FILE_UPLOAD_FAILED);
@@ -92,7 +74,42 @@ public class FileService {
     }
 
     /**
+     * 이미지 URL을 통해 파일을 S3 버킷에 업로드하고, 업로드된 파일의 URL을 반환합니다.
+     * 파일에 따라 디렉토리로 구분하여 저장합니다. (예: gpx, image)
+     *
+     * @param fileUrl 이미지 URL
+     * @param directory S3 버킷 내 디렉토리
+     * @return 업로드된 파일의 S3 URL
+     */
+    public String uploadFileByUrl(String fileUrl, String directory) {
+        try {
+            URL url = new URL(fileUrl);
+            String path = url.getPath();
+            String originalFileName = path.substring(path.lastIndexOf('/') + 1);
+            if (originalFileName == null || originalFileName.isBlank()) {
+                originalFileName = "no-name";
+            }
+
+            String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
+            String contentType = guessContentType(originalFileName);
+            validateFileType(contentType, originalFileName);
+
+            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+            httpURLConnection.setRequestMethod("GET");
+            httpURLConnection.connect();
+
+            try (InputStream inputStream = httpURLConnection.getInputStream()) {
+                return uploadToS3(fileName, contentType, inputStream, httpURLConnection.getContentLengthLong());
+            }
+        } catch (IOException e) {
+            log.error("[S3 파일 업로드] 업로드 실패: fileUrl={}, error={}", fileUrl, e.getMessage(), e);
+            throw new BusinessException(ResponseCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    /**
      * S3 버킷에 저장된 파일의 Presigned GET URL을 발급합니다.
+     * URL은 지정한 유효 시간 동안만 접근 가능합니다.
      *
      * @param fileUrl DB에 저장된 S3 파일 URL
      * @param minutes Presigned URL 유효 시간
@@ -155,6 +172,7 @@ public class FileService {
      * S3 파일 URL에서 key를 추출합니다.
      *
      * @param fileUrl DB에 저장된 S3 파일 URL
+     * @return S3 내부 Key 경로
      */
     private String extractKeyFromUrl(String fileUrl) {
         int index = fileUrl.indexOf(".amazonaws.com/");
@@ -165,5 +183,77 @@ public class FileService {
         }
 
         return fileUrl.substring(index + ".amazonaws.com/".length());
+    }
+
+    /**
+     * 파일 이름에서 Content Type을 추정합니다.
+     * 확장자가 없거나 인식 불가할 경우 기본값으로 application/octet-stream을 반환합니다.
+     *
+     * @param filename 파일 이름
+     * @return Content Type
+     */
+    private String guessContentType(String filename) {
+        int dotIndex = filename.lastIndexOf('.');
+        String extension = (dotIndex == -1) ? "" : filename.substring(dotIndex + 1).toLowerCase();
+        return switch (extension) {
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "gpx" -> "application/gpx+xml";
+            default -> {
+                log.warn("[S3 파일 업로드] 감지하지 못한 content-type: extension={}", extension);
+                yield "application/octet-stream";
+            }
+        };
+    }
+
+    /**
+     * 주어진 Content Type이 지원되는 타입인지 확인합니다.
+     *
+     * @param contentType
+     * @param fileName 파일 이름
+     */
+    private void validateFileType(String contentType, String fileName) {
+        String lowerName = fileName.toLowerCase();
+
+        boolean isSupported = false;
+        if ((lowerName.endsWith(".png") && "image/png".equals(contentType))
+                || ((lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) && "image/jpeg".equals(contentType))
+                || (lowerName.endsWith(".gpx") && "application/gpx+xml".equals(contentType))
+                || "application/octet-stream".equals(contentType)) {
+            isSupported = true;
+        }
+
+        if (!isSupported) {
+            throw new BusinessException(ResponseCode.UNSUPPORTED_FILE_TYPE);
+        }
+    }
+
+    /**
+     * InputStream을 받아 S3에 업로드하고 업로드된 파일 URL을 반환합니다.
+     *
+     * @param fileName S3에 저장할 파일 이름
+     * @param contentType 파일의 Content Type
+     * @param inputStream 업로드할 파일 데이터 스트림
+     * @param contentLength 업로드 데이터 크기 (byte)
+     * @return 업로드된 파일의 S3 URL
+     */
+    private String uploadToS3(String fileName, String contentType, InputStream inputStream, long contentLength) {
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(fileName)
+                .contentType(contentType)
+                .build();
+
+        s3Client.putObject(
+                putObjectRequest,
+                software.amazon.awssdk.core.sync.RequestBody.fromInputStream(inputStream, contentLength)
+        );
+
+        return String.format(
+                "https://%s.s3.%s.amazonaws.com/%s",
+                bucket,
+                region,
+                fileName
+        );
     }
 }

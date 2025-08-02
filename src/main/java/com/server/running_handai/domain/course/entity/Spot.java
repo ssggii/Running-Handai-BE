@@ -62,4 +62,12 @@ public class Spot extends BaseTimeEntity {
         this.lat = lat;
         this.lon = lon;
     }
+
+    // ==== 연관관계 편의 메서드 ==== //
+    public void setSpotImage(SpotImage spotImage) {
+        this.spotImage = spotImage;
+        if (spotImage != null) {
+            spotImage.setSpot(this);
+        }
+    }
 }

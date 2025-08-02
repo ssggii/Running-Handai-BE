@@ -3,6 +3,7 @@ package com.server.running_handai.domain.course.entity;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -26,4 +27,15 @@ public class SpotImage extends BaseTimeEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "spot_id", unique = true, nullable = false)
     private Spot spot;
+
+    @Builder
+    public SpotImage(String imgUrl, String originalUrl) {
+        this.imgUrl = imgUrl;
+        this.originalUrl = originalUrl;
+    }
+
+    // ==== 연관관계 편의 메서드 ==== //
+    protected void setSpot(Spot spot) {
+        this.spot = spot;
+    }
 }

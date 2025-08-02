@@ -14,6 +14,7 @@ import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto.Item;
 import com.server.running_handai.domain.course.entity.*;
 import com.server.running_handai.domain.course.repository.*;
 import com.server.running_handai.domain.course.util.TrackPointSimplificationUtil;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 
 import java.io.IOException;
@@ -418,7 +419,7 @@ public class CourseDataService {
      * @param courseImageFile 업로드된 이미지 파일
      */
     @Transactional
-    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) throws IOException {
+    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // 새 파일을 S3에 먼저 업로드
@@ -477,24 +478,20 @@ public class CourseDataService {
                 .collect(Collectors.toSet());
         externalIds.removeAll(existingIds);
 
+        // 정보가 없는 externalId만 보아 공통정보 조회 API 호출
         for (String externalId : externalIds) {
             fetchSpot(externalId).ifPresent(item -> {
-                    Spot spot = Spot.builder()
-                            .externalId(item.getSpotExternalId())
-                            .name(item.getSpotName())
-                            .address(item.getSpotAddress())
-                            .description(item.getSpotDescription())
-                            .category(Category.findByCategoryNumber(item.getSpotCategoryNumber())
-                                    .orElse(Category.UNKNOWN))
-                            .lat(Double.parseDouble(item.getSpotLatitude()))
-                            .lon(Double.parseDouble(item.getSpotLongitude()))
-                            .build();
-
-                    spots.add(spot);
+                Spot spot = createSpot(item);
+                SpotImage spotImage;
+                spotImage = createSpotImage(item);
+                if (spotImage != null) {
+                    spot.setSpotImage(spotImage);
+                }
+                spots.add(spot);
             });
         }
 
-        // 3. 기존 데이터 일괄 삭제
+        // 3. Course와 Spot의 연관관계 초기화
         courseSpotRepository.deleteByCourseId(courseId);
         log.info("[즐길거리 수정] 기존 즐길거리 데이터 삭제 완료: courseId={}", courseId);
 
@@ -518,7 +515,7 @@ public class CourseDataService {
      * @param courseGpxFile 업로드된 GPX 파일
      */
     @Transactional
-    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) throws IOException {
+    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
         // 1. 코스 이름 조합
@@ -532,7 +529,7 @@ public class CourseDataService {
             log.info("[GPX 코스 생성] 트랙포인트 파싱 완료 ({}개)", trackPoints.size());
         } catch (Exception e) {
             log.error("[GPX 코스 생성] 트랙포인트 파싱 실패", e);
-            throw new BusinessException(GPX_FILE_PARSE_FAILED);
+            throw new BusinessException(ResponseCode.GPX_FILE_PARSE_FAILED);
         }
 
         // 3. 전체 거리 계산
@@ -918,5 +915,51 @@ public class CourseDataService {
         }
 
         return Optional.of(items.getFirst());
+    }
+
+    /**
+     * Spot 객체를 생성합니다.
+     *
+     * @param item 공통정보 조회 API로부터 받은 응답
+     * @return 새로 생성된 Spot 객체
+     */
+    private Spot createSpot(SpotApiResponseDto.Item item) {
+        return Spot.builder()
+                .externalId(item.getSpotExternalId())
+                .name(item.getSpotName())
+                .address(item.getSpotAddress())
+                .description(item.getSpotDescription())
+                .category(Category.findByCategoryNumber(item.getSpotCategoryNumber())
+                        .orElse(Category.UNKNOWN))
+                .lat(Double.parseDouble(item.getSpotLatitude()))
+                .lon(Double.parseDouble(item.getSpotLongitude()))
+                .build();
+    }
+
+    /**
+     * SpotImage 객체를 생성합니다.
+     * 원본을 우선 저장하고, 원본이 없는 경우 썸네일을 저장합니다.
+     *
+     *  @param item 공통정보 조회 API로부터 받은 응답
+     *  @return 새로 생성된 SpotImage 객체, 없으면 null
+     */
+    private SpotImage createSpotImage(SpotApiResponseDto.Item item) {
+            String originalImage = item.getSpotOriginalImage();
+            String thumbnailImage = item.getSpotThumbnailImage();
+
+            if (originalImage != null && !originalImage.isBlank()) {
+                String s3FileUrl = fileService.uploadFileByUrl(originalImage, "image");
+                return SpotImage.builder()
+                        .imgUrl(s3FileUrl)
+                        .originalUrl(originalImage)
+                        .build();
+            } else if (thumbnailImage != null && !thumbnailImage.isBlank()) {
+                String s3FileUrl = fileService.uploadFileByUrl(thumbnailImage, "image");
+                return SpotImage.builder()
+                        .imgUrl(s3FileUrl)
+                        .originalUrl(thumbnailImage)
+                        .build();
+            }
+        return null;
     }
 }
