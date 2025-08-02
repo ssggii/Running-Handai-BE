@@ -68,9 +68,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/courses/**").permitAll()
                         .requestMatchers(
                                 "/health",
-                                "/swagger-ui/**",
+                                "/teamchuck/docs/**",
+                                "/teamchuck/swagger-ui/**",
+                                "/teamchuck/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/v3/api-docs/**",
                                 "/api/members/oauth/token"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

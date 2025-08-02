@@ -14,7 +14,7 @@ import org.springframework.data.repository.query.Param;
 public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     // memberId와 courseId로 북마크 여부 확인
-    boolean existsByCourseIdAndMemberId(Long memberId, Long courseId);
+    boolean existsByCourseIdAndMemberId(Long courseId, Long memberId);
 
     // 회원과 코스로 북마크 조회
     Optional<Bookmark> findByMemberAndCourse(Member member, Course course);

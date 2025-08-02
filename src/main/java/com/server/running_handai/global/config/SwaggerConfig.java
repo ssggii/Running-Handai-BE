@@ -7,14 +7,21 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SwaggerConfig {
 
-    Server localServer = new Server().url("http://localhost:8080").description("로컬 테스트 서버");
-    Server prodServer = new Server().url("http://43.202.125.162").description("운영 서버");
+    @Value("${swagger.server.local}")
+    private String localUrl;
+
+    @Value("${swagger.server.prod}")
+    private String prodUrl;
+
+    Server localServer = new Server().url(localUrl).description("로컬 테스트 서버");
+    Server prodServer = new Server().url(prodUrl).description("운영 서버");
 
     @Bean
     public OpenAPI openAPI() {

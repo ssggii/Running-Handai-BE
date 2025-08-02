@@ -79,6 +79,7 @@ spring:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: NATIVE
 
 management:
   endpoints:
@@ -123,3 +124,8 @@ cors:
 app:
   oauth2:
     redirect-uri: http://localhost:5173/auth, https://runninghandai.com/auth
+
+swagger:
+  server:
+    local: http://localhost:8080
+    prod: https://api.runninghandai.com
