@@ -260,9 +260,7 @@ class CourseDataServiceTest {
         return spot;
     }
 
-    // 수정된 SpotLocationApiResponseDto 생성 메서드
     private SpotLocationApiResponseDto createSpotLocationApiResponse(Set<String> externalIds) {
-        // 실제 객체를 생성하고 필요한 데이터만 설정
         SpotLocationApiResponseDto dto = new SpotLocationApiResponseDto();
         SpotLocationApiResponseDto.Response response = new SpotLocationApiResponseDto.Response();
         SpotLocationApiResponseDto.Body body = new SpotLocationApiResponseDto.Body();
@@ -290,7 +288,6 @@ class CourseDataServiceTest {
         SpotApiResponseDto.Items items = new SpotApiResponseDto.Items();
         SpotApiResponseDto.Item item = new SpotApiResponseDto.Item();
 
-        // Item 필드 설정
         ReflectionTestUtils.setField(item, "spotExternalId", externalId);
         ReflectionTestUtils.setField(item, "spotName", "Test Spot");
         ReflectionTestUtils.setField(item, "spotAddress", "Test Address");
