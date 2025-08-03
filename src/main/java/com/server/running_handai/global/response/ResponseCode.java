@@ -52,6 +52,7 @@ public enum ResponseCode {
 
     // NOT_FOUND (404)
     RESOURCE_NOT_FOUND(NOT_FOUND, "존재하지 않는 리소스입니다."),
+    TRACK_POINTS_NOT_FOUND(NOT_FOUND, "파싱된 트랙 포인트가 없습니다."),
 
     // METHOD_NOT_ALLOWED (405)
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),

@@ -423,7 +423,7 @@ public class CourseDataService {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // 새 파일을 S3에 먼저 업로드
-        String newImageUrl = fileService.uploadFile(courseImageFile, "image");
+        String newImageUrl = fileService.uploadFile(courseImageFile, "course");
         log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: newImageUrl={}", newImageUrl);
 
         // 삭제할 기존 파일 URL을 임시 변수에 저장
@@ -451,7 +451,7 @@ public class CourseDataService {
      */
     @Transactional
     public void updateSpots(Long courseId) {
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
 
         List<TrackPoint> trackPoints = trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId());
         TrackPoint startPoint = trackPoints.getFirst();
@@ -681,6 +681,11 @@ public class CourseDataService {
                             .build())
                     .collect(Collectors.toList());
         }
+
+        if (trackPoints.isEmpty()) {
+            throw new BusinessException(TRACK_POINTS_NOT_FOUND);
+        }
+
         return trackPoints;
     }
 
@@ -948,13 +953,13 @@ public class CourseDataService {
             String thumbnailImage = item.getSpotThumbnailImage();
 
             if (originalImage != null && !originalImage.isBlank()) {
-                String s3FileUrl = fileService.uploadFileByUrl(originalImage, "image");
+                String s3FileUrl = fileService.uploadFileByUrl(originalImage, "spot");
                 return SpotImage.builder()
                         .imgUrl(s3FileUrl)
                         .originalUrl(originalImage)
                         .build();
             } else if (thumbnailImage != null && !thumbnailImage.isBlank()) {
-                String s3FileUrl = fileService.uploadFileByUrl(thumbnailImage, "image");
+                String s3FileUrl = fileService.uploadFileByUrl(thumbnailImage, "spot");
                 return SpotImage.builder()
                         .imgUrl(s3FileUrl)
                         .originalUrl(thumbnailImage)

@@ -63,7 +63,7 @@ public class FileService {
         if (contentType == null || contentType.isBlank()) {
             contentType = guessContentType(originalFileName);
         }
-        validateFileType(contentType, originalFileName);
+        validateFileType(originalFileName);
 
         try {
             return uploadToS3(fileName, contentType, multipartFile.getInputStream(), multipartFile.getSize());
@@ -92,7 +92,7 @@ public class FileService {
 
             String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
             String contentType = guessContentType(originalFileName);
-            validateFileType(contentType, originalFileName);
+            validateFileType(originalFileName);
 
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setRequestMethod("GET");
@@ -209,19 +209,13 @@ public class FileService {
     /**
      * 주어진 Content Type이 지원되는 타입인지 확인합니다.
      *
-     * @param contentType
      * @param fileName 파일 이름
      */
-    private void validateFileType(String contentType, String fileName) {
+    private void validateFileType(String fileName) {
         String lowerName = fileName.toLowerCase();
 
-        boolean isSupported = false;
-        if ((lowerName.endsWith(".png") && "image/png".equals(contentType))
-                || ((lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) && "image/jpeg".equals(contentType))
-                || (lowerName.endsWith(".gpx") && "application/gpx+xml".equals(contentType))
-                || "application/octet-stream".equals(contentType)) {
-            isSupported = true;
-        }
+        boolean isSupported = lowerName.endsWith(".png") || lowerName.endsWith(".jpg") ||
+                lowerName.endsWith(".jpeg") || (lowerName.endsWith(".gpx"));
 
         if (!isSupported) {
             throw new BusinessException(ResponseCode.UNSUPPORTED_FILE_TYPE);
