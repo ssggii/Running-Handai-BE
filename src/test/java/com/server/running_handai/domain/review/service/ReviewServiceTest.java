@@ -288,6 +288,7 @@ class ReviewServiceTest {
 
             given(courseRepository.existsById(courseId)).willReturn(true);
             given(reviewRepository.findAllByCourseId(courseId)).willReturn(reviews);
+            given(reviewRepository.findAverageStarsByCourseId(courseId)).willReturn(4.0);
             given(reviewRepository.existsByIdAndWriterId(review1.getId(), member.getId())).willReturn(true);
             given(reviewRepository.existsByIdAndWriterId(review2.getId(), member.getId())).willReturn(true);
 
@@ -306,6 +307,7 @@ class ReviewServiceTest {
 
             verify(courseRepository).existsById(courseId);
             verify(reviewRepository).findAllByCourseId(courseId);
+            verify(reviewRepository).findAverageStarsByCourseId(courseId);
         }
 
         @Test
