@@ -214,6 +214,7 @@ public class CourseService {
      * @param courseId 조회하려는 코스의 ID
      * @param memberId 조회 요청한 회원 ID (비회원은 null)
      * @return 코스의 요약 정보가 담긴 DTO
+     * @throws BusinessException 코스를 찾지 못한 경우
      */
     public CourseSummaryDto getCourseSummary(Long courseId, Long memberId) {
         // 코스 조회
