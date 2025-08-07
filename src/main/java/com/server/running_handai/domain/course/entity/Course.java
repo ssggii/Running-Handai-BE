@@ -42,7 +42,7 @@ public class Course extends BaseTimeEntity {
     private String name; // 코스 이름
 
     @Column(name = "distance", nullable = false)
-    private int distance; // 코스 전체 거리(km)
+    private double distance; // 코스 전체 거리(km)
 
     @Column(name = "duration", nullable = false)
     private int duration; // 소요 시간(분)
@@ -90,7 +90,7 @@ public class Course extends BaseTimeEntity {
     private List<Review> reviews = new ArrayList<>();
 
     @Builder
-    public Course(String externalId, String name, int distance, int duration,
+    public Course(String externalId, String name, double distance, int duration,
                   CourseLevel level, Area area, String gpxPath,
                   Point startPoint, Double maxElevation, Double minElevation) {
         this.externalId = externalId;

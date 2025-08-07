@@ -346,7 +346,7 @@ class CourseServiceTest {
         // Course 객체 생성 (빌더로 설정 가능한 필드 우선 설정)
         Course course = Course.builder()
                 .name("courseName1")
-                .distance(15)
+                .distance(15.3)
                 .duration(120)
                 .minElevation(30.0)
                 .maxElevation(150.0)

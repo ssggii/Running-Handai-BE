@@ -136,3 +136,6 @@ create table review
 
 -- course 테이블의 tour_point 컬럼 삭제
 ALTER TABLE course DROP COLUMN tour_point;
+
+-- course 테이블의 distance 컬럼 타입 변경
+ALTER TABLE course MODIFY COLUMN distance DOUBLE NOT NULL;

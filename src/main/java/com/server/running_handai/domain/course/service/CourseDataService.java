@@ -205,16 +205,16 @@ public class CourseDataService {
             }
 
             String distanceValue = item.getCourseDistance();
-            if (isIntegerInvalid(distanceValue, "courseDistance", externalId)) {
+            if (isNumberInvalid(distanceValue, "courseDistance", externalId, Double.class)) {
                 return null;
             }
-            int distance = Integer.parseInt(distanceValue);
+            double distance = Double.parseDouble(distanceValue);
 
             String durationValue = item.getTotalRequiredTime();
-            if (isIntegerInvalid(durationValue, "totalRequiredTime", externalId)) {
+            if (isNumberInvalid(durationValue, "totalRequiredTime", externalId, Integer.class)) {
                 return null;
             }
-            double durationInMinutes = (double) distance / RUNNING_SPEED * 60.0;
+            double durationInMinutes = distance / RUNNING_SPEED * 60.0;
             int duration = (int) Math.round(durationInMinutes);
 
             String levelValue = item.getCourseLevel();
@@ -295,12 +295,20 @@ public class CourseDataService {
      *
      * @return 필드가 유효하지 않으면 false, 유효하지 않으면 true
      */
-    private boolean isIntegerInvalid(String value, String fieldName, String courseIndex) {
+    private boolean isNumberInvalid(String value, String fieldName, String courseIndex, Class<? extends Number> numberType) {
         if (isFieldInvalid(value, fieldName, courseIndex)) {
             return true;
         }
         try {
-            Integer.parseInt(value);
+            if (numberType.equals(Integer.class)) {
+                Integer.parseInt(value);
+            } else if (numberType.equals(Double.class)) {
+                Double.parseDouble(value);
+            } else {
+                // 지원하지 않는 타입에 대한 예외 처리
+                log.warn("[CourseIndex: {}] 지원하지 않는 숫자 타입입니다. (type: {})", courseIndex, numberType.getName());
+                return true;
+            }
         } catch (NumberFormatException e) {
             log.warn("[CourseIndex: {}] 필드 '{}'의 값이 올바른 숫자 형식이 아닙니다. (value: {})", courseIndex, fieldName, value);
             return true;
@@ -469,7 +477,7 @@ public class CourseDataService {
         }
 
         // 3. 전체 거리 계산
-        int distance = calculateDistance(trackPoints);
+        double distance = calculateDistance(trackPoints);
         log.info("[GPX 코스 생성] 전체 거리 계산 완료: {}km", distance);
 
         // 4. 소요 시간 계산 (9km/h 속도 기준)
@@ -624,16 +632,16 @@ public class CourseDataService {
      * 트랙포인트 리스트로부터 코스 전체 거리(distance)를 계산합니다.
      *
      * @param trackPoints 트랙포인트 리스트
-     * @return 전체 거리 (km, 소수점 반올림)
+     * @return 전체 거리 (km)
      */
-    private int calculateDistance(List<TrackPoint> trackPoints) {
+    private double calculateDistance(List<TrackPoint> trackPoints) {
         double totalDistance = 0.0;
         for (int i = 1; i < trackPoints.size(); i++) {
             TrackPoint previous = trackPoints.get(i - 1);
             TrackPoint current = trackPoints.get(i);
             totalDistance += haversine(previous.getLat(), previous.getLon(), current.getLat(), current.getLon());
         }
-        return (int) Math.round(totalDistance);
+        return totalDistance;
     }
 
     /**

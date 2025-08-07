@@ -5,7 +5,7 @@ import java.util.List;
 public record CourseInfoWithDetailsDto(
         long courseId,
         String thumbnailUrl,
-        int distance,
+        double distance,
         int duration,
         double maxElevation,
         double distanceFromUser,
