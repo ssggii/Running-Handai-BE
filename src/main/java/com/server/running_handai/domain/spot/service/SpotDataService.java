@@ -74,13 +74,14 @@ public class SpotDataService {
         // 정보가 없는 externalId만 보아 공통정보 조회 API 호출
         for (String externalId : externalIds) {
             fetchSpot(externalId).ifPresent(item -> {
-                Spot spot = createSpot(item);
-                SpotImage spotImage;
-                spotImage = createSpotImage(item);
-                if (spotImage != null) {
-                    spot.setSpotImage(spotImage);
-                }
-                spots.add(spot);
+                Optional<Spot> spotOptional = createSpot(item);
+                spotOptional.ifPresent(spot -> {
+                    SpotImage spotImage = createSpotImage(item);
+                    if (spotImage != null) {
+                        spot.setSpotImage(spotImage);
+                    }
+                    spots.add(spot);
+                });
             });
         }
 
@@ -123,8 +124,8 @@ public class SpotDataService {
         }
 
         return items.stream()
+                .filter(item -> isFieldValid(item.getSpotExternalId(), "spotExternalId", null))
                 .map(SpotLocationApiResponseDto.Item::getSpotExternalId)
-                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
     }
 
@@ -157,8 +158,38 @@ public class SpotDataService {
      * @param item 공통정보 조회 API로부터 받은 응답
      * @return 새로 생성된 Spot 객체
      */
-    private Spot createSpot(SpotApiResponseDto.Item item) {
-        return Spot.builder()
+    private Optional<Spot> createSpot(SpotApiResponseDto.Item item) {
+        if (!isFieldValid(item.getSpotExternalId(), "spotExternalId", null)) {
+            return Optional.empty();
+        }
+
+        if (!isFieldValid(item.getSpotName(), "spotName", item.getSpotExternalId())) {
+            return Optional.empty();
+        }
+
+        if (!isFieldValid(item.getSpotDescription(), "spotDescription", item.getSpotExternalId())) {
+            return Optional.empty();
+        }
+
+        if (!isFieldValid(item.getSpotAddress(), "spotAddress", item.getSpotExternalId())) {
+            return Optional.empty();
+        }
+
+        if (!isFieldValid(item.getSpotCategoryNumber(), "spotCategoryNumber", item.getSpotExternalId())) {
+            return Optional.empty();
+        }
+
+        if (!isFieldValid(item.getSpotLongitude(), "spotLongitude", item.getSpotExternalId())
+                || !isFieldDouble(item.getSpotLongitude(), "spotLongitude", item.getSpotExternalId())) {
+            return Optional.empty();
+        }
+
+        if (!isFieldValid(item.getSpotLatitude(), "spotLatitude", item.getSpotExternalId())
+                || !isFieldDouble(item.getSpotLatitude(), "spotLatitude", item.getSpotExternalId()))  {
+            return Optional.empty();
+        }
+
+        Spot spot = Spot.builder()
                 .externalId(item.getSpotExternalId())
                 .name(item.getSpotName())
                 .address(item.getSpotAddress())
@@ -168,6 +199,8 @@ public class SpotDataService {
                 .lat(Double.parseDouble(item.getSpotLatitude()))
                 .lon(Double.parseDouble(item.getSpotLongitude()))
                 .build();
+
+        return Optional.of(spot);
     }
 
     /**
@@ -181,13 +214,13 @@ public class SpotDataService {
         String originalImage = item.getSpotOriginalImage();
         String thumbnailImage = item.getSpotThumbnailImage();
 
-        if (originalImage != null && !originalImage.isBlank()) {
+        if (isFieldValid(originalImage, "spotOriginalImage", item.getSpotExternalId())) {
             String s3FileUrl = fileService.uploadFileByUrl(originalImage, "spot");
             return SpotImage.builder()
                     .imgUrl(s3FileUrl)
                     .originalUrl(originalImage)
                     .build();
-        } else if (thumbnailImage != null && !thumbnailImage.isBlank()) {
+        } else if (isFieldValid(thumbnailImage, "spotThumbnailImage", item.getSpotExternalId())) {
             String s3FileUrl = fileService.uploadFileByUrl(thumbnailImage, "spot");
             return SpotImage.builder()
                     .imgUrl(s3FileUrl)
@@ -195,5 +228,40 @@ public class SpotDataService {
                     .build();
         }
         return null;
+    }
+
+    /**
+     * API 응답값의 필드가 null이거나 빈 문자열인지 검사합니다.
+     * null 또는 빈 문자열일 경우 객체를 생성하지 않고 넘어갑니다.
+     *
+     * @param value
+     * @param fieldName
+     * @param externalId
+     * @return null 혹은 빈 문자열인 경우 false, 아니면 true
+     */
+    private boolean isFieldValid(String value, String fieldName, String externalId) {
+        if (value == null || value.isBlank()) {
+            log.warn("[즐길거리 수정] API 응답값 필드가 null 또는 빈 문자열이어서 건너뜀: externalId={}, fieldName={}", externalId, fieldName);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * API 응답값에서 문자열로 들어오지만 Double로 저장되어야 하는 필드가 제대로 변환되는지 검사합니다.
+     * 변환되지 않는 경우 객체를 생성하지 않고 넘어갑니다.
+     *
+     * @param doubleString
+     * @return Double로 변환되면 true, 아니면 false
+     */
+    private boolean isFieldDouble(String doubleString, String fieldName, String externalId) {
+        try {
+            Double.parseDouble(doubleString);
+            return true;
+        } catch (NumberFormatException e) {
+            log.warn("[즐길거리 수정] API 응답값 필드가 Double로 변환되지 않아 건너뜀: externalId={}, fieldName={}", externalId, fieldName);
+            return false;
+        }
     }
 }

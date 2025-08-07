@@ -191,9 +191,6 @@ class SpotDataServiceTest {
     @DisplayName("즐길거리 수정 성공 - SpotApiResponseDto가 Null")
     void updateSpots_success_noSpotApiResponseDto() {
         // given
-        Course course = createMockCourse(COURSE_ID);
-        TrackPoint startPoint = TrackPoint.builder().lon(127.1).lat(37.1).build();
-        TrackPoint endPoint = TrackPoint.builder().lon(127.2).lat(37.2).build();
         Set<String> externalIds = Set.of("externalId1");
 
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
@@ -233,6 +230,107 @@ class SpotDataServiceTest {
         // 위치기반 정보조회 API 응답값이 Null이라고 설정
         given(spotLocationApiClient.fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt()))
                 .willReturn(null);
+
+        given(spotRepository.findByExternalIdIn(anySet())).willReturn(Collections.emptyList());
+
+        // when
+        spotDataService.updateSpots(COURSE_ID);
+
+        // then
+        // 위치기반 정보조회 API 호출은 되지만, 공통정보 조회 API와 이미지 업로드는 실행되지 않고, 빈 리스트가 저장되는지 확인
+        verify(spotLocationApiClient, times(4)).fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt());
+        verify(spotApiClient, never()).fetchSpotData(anyString());
+        verify(fileService, never()).uploadFileByUrl(anyString(), eq("spot"));
+        verify(courseSpotRepository).deleteByCourseId(COURSE_ID);
+        verify(spotRepository).saveAll(argThat(list -> ((Collection<?>) list).isEmpty()));
+        verify(courseSpotRepository).saveAll(argThat(list -> ((Collection<?>) list).isEmpty()));
+    }
+
+    /**
+     * [즐길거리 수정] 성공
+     * 6. SpotApiResponseDto의 필드값이 유효하지 않은 값일 경우
+     * - Null
+     * - 빈 문자열
+     * - 위도, 경도의 경우 Double로 변환 불가
+     */
+    @Test
+    @DisplayName("즐길거리 수정 성공 - SpotApiResponseDto의 필드값이 유효하지 않음")
+    void updateSpots_success_invalidSpotApiResponseDtoField() {
+        // given
+        Set<String> externalIds = Set.of("externalId1", "externalId2", "externalId3", "externalId4");
+
+        given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+        given(trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId())).willReturn(List.of(startPoint, endPoint));
+
+        SpotLocationApiResponseDto spotLocationApiResponseDto = createSpotLocationApiResponse(externalIds);
+        given(spotLocationApiClient.fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt()))
+                .willReturn(spotLocationApiResponseDto);
+
+        given(spotRepository.findByExternalIdIn(anySet())).willReturn(Collections.emptyList());
+        // 공통정보 조회 API 응답값의 spotName 필드가 Null이라고 설정
+        SpotApiResponseDto spotApiResponseDto1 = createSpotApiResponse("externalId1");
+        SpotApiResponseDto.Item item1 = spotApiResponseDto1.getResponse().getBody().getItems().getItemList().getFirst();
+        ReflectionTestUtils.setField(item1, "spotName", null);
+
+        // 공통정보 조회 API 응답값의 spotDescription 필드가 빈 문자열이라고 설정
+        SpotApiResponseDto spotApiResponseDto2 = createSpotApiResponse("externalId2");
+        SpotApiResponseDto.Item item2 = spotApiResponseDto2.getResponse().getBody().getItems().getItemList().getFirst();
+        ReflectionTestUtils.setField(item2, "spotDescription", "");
+
+        // 공통정보 조회 API 응답값의 spotLongitude 필드가 Double이 아니라고 설정
+        SpotApiResponseDto spotApiResponseDto3 = createSpotApiResponse("externalId3");
+        SpotApiResponseDto.Item item3 = spotApiResponseDto3.getResponse().getBody().getItems().getItemList().getFirst();
+        ReflectionTestUtils.setField(item3, "spotLongitude", "longitude");
+
+        // 공통정보 조회 API 응답값의 spotLatitude 필드가 Double이 아니라고 설정
+        SpotApiResponseDto spotApiResponseDto4 = createSpotApiResponse("externalId4");
+        SpotApiResponseDto.Item item4 = spotApiResponseDto4.getResponse().getBody().getItems().getItemList().getFirst();
+        ReflectionTestUtils.setField(item4, "spotLatitude", "latitude");
+
+        given(spotApiClient.fetchSpotData(eq("externalId1"))).willReturn(spotApiResponseDto1);
+        given(spotApiClient.fetchSpotData(eq("externalId2"))).willReturn(spotApiResponseDto2);
+        given(spotApiClient.fetchSpotData(eq("externalId3"))).willReturn(spotApiResponseDto3);
+        given(spotApiClient.fetchSpotData(eq("externalId4"))).willReturn(spotApiResponseDto4);
+
+        // when
+        spotDataService.updateSpots(COURSE_ID);
+
+        // then
+        // 공통정보 조회 API 호출은 되지만, 이미지 업로드는 실행되지 않고, 빈 리스트가 저장되는지 확인
+        verify(spotApiClient, times(4)).fetchSpotData(anyString());
+        verify(fileService, never()).uploadFileByUrl(anyString(), eq("spot"));
+        verify(courseSpotRepository).deleteByCourseId(COURSE_ID);
+        verify(spotRepository).saveAll(argThat(list -> ((Collection<?>) list).isEmpty()));
+        verify(courseSpotRepository).saveAll(argThat(list -> ((Collection<?>) list).isEmpty()));
+    }
+
+    /**
+     * [즐길거리 수정] 성공
+     * 7. SpotLocationApiResponseDto의 필드값이 유효하지 않은 값일 경우
+     * - Null
+     * - 빈 문자열
+     */
+    @Test
+    @DisplayName("즐길거리 수정 성공 - SpotLocationApiResponseDto의 필드값이 유효하지 않음")
+    void updateSpots_success_noSpotLocationApiResponseDtoField() {
+        // given
+        given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+        given(trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId())).willReturn(List.of(startPoint, endPoint));
+        Set<String> externalIds1 = Set.of("externalId1");
+        Set<String> externalIds2 = Set.of("externalId2");
+
+        // 위치기반 정보조회 API 응답값의 externalId 필드가 Null이라고 설정
+        SpotLocationApiResponseDto spotLocationApiResponseDto1 = createSpotLocationApiResponse(externalIds1);
+        SpotLocationApiResponseDto.Item item1 = spotLocationApiResponseDto1.getResponse().getBody().getItems().getItemList().getFirst();
+        ReflectionTestUtils.setField(item1, "spotExternalId", null);
+
+        // 위치기반 정보조회 API 응답값의 externalId 필드가 Null이라고 설정
+        SpotLocationApiResponseDto spotLocationApiResponseDto2 = createSpotLocationApiResponse(externalIds2);
+        SpotLocationApiResponseDto.Item item2 = spotLocationApiResponseDto2.getResponse().getBody().getItems().getItemList().getFirst();
+        ReflectionTestUtils.setField(item2, "spotExternalId", "");
+
+        given(spotLocationApiClient.fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt()))
+                .willReturn(spotLocationApiResponseDto1, spotLocationApiResponseDto2);
 
         given(spotRepository.findByExternalIdIn(anySet())).willReturn(Collections.emptyList());
 
