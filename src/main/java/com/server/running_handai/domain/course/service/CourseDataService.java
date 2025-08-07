@@ -223,8 +223,6 @@ public class CourseDataService {
             }
             CourseLevel level = CourseLevel.fromApiValue(item.getCourseLevel());
 
-            String tourPoint = item.getTourInfo();
-
             String gpxPath = item.getGpxPath();
             if (isFieldInvalid(gpxPath, "gpxPath", externalId)) {
                 return null;
@@ -257,7 +255,6 @@ public class CourseDataService {
                     .distance(distance)
                     .duration(duration)
                     .level(level)
-                    .tourPoint(tourPoint)
                     .area(area)
                     .gpxPath(gpxPath)
                     .startPoint(startPoint)
