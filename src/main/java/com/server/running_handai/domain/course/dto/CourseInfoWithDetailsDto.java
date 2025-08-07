@@ -1,6 +1,5 @@
 package com.server.running_handai.domain.course.dto;
 
-import com.server.running_handai.domain.course.entity.Course;
 import java.util.List;
 
 public record CourseInfoWithDetailsDto(
@@ -9,7 +8,7 @@ public record CourseInfoWithDetailsDto(
         String thumbnailUrl,
         double distance,
         int duration,
-        double maxElevation,
+        int maxElevation,
         double distanceFromUser,
         int bookmarks,
         boolean isBookmarked,
@@ -22,7 +21,7 @@ public record CourseInfoWithDetailsDto(
                 courseInfoDto.getThumbnailUrl(),
                 courseInfoDto.getDistance(),
                 courseInfoDto.getDuration(),
-                courseInfoDto.getMaxElevation(),
+                (int) courseInfoDto.getMaxElevation(),
                 courseInfoDto.getDistanceFromUser(),
                 bookmarks,
                 isBookmarked,

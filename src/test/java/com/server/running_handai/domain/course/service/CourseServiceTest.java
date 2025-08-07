@@ -147,7 +147,7 @@ class CourseServiceTest {
         assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
+        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -202,7 +202,7 @@ class CourseServiceTest {
         assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
+        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -280,7 +280,11 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
-        assertThat(result.courseName()).isEqualTo("courseName1");
+        assertThat(result.courseName()).isEqualTo(course.getName());
+        assertThat(result.distance()).isEqualTo(course.getDistance());
+        assertThat(result.duration()).isEqualTo(course.getDuration());
+        assertThat(result.minElevation()).isEqualTo((int) course.getMinElevation().doubleValue());
+        assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -313,7 +317,11 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
-        assertThat(result.courseName()).isEqualTo("courseName1");
+        assertThat(result.courseName()).isEqualTo(course.getName());
+        assertThat(result.distance()).isEqualTo(course.getDistance());
+        assertThat(result.duration()).isEqualTo(course.getDuration());
+        assertThat(result.minElevation()).isEqualTo((int)course.getMinElevation().doubleValue());
+        assertThat(result.maxElevation()).isEqualTo((int)course.getMaxElevation().doubleValue());
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -348,8 +356,8 @@ class CourseServiceTest {
                 .name("courseName1")
                 .distance(15.3)
                 .duration(120)
-                .minElevation(30.0)
-                .maxElevation(150.0)
+                .minElevation(30.4)
+                .maxElevation(150.5)
                 .level(CourseLevel.MEDIUM)
                 .build();
 
