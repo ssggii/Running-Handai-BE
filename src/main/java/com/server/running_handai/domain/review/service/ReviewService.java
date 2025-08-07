@@ -14,8 +14,8 @@ import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -71,22 +71,39 @@ public class ReviewService {
             throw new BusinessException(ResponseCode.COURSE_NOT_FOUND);
         }
 
-        List<Review> reviews = reviewRepository.findAllByCourseId(courseId);
-        if (reviews.isEmpty()) {
-            return ReviewInfoListDto.from(0, Collections.emptyList());
-        }
+        double averageStars = calculateAverageStars(courseId);
+        List<ReviewInfoDto> reviewInfoDtos = convertToReviewInfoDtos(reviewRepository.findAllByCourseId(courseId), memberId);
+        return ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+    }
 
-        double averageStars = reviews.stream().mapToDouble(Review::getStars).average().orElse(0.0);
-        averageStars = Math.round(averageStars * 10) / 10.0; // 소수 첫째 자리까지 반올림
+    /**
+     * 코스의 별점 평균을 계산합니다.
+     *
+     * @param courseId 리뷰 평균을 계산할 코스의 ID
+     * @return 별점 평균
+     */
+    public double calculateAverageStars(Long courseId) {
+        double averageStars = Optional.ofNullable(
+                reviewRepository.findAverageStarsByCourseId(courseId)
+        ).orElse(0.0); // 리뷰가 없으면 0.0
+        averageStars = Math.round(averageStars * 10) / 10.0;
+        return averageStars;
+    }
 
-        List<ReviewInfoDto> reviewInfoDtos = reviews.stream()
+    /**
+     * 리뷰 엔티티 리스트를 리뷰 조회용 DTO 리스트로 변환합니다.
+     *
+     * @param reviews 변환 대상인 리뷰 엔티티 리스트
+     * @param memberId 요청 회원의 ID
+     * @return 리뷰 조회용 DTO 목록
+     */
+    public List<ReviewInfoDto> convertToReviewInfoDtos(List<Review> reviews, Long memberId) {
+        return reviews.stream()
                 .map(review -> {
                     boolean isMyReview = reviewRepository.existsByIdAndWriterId(review.getId(), memberId);
                     return ReviewInfoDto.from(review, isMyReview);
                 })
                 .toList();
-
-        return ReviewInfoListDto.from(averageStars, reviewInfoDtos);
     }
 
     /**
