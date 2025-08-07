@@ -1,4 +1,4 @@
-package com.server.running_handai.domain.course.entity;
+package com.server.running_handai.domain.spot.entity;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +9,7 @@ import java.util.Optional;
 
 @Getter
 @RequiredArgsConstructor
-public enum Category {
+public enum SpotCategory {
     NATURE("자연관광지", List.of("A01010100", "A01010200", "A01010300", "A01010400", "A01010500", "A01010600", "A01010700", "A01010800", "A01010900", "A01011000",
             "A01011100", "A01011200", "A01011300", "A01011400", "A01011600", "A01011700", "A01011800", "A01011900", "A01020100", "A01020200")),
     HISTORY("역사관광지", List.of("A02010100", "A02010200", "A02010300", "A02010400", "A02010500", "A02010600", "A02010700", "A02010800", "A02010900", "A02011000")),
@@ -35,9 +35,9 @@ public enum Category {
      * @param categoryNumber 카테고리 번호 (예: "A01010100")
      * @return 일치하는 Category Enum을 Optional로 감싸서 반환, 없으면 Optional.empty()
      */
-    public static Optional<Category> findByCategoryNumber(String categoryNumber) {
-        return Arrays.stream(Category.values())
-                .filter(category -> category.getCategoryNumber().contains(categoryNumber))
+    public static Optional<SpotCategory> findByCategoryNumber(String categoryNumber) {
+        return Arrays.stream(SpotCategory.values())
+                .filter(spotCategory -> spotCategory.getCategoryNumber().contains(categoryNumber))
                 .findFirst();
     }
 }

@@ -1,6 +1,6 @@
-package com.server.running_handai.domain.course.client;
+package com.server.running_handai.domain.spot.client;
 
-import com.server.running_handai.domain.course.dto.SpotApiResponseDto;
+import com.server.running_handai.domain.spot.dto.SpotApiResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

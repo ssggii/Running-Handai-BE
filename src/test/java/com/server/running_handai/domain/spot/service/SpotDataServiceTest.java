@@ -1,18 +1,20 @@
-package com.server.running_handai.domain.course.service;
+package com.server.running_handai.domain.spot.service;
 
-import com.server.running_handai.domain.course.client.SpotApiClient;
-import com.server.running_handai.domain.course.client.SpotLocationApiClient;
-import com.server.running_handai.domain.course.dto.SpotApiResponseDto;
-import com.server.running_handai.domain.course.dto.SpotLocationApiResponseDto;
+import com.server.running_handai.domain.course.service.FileService;
+import com.server.running_handai.domain.spot.client.SpotApiClient;
+import com.server.running_handai.domain.spot.client.SpotLocationApiClient;
+import com.server.running_handai.domain.spot.dto.SpotApiResponseDto;
+import com.server.running_handai.domain.spot.dto.SpotLocationApiResponseDto;
 import com.server.running_handai.domain.course.entity.Course;
-import com.server.running_handai.domain.course.entity.Spot;
+import com.server.running_handai.domain.spot.entity.Spot;
 import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
-import com.server.running_handai.domain.course.repository.CourseSpotRepository;
-import com.server.running_handai.domain.course.repository.SpotRepository;
+import com.server.running_handai.domain.spot.repository.CourseSpotRepository;
+import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,10 +34,10 @@ import static org.mockito.Mockito.*;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
-class CourseDataServiceTest {
+class SpotDataServiceTest {
 
     @InjectMocks
-    private CourseDataService courseDataService;
+    private SpotDataService spotDataService;
 
     @Mock
     private CourseRepository courseRepository;
@@ -59,16 +61,26 @@ class CourseDataServiceTest {
     private FileService fileService;
 
     private static final Long COURSE_ID = 1L;
+    private Course course;
+    private TrackPoint startPoint;
+    private TrackPoint endPoint;
 
-    // [성공]
-    // 1. 모두 새로운 호출을 진행하는 경우
+
+    @BeforeEach
+    void setUp() {
+        course = createMockCourse(COURSE_ID);
+        startPoint = TrackPoint.builder().lon(127.1).lat(37.1).build();
+        endPoint = TrackPoint.builder().lon(127.2).lat(37.2).build();
+    }
+
+    /**
+     * [즐길거리 수정] 성공
+     * 1. 모두 새로운 호출을 진행하는 경우
+     */
     @Test
     @DisplayName("즐길거리 수정 성공 - 모두 새로운 호출 진행")
     void updateSpots_success_allNewFetch() {
         // given
-        Course course = createMockCourse(COURSE_ID);
-        TrackPoint startPoint = TrackPoint.builder().lon(127.1).lat(37.1).build();
-        TrackPoint endPoint = TrackPoint.builder().lon(127.2).lat(37.2).build();
         Set<String> externalIds = Set.of("externalId1");
 
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
@@ -84,7 +96,7 @@ class CourseDataServiceTest {
         given(fileService.uploadFileByUrl(anyString(), eq("spot"))).willReturn("https://mock-s3-url.com/externalId1.png");
 
         // when
-        courseDataService.updateSpots(COURSE_ID);
+        spotDataService.updateSpots(COURSE_ID);
 
         // then
         verify(courseRepository).findById(COURSE_ID);
@@ -98,14 +110,14 @@ class CourseDataServiceTest {
         verify(courseSpotRepository).saveAll(anyList());
     }
 
-    // 2. SpotImage가 Null일 경우
+    /**
+     * [즐길거리 수정] 성공
+     * 2. SpotImage가 Null일 경우
+     */
     @Test
     @DisplayName("즐길거리 수정 성공 - SpotImage가 Null")
     void updateSpots_success_noSpotImage() {
         // given
-        Course course = createMockCourse(COURSE_ID);
-        TrackPoint startPoint = TrackPoint.builder().lon(127.1).lat(37.1).build();
-        TrackPoint endPoint = TrackPoint.builder().lon(127.2).lat(37.2).build();
         Set<String> externalIds = Set.of("externalId1");
 
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
@@ -124,7 +136,7 @@ class CourseDataServiceTest {
         given(spotApiClient.fetchSpotData(anyString())).willReturn(spotApiResponseDto);
 
         // when
-        courseDataService.updateSpots(COURSE_ID);
+        spotDataService.updateSpots(COURSE_ID);
 
         // then
         // uploadFileByUrl이 아예 호출되지 않는지 확인
@@ -134,14 +146,14 @@ class CourseDataServiceTest {
         verify(courseSpotRepository).saveAll(anyList());
     }
 
-    // 3. Spot 일부가 DB에 존재하는 경우
+    /**
+     * [즐길거리 수정] 성공
+     * 3. Spot 일부가 DB에 존재하는 경우
+     */
     @Test
     @DisplayName("즐길거리 수정 성공 - Spot 일부가 DB에 존재")
     void updateSpots_success_existingSpots() {
         // given
-        Course course = createMockCourse(COURSE_ID);
-        TrackPoint startPoint = TrackPoint.builder().lon(127.1).lat(37.1).build();
-        TrackPoint endPoint = TrackPoint.builder().lon(127.2).lat(37.2).build();
         Set<String> externalIds = Set.of("externalId1", "externalId2");
         Spot existingSpot1 = createMockSpot("externalId1");
 
@@ -159,7 +171,7 @@ class CourseDataServiceTest {
         given(fileService.uploadFileByUrl(anyString(), eq("spot"))).willReturn("https://mock-s3-url.com/externalId2.png");
 
         // when
-        courseDataService.updateSpots(COURSE_ID);
+        spotDataService.updateSpots(COURSE_ID);
 
         // then
         // externalId2만 공통정보 조회 API 호출하고, externalId1은 호출하지 않는지 확인
@@ -171,7 +183,10 @@ class CourseDataServiceTest {
         verify(courseSpotRepository).saveAll(anyList());
     }
 
-    // 4. SpotApiResponseDto가 Null인 경우
+    /**
+     * [즐길거리 수정] 성공
+     * 4. SpotApiResponseDto가 Null인 경우
+     */
     @Test
     @DisplayName("즐길거리 수정 성공 - SpotApiResponseDto가 Null")
     void updateSpots_success_noSpotApiResponseDto() {
@@ -193,7 +208,7 @@ class CourseDataServiceTest {
         given(spotApiClient.fetchSpotData(anyString())).willReturn(null);
 
         // when
-        courseDataService.updateSpots(COURSE_ID);
+        spotDataService.updateSpots(COURSE_ID);
 
         // then
         // 공통정보 조회 API 호출은 되지만, 이미지 업로드는 실행되지 않고, 빈 리스트가 저장되는지 확인
@@ -204,15 +219,14 @@ class CourseDataServiceTest {
         verify(courseSpotRepository).saveAll(argThat(list -> ((Collection<?>) list).isEmpty()));
     }
 
-    // 5. SpotLocationApiResponseDto가 Null인 경우
+    /**
+     * [즐길거리 수정] 성공
+     * 5. SpotLocationApiResponseDto가 Null인 경우
+     */
     @Test
     @DisplayName("즐길거리 수정 성공 - SpotLocationApiResponseDto가 Null")
     void updateSpots_success_noSpotLocationApiResponseDto() {
         // given
-        Course course = createMockCourse(COURSE_ID);
-        TrackPoint startPoint = TrackPoint.builder().lon(127.1).lat(37.1).build();
-        TrackPoint endPoint = TrackPoint.builder().lon(127.2).lat(37.2).build();
-
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
         given(trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId())).willReturn(List.of(startPoint, endPoint));
 
@@ -223,7 +237,7 @@ class CourseDataServiceTest {
         given(spotRepository.findByExternalIdIn(anySet())).willReturn(Collections.emptyList());
 
         // when
-        courseDataService.updateSpots(COURSE_ID);
+        spotDataService.updateSpots(COURSE_ID);
 
         // then
         // 위치기반 정보조회 API 호출은 되지만, 공통정보 조회 API와 이미지 업로드는 실행되지 않고, 빈 리스트가 저장되는지 확인
@@ -235,8 +249,10 @@ class CourseDataServiceTest {
         verify(courseSpotRepository).saveAll(argThat(list -> ((Collection<?>) list).isEmpty()));
     }
 
-    // [실패]
-    // 1. Course가 없는 경우
+    /**
+     * [즐길거리 수정] 실패
+     * 1. Course가 없는 경우
+     */
     @Test
     @DisplayName("즐길거리 수정 실패 - Course가 없음")
     void updateSpots_fail_courseNotFound() {
@@ -244,7 +260,7 @@ class CourseDataServiceTest {
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.empty());
 
         // when, then
-        BusinessException exception = assertThrows(BusinessException.class, () -> courseDataService.updateSpots(COURSE_ID));
+        BusinessException exception = assertThrows(BusinessException.class, () -> spotDataService.updateSpots(COURSE_ID));
         assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
     }
 

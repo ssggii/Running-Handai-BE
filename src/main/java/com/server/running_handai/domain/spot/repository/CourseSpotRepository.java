@@ -1,6 +1,6 @@
-package com.server.running_handai.domain.course.repository;
+package com.server.running_handai.domain.spot.repository;
 
-import com.server.running_handai.domain.course.entity.CourseSpot;
+import com.server.running_handai.domain.spot.entity.CourseSpot;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

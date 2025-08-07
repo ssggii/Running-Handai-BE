@@ -1,4 +1,4 @@
-package com.server.running_handai.domain.course.entity;
+package com.server.running_handai.domain.spot.entity;
 
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;

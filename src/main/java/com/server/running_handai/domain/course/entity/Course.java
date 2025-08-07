@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.entity;
 
+import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

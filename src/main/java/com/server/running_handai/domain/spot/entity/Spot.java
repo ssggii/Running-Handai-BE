@@ -1,4 +1,4 @@
-package com.server.running_handai.domain.course.entity;
+package com.server.running_handai.domain.spot.entity;
 
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -35,7 +35,7 @@ public class Spot extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
-    private Category category; // 카테고리
+    private SpotCategory spotCategory; // 카테고리
 
     @Column(name = "lat", nullable = false)
     private double lat; // 위도
@@ -53,12 +53,12 @@ public class Spot extends BaseTimeEntity {
 
     @Builder
     public Spot(String externalId, String name, String address, String description,
-                Category category, double lat, double lon) {
+                SpotCategory spotCategory, double lat, double lon) {
         this.externalId = externalId;
         this.name = name;
         this.address = address;
         this.description = description;
-        this.category = category;
+        this.spotCategory = spotCategory;
         this.lat = lat;
         this.lon = lon;
     }
