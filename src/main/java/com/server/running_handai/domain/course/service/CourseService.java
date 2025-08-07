@@ -115,18 +115,7 @@ public class CourseService {
                     List<TrackPointDto> trackPoints = trackPointMap.getOrDefault(courseId, Collections.emptyList());
                     int bookmarks = bookmarkCountMap.getOrDefault(courseId, 0L).intValue();
                     boolean isBookmarked = bookmarkedCourseIds.contains(courseId);
-
-                    return new CourseInfoWithDetailsDto(
-                            courseId,
-                            courseInfo.getThumbnailUrl(),
-                            courseInfo.getDistance(),
-                            courseInfo.getDuration(),
-                            courseInfo.getMaxElevation(),
-                            courseInfo.getDistanceFromUser(),
-                            bookmarks,
-                            isBookmarked,
-                            trackPoints
-                    );
+                    return CourseInfoWithDetailsDto.from(courseInfo, trackPoints, bookmarks, isBookmarked);
                 })
                 .toList();
     }

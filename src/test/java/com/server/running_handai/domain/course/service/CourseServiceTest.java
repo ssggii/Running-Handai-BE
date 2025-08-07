@@ -21,7 +21,6 @@ import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseFilter;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import net.bytebuddy.asm.Advice.Argument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -146,6 +144,7 @@ class CourseServiceTest {
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
+        assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
         assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
@@ -200,6 +199,7 @@ class CourseServiceTest {
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
+        assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
         assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
@@ -397,6 +397,7 @@ class CourseServiceTest {
     private CourseInfoDto createCourseInfoDto(Course course) {
         CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
         given(courseInfoDto.getId()).willReturn(course.getId());
+        given(courseInfoDto.getName()).willReturn(course.getName());
         given(courseInfoDto.getThumbnailUrl()).willReturn("thumbnailUrl");
         given(courseInfoDto.getDistance()).willReturn(course.getDistance());
         given(courseInfoDto.getDuration()).willReturn(course.getDuration());
