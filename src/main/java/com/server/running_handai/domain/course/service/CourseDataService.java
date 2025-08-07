@@ -397,7 +397,8 @@ public class CourseDataService {
         log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
 
         List<RoadCondition> newRoadConditions = descriptions.stream()
-                .map(description -> new RoadCondition(course, description))
+                .map(description ->
+                        RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
         roadConditionRepository.saveAll(newRoadConditions);
@@ -426,7 +427,7 @@ public class CourseDataService {
         if (oldImageUrl != null) {
             course.getCourseImage().updateImageUrl(newImageUrl);
         } else {
-            course.updateCourseImage(new CourseImage(newImageUrl));
+            course.updateCourseImage(CourseImage.builder().imgUrl(newImageUrl).build());
         }
         log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료: Course ID={}", courseId);
 
@@ -544,7 +545,7 @@ public class CourseDataService {
         List<RoadCondition> roadConditions = descriptions.stream()
                 .skip(1)
                 .limit(5)
-                .map(description -> new RoadCondition(course, description))
+                .map(description -> RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
         roadConditionRepository.saveAll(roadConditions);

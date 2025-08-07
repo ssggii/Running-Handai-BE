@@ -92,7 +92,8 @@ public class SpotDataService {
         List<Spot> newSpots = spotRepository.saveAll(spots);
 
         List<CourseSpot> courseSpots = newSpots.stream()
-                .map(spot -> new CourseSpot(course, spot))
+                .map(spot ->
+                        CourseSpot.builder().course(course).spot(spot).build())
                 .collect(Collectors.toList());
 
         courseSpotRepository.saveAll(courseSpots);
