@@ -19,7 +19,6 @@ import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
-import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.global.response.exception.BusinessException;
@@ -27,7 +26,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -115,18 +113,7 @@ public class CourseService {
                     List<TrackPointDto> trackPoints = trackPointMap.getOrDefault(courseId, Collections.emptyList());
                     int bookmarks = bookmarkCountMap.getOrDefault(courseId, 0L).intValue();
                     boolean isBookmarked = bookmarkedCourseIds.contains(courseId);
-
-                    return new CourseInfoWithDetailsDto(
-                            courseId,
-                            courseInfo.getThumbnailUrl(),
-                            courseInfo.getDistance(),
-                            courseInfo.getDuration(),
-                            courseInfo.getMaxElevation(),
-                            courseInfo.getDistanceFromUser(),
-                            bookmarks,
-                            isBookmarked,
-                            trackPoints
-                    );
+                    return CourseInfoWithDetailsDto.from(courseInfo, trackPoints, bookmarks, isBookmarked);
                 })
                 .toList();
     }
@@ -173,7 +160,7 @@ public class CourseService {
         Course course = findCourseByIdWithDetails(courseId);
         List<TrackPointDto> trackPoints = simplifyTrackPoints(course.getTrackPoints());
         BookmarkInfoDto bookmarkInfoDto = getBookmarkInfo(courseId, memberId);
-        return CourseDetailDto.of(course, trackPoints, bookmarkInfoDto);
+        return CourseDetailDto.from(course, trackPoints, bookmarkInfoDto);
     }
 
     private Course findCourseByIdWithDetails(Long courseId) {

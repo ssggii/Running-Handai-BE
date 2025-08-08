@@ -21,7 +21,6 @@ import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseFilter;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import net.bytebuddy.asm.Advice.Argument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -146,9 +144,10 @@ class CourseServiceTest {
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
+        assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
+        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -200,9 +199,10 @@ class CourseServiceTest {
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
+        assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
+        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -280,7 +280,11 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
-        assertThat(result.courseName()).isEqualTo("courseName1");
+        assertThat(result.courseName()).isEqualTo(course.getName());
+        assertThat(result.distance()).isEqualTo(course.getDistance());
+        assertThat(result.duration()).isEqualTo(course.getDuration());
+        assertThat(result.minElevation()).isEqualTo((int) course.getMinElevation().doubleValue());
+        assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -313,7 +317,11 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
-        assertThat(result.courseName()).isEqualTo("courseName1");
+        assertThat(result.courseName()).isEqualTo(course.getName());
+        assertThat(result.distance()).isEqualTo(course.getDistance());
+        assertThat(result.duration()).isEqualTo(course.getDuration());
+        assertThat(result.minElevation()).isEqualTo((int)course.getMinElevation().doubleValue());
+        assertThat(result.maxElevation()).isEqualTo((int)course.getMaxElevation().doubleValue());
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -348,8 +356,8 @@ class CourseServiceTest {
                 .name("courseName1")
                 .distance(15.3)
                 .duration(120)
-                .minElevation(30.0)
-                .maxElevation(150.0)
+                .minElevation(30.4)
+                .maxElevation(150.5)
                 .level(CourseLevel.MEDIUM)
                 .build();
 
@@ -397,6 +405,7 @@ class CourseServiceTest {
     private CourseInfoDto createCourseInfoDto(Course course) {
         CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
         given(courseInfoDto.getId()).willReturn(course.getId());
+        given(courseInfoDto.getName()).willReturn(course.getName());
         given(courseInfoDto.getThumbnailUrl()).willReturn("thumbnailUrl");
         given(courseInfoDto.getDistance()).willReturn(course.getDistance());
         given(courseInfoDto.getDuration()).willReturn(course.getDuration());
