@@ -5,6 +5,7 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_ARE
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
+import com.server.running_handai.domain.course.dto.CourseSummaryDto;
 import com.server.running_handai.domain.course.dto.BookmarkCountDto;
 import com.server.running_handai.domain.course.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
@@ -16,6 +17,10 @@ import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
+import com.server.running_handai.domain.review.repository.ReviewRepository;
+import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,6 +50,9 @@ public class CourseService {
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
     private final GeometryFactory geometryFactory;
+    private final ReviewRepository reviewRepository;
+    private final ReviewService reviewService;
+    private final CourseDataService courseDataService;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -105,18 +113,7 @@ public class CourseService {
                     List<TrackPointDto> trackPoints = trackPointMap.getOrDefault(courseId, Collections.emptyList());
                     int bookmarks = bookmarkCountMap.getOrDefault(courseId, 0L).intValue();
                     boolean isBookmarked = bookmarkedCourseIds.contains(courseId);
-
-                    return new CourseInfoWithDetailsDto(
-                            courseId,
-                            courseInfo.getThumbnailUrl(),
-                            courseInfo.getDistance(),
-                            courseInfo.getDuration(),
-                            courseInfo.getMaxElevation(),
-                            courseInfo.getDistanceFromUser(),
-                            bookmarks,
-                            isBookmarked,
-                            trackPoints
-                    );
+                    return CourseInfoWithDetailsDto.from(courseInfo, trackPoints, bookmarks, isBookmarked);
                 })
                 .toList();
     }
@@ -163,7 +160,7 @@ public class CourseService {
         Course course = findCourseByIdWithDetails(courseId);
         List<TrackPointDto> trackPoints = simplifyTrackPoints(course.getTrackPoints());
         BookmarkInfoDto bookmarkInfoDto = getBookmarkInfo(courseId, memberId);
-        return CourseDetailDto.of(course, trackPoints, bookmarkInfoDto);
+        return CourseDetailDto.from(course, trackPoints, bookmarkInfoDto);
     }
 
     private Course findCourseByIdWithDetails(Long courseId) {
@@ -195,5 +192,30 @@ public class CourseService {
         int totalBookmarks = bookmarkRepository.countByCourseId(courseId);
         boolean isBookmarkedByUser = (memberId != null) && bookmarkRepository.existsByCourseIdAndMemberId(courseId, memberId);
         return new BookmarkInfoDto(totalBookmarks, isBookmarkedByUser);
+    }
+
+    /**
+     * 상세-전체 탭을 위한 코스 요약 정보를 조회합니다.
+     * 코스 요약 정보는 기본적인 코스 정보(전체 길이, 소요 시간, 최대 고도)와 즐길거리 및 리뷰를 포함합니다.
+     *
+     * @param courseId 조회하려는 코스의 ID
+     * @param memberId 조회 요청한 회원 ID (비회원은 null)
+     * @return 코스의 요약 정보가 담긴 DTO
+     * @throws BusinessException 코스를 찾지 못한 경우
+     */
+    public CourseSummaryDto getCourseSummary(Long courseId, Long memberId) {
+        // 코스 조회
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 리뷰 조회
+        List<ReviewInfoDto> reviewInfoDtos = reviewService.convertToReviewInfoDtos(
+                reviewRepository.findRandom2ByCourseId(courseId), memberId);
+        double averageStars = reviewService.calculateAverageStars(courseId);
+        ReviewInfoListDto reviewInfoListDto = ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+
+        // TODO 즐길거리 조회
+
+        return CourseSummaryDto.from(course, reviewInfoListDto);
     }
 }

@@ -42,7 +42,7 @@ public class Course extends BaseTimeEntity {
     private String name; // 코스 이름
 
     @Column(name = "distance", nullable = false)
-    private int distance; // 코스 전체 거리(km)
+    private double distance; // 코스 전체 거리(km)
 
     @Column(name = "duration", nullable = false)
     private int duration; // 소요 시간(분)
@@ -50,9 +50,6 @@ public class Course extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "level", nullable = false)
     private CourseLevel level; // 난이도
-
-    @Column(name = "tour_point", columnDefinition = "TEXT")
-    private String tourPoint; // 코스 내 주요 관광지 정보
 
     @Enumerated(EnumType.STRING)
     @Column(name = "area", nullable = false)
@@ -93,15 +90,14 @@ public class Course extends BaseTimeEntity {
     private List<Review> reviews = new ArrayList<>();
 
     @Builder
-    public Course(String externalId, String name, int distance, int duration,
-                  CourseLevel level, String tourPoint, Area area, String gpxPath,
+    public Course(String externalId, String name, double distance, int duration,
+                  CourseLevel level, Area area, String gpxPath,
                   Point startPoint, Double maxElevation, Double minElevation) {
         this.externalId = externalId;
         this.name = name;
         this.distance = distance;
         this.duration = duration;
         this.level = level;
-        this.tourPoint = tourPoint;
         this.area = area;
         this.gpxPath = gpxPath;
         this.startPoint = startPoint;
@@ -132,10 +128,6 @@ public class Course extends BaseTimeEntity {
         }
         if (this.level != source.getLevel()) {
             this.level = source.getLevel();
-            isUpdated = true;
-        }
-        if (this.tourPoint != null && !this.tourPoint.equals(source.getTourPoint())) {
-            this.tourPoint = source.getTourPoint();
             isUpdated = true;
         }
         if (this.area != source.getArea()) {

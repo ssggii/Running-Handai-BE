@@ -88,9 +88,6 @@ public class DurunubiApiResponseDto {
         @JsonProperty("crsLevel")
         private String courseLevel; // 난이도 (Course.level)
 
-        @JsonProperty("crsTourInfo")
-        private String tourInfo; // 관광포인트 (Course.tourPoint)
-
         @JsonProperty("sigun")
         private String sigun; // 행정구역 (Course.area)
 
