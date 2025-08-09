@@ -19,7 +19,7 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
-import com.server.running_handai.domain.course.util.TrackPointSimplificationUtil;
+import com.server.running_handai.global.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.exception.BusinessException;
 
 import java.io.IOException;
