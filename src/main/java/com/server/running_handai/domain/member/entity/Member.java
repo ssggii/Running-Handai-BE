@@ -1,7 +1,10 @@
 package com.server.running_handai.domain.member.entity;
 
+import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -43,6 +46,10 @@ public class Member extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private Role role; // 역할
+
+    // Review와 일대다 관계
+    @OneToMany(mappedBy = "writer", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Review> reviews = new ArrayList<>();
 
     @Builder
     public Member(String providerId, String email, String nickname, Provider provider, Role role) {

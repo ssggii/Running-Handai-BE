@@ -15,6 +15,7 @@ public enum ResponseCode {
     SUCCESS_COURSE_SYNC_ACCEPTED(ACCEPTED, "코스 데이터 동기화 작업이 시작되었습니다. 서버 로그를 통해 진행 상황을 확인하세요."),
     SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
+    SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -24,6 +25,9 @@ public enum ResponseCode {
     INVALID_COURSE_FILTER_TYPE(BAD_REQUEST, "코스 필터링 옵션이 올바르지 않습니다."),
     ALREADY_BOOKMARKED(BAD_REQUEST, "이미 북마크한 코스입니다."),
     INVALID_PROVIDER(BAD_REQUEST, "지원하지 않는 OAuth2 Provider입니다"),
+    INVALID_REVIEW_STARS(BAD_REQUEST, "별점은 0.5점 단위여야합니다."),
+    EMPTY_REVIEW_CONTENTS(BAD_REQUEST, "리뷰 내용은 비워둘 수 없습니다"),
+    BAD_REQUEST_STATE_PARAMETER(BAD_REQUEST, "로그인 요청 시 유효한 state 값이 필요합니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
@@ -40,6 +44,7 @@ public enum ResponseCode {
     MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
     REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),
     BOOKMARK_NOT_FOUND(NOT_FOUND, "찾을 수 없는 북마크입니다."),
+    REVIEW_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리뷰입니다."),
 
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)

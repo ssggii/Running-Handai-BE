@@ -21,6 +21,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     @Query(
             value = "SELECT " +
                     "    c.course_id AS id, " +
+                    "    c.name, " +
                     "    ci.img_url AS thumbnailUrl, " +
                     "    c.distance, " +
                     "    c.duration, " +
@@ -44,6 +45,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     @Query(
             value = "SELECT " +
                     "    c.course_id AS id, " +
+                    "    c.name, " +
                     "    ci.img_url AS thumbnailUrl, " +
                     "    c.distance, " +
                     "    c.duration, " +
@@ -65,6 +67,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     @Query(
             value = "SELECT " +
                     "    c.course_id AS id, " +
+                    "    c.name, " +
                     "    ci.img_url AS thumbnailUrl, " +
                     "    c.distance, " +
                     "    c.duration, " +

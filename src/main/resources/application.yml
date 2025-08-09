@@ -80,6 +80,7 @@ spring:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: NATIVE
 
 management:
   endpoints:
@@ -121,3 +122,15 @@ logging:
 course:
   simplification:
     distance-tolerance: 0.0001 # 경로 단순화 허용 오차 (RDP 알고리즘), 약 10m
+
+cors:
+  allowed-origins: http://localhost:5173, https://runninghandai.com
+
+app:
+  oauth2:
+    redirect-uri: http://localhost:5173/auth, https://runninghandai.com/auth
+
+swagger:
+  server:
+    local: http://localhost:8080
+    prod: https://api.runninghandai.com

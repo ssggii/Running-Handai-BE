@@ -115,7 +115,7 @@ create table track_point
         foreign key (course_id) references course (course_id)
 );
 
--- 8. Spot 테이블 생성
+-- 8. spot 테이블 생성
 create table spot (
     spot_id      BIGINT AUTO_INCREMENT PRIMARY KEY,
     external_id  VARCHAR(255) NOT NULL UNIQUE,
@@ -131,7 +131,7 @@ create table spot (
     updated_at   DATETIME(6) NOT NULL
 );
 
--- 9. CourseSpot 테이블 생성
+-- 9. course_spot 테이블 생성
 CREATE TABLE course_spot (
     course_spot_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     course_id      BIGINT NOT NULL,
@@ -143,7 +143,7 @@ CREATE TABLE course_spot (
     CONSTRAINT fk_spot FOREIGN KEY (spot_id) REFERENCES spot(spot_id)
 );
 
--- 10. CourseImage 테이블 생성
+-- 10. spot_image 테이블 생성
 CREATE TABLE spot_image (
     spot_img_id   BIGINT AUTO_INCREMENT PRIMARY KEY,
     img_url       VARCHAR(255) NOT NULL,
@@ -153,3 +153,28 @@ CREATE TABLE spot_image (
     updated_at    DATETIME(6) NOT NULL,
     CONSTRAINT fk_spot_image_spot FOREIGN KEY (spot_id) REFERENCES spot(spot_id)
 );
+
+-- 11. review 테이블 생성
+create table review
+(
+    review_id  bigint auto_increment
+        primary key,
+    created_at datetime(6)   not null,
+    updated_at datetime(6)   not null,
+    contents   varchar(2000) not null,
+    stars      double        not null,
+    course_id  bigint        not null,
+    member_id  bigint        null,
+    constraint FKk0ccx5i4ci2wd70vegug074w1
+        foreign key (member_id) references member (member_id)
+            on delete set null,
+    constraint FKprox8elgnr8u5wrq1983degk
+        foreign key (course_id) references course (course_id)
+            on delete cascade
+);
+
+-- course 테이블의 tour_point 컬럼 삭제
+ALTER TABLE course DROP COLUMN tour_point;
+
+-- course 테이블의 distance 컬럼 타입 변경
+ALTER TABLE course MODIFY COLUMN distance DOUBLE NOT NULL;

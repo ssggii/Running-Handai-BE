@@ -1,6 +1,7 @@
 package com.server.running_handai.domain.course.entity;
 
 import com.server.running_handai.domain.spot.entity.CourseSpot;
+import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -42,7 +43,7 @@ public class Course extends BaseTimeEntity {
     private String name; // 코스 이름
 
     @Column(name = "distance", nullable = false)
-    private int distance; // 코스 전체 거리(km)
+    private double distance; // 코스 전체 거리(km)
 
     @Column(name = "duration", nullable = false)
     private int duration; // 소요 시간(분)
@@ -50,9 +51,6 @@ public class Course extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "level", nullable = false)
     private CourseLevel level; // 난이도
-
-    @Column(name = "tour_point", columnDefinition = "TEXT")
-    private String tourPoint; // 코스 내 주요 관광지 정보
 
     @Enumerated(EnumType.STRING)
     @Column(name = "area", nullable = false)
@@ -62,7 +60,7 @@ public class Course extends BaseTimeEntity {
     private String gpxPath; // gpx 파일
 
     @Setter
-    @Column(columnDefinition = "POINT SRID 4326", name = "start_point", nullable = false)
+    @Column(columnDefinition = "GEOMETRY", name = "start_point", nullable = false)
     private Point startPoint; // 시작 포인트
 
     @Column(name = "max_ele", nullable = false)
@@ -76,6 +74,10 @@ public class Course extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private List<Theme> themes = new ArrayList<>(); // 테마
 
+    // CourseImage와 일대일 관계
+    @OneToOne(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CourseImage courseImage; // 썸네일 이미지
+
     // CourseRoadCondition과 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RoadCondition> roadConditions = new ArrayList<>(); // 길 상태
@@ -84,24 +86,23 @@ public class Course extends BaseTimeEntity {
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrackPoint> trackPoints = new ArrayList<>();
 
-    // CourseImage와 일대일 관계
-    @OneToOne(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
-    private CourseImage courseImage; // 썸네일 이미지
+    // Review와 일대다 관계
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Review> reviews = new ArrayList<>();
 
     // CourseSpot과 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CourseSpot> courseSpots = new ArrayList<>();
 
     @Builder
-    public Course(String externalId, String name, int distance, int duration,
-                  CourseLevel level, String tourPoint, Area area, String gpxPath,
+    public Course(String externalId, String name, double distance, int duration,
+                  CourseLevel level, Area area, String gpxPath,
                   Point startPoint, Double maxElevation, Double minElevation) {
         this.externalId = externalId;
         this.name = name;
         this.distance = distance;
         this.duration = duration;
         this.level = level;
-        this.tourPoint = tourPoint;
         this.area = area;
         this.gpxPath = gpxPath;
         this.startPoint = startPoint;
@@ -132,10 +133,6 @@ public class Course extends BaseTimeEntity {
         }
         if (this.level != source.getLevel()) {
             this.level = source.getLevel();
-            isUpdated = true;
-        }
-        if (this.tourPoint != null && !this.tourPoint.equals(source.getTourPoint())) {
-            this.tourPoint = source.getTourPoint();
             isUpdated = true;
         }
         if (this.area != source.getArea()) {

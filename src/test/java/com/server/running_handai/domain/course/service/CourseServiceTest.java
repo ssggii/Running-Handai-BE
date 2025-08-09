@@ -20,7 +20,7 @@ import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
-import com.server.running_handai.domain.course.dto.TrackPointDto;
+import com.server.running_handai.domain.course.dto.CourseSummaryDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseFilter;
@@ -30,14 +30,23 @@ import com.server.running_handai.domain.course.entity.Theme;
 import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.entity.Provider;
+import com.server.running_handai.domain.member.entity.Role;
+import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.review.entity.Review;
+import com.server.running_handai.domain.review.repository.ReviewRepository;
+import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -68,6 +77,12 @@ class CourseServiceTest {
 
     @Mock
     private BookmarkRepository bookmarkRepository;
+
+    @Mock
+    private ReviewRepository reviewRepository;
+
+    @Mock
+    private ReviewService reviewService;
 
     @Mock
     private GeometryFactory geometryFactory;
@@ -129,9 +144,10 @@ class CourseServiceTest {
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
+        assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
+        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -183,9 +199,10 @@ class CourseServiceTest {
         CourseInfoWithDetailsDto details = result.getFirst();
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
+        assertThat(details.courseName()).isEqualTo(course.getName());
         assertThat(details.distance()).isEqualTo(course.getDistance());
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo(course.getMaxElevation());
+        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -263,7 +280,11 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
-        assertThat(result.courseName()).isEqualTo("courseName1");
+        assertThat(result.courseName()).isEqualTo(course.getName());
+        assertThat(result.distance()).isEqualTo(course.getDistance());
+        assertThat(result.duration()).isEqualTo(course.getDuration());
+        assertThat(result.minElevation()).isEqualTo((int) course.getMinElevation().doubleValue());
+        assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -296,7 +317,11 @@ class CourseServiceTest {
         // then
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
-        assertThat(result.courseName()).isEqualTo("courseName1");
+        assertThat(result.courseName()).isEqualTo(course.getName());
+        assertThat(result.distance()).isEqualTo(course.getDistance());
+        assertThat(result.duration()).isEqualTo(course.getDuration());
+        assertThat(result.minElevation()).isEqualTo((int)course.getMinElevation().doubleValue());
+        assertThat(result.maxElevation()).isEqualTo((int)course.getMaxElevation().doubleValue());
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -329,10 +354,10 @@ class CourseServiceTest {
         // Course 객체 생성 (빌더로 설정 가능한 필드 우선 설정)
         Course course = Course.builder()
                 .name("courseName1")
-                .distance(15)
+                .distance(15.3)
                 .duration(120)
-                .minElevation(30.0)
-                .maxElevation(150.0)
+                .minElevation(30.4)
+                .maxElevation(150.5)
                 .level(CourseLevel.MEDIUM)
                 .build();
 
@@ -380,11 +405,101 @@ class CourseServiceTest {
     private CourseInfoDto createCourseInfoDto(Course course) {
         CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
         given(courseInfoDto.getId()).willReturn(course.getId());
+        given(courseInfoDto.getName()).willReturn(course.getName());
         given(courseInfoDto.getThumbnailUrl()).willReturn("thumbnailUrl");
         given(courseInfoDto.getDistance()).willReturn(course.getDistance());
         given(courseInfoDto.getDuration()).willReturn(course.getDuration());
         given(courseInfoDto.getMaxElevation()).willReturn(course.getMaxElevation());
         given(courseInfoDto.getDistanceFromUser()).willReturn(1.5);
         return courseInfoDto;
+    }
+
+    @Nested
+    @DisplayName("코스 요약 조회 테스트")
+    class CourseSummaryTest {
+
+        private Member writer;
+
+        @BeforeEach
+        void setUp() {
+            writer = Member.builder()
+                    .nickname("nickname1")
+                    .providerId("providerId1")
+                    .provider(Provider.GOOGLE)
+                    .email("email1")
+                    .role(Role.USER)
+                    .build();
+        }
+
+        private Review createMockReview(Long reviewId, double stars, String contents) {
+            Review review = Review.builder().stars(stars).contents(contents).build();
+            ReflectionTestUtils.setField(review, "id", reviewId);
+            ReflectionTestUtils.setField(review, "createdAt", LocalDateTime.now());
+            review.setWriter(writer);
+            return review;
+        }
+
+        private static Stream<Arguments> memberAndGuestCases() {
+            return Stream.of(
+                    Arguments.of(1L, true), // 회원이면 memberId=1L, isMyReview=true
+                    Arguments.of(null, false) // 게스트이면 memberId=null, isMyReview=false
+            );
+        }
+
+        @ParameterizedTest
+        @DisplayName("코스 요약 조회 성공")
+        @MethodSource("memberAndGuestCases")
+        void getCourseSummary_success(Long memberId, boolean isMyReview) {
+            // given
+            Long courseId = 1L;
+
+            Course course = createMockCourse(courseId);
+            Review review1 = createMockReview(1L, 4.0, "review1");
+            Review review2 = createMockReview(2L, 5.0, "review2");
+            List<Review> reviews = List.of(review1, review2);
+
+            assertThat(review1.getStars()).isEqualTo(4.0);
+            assertThat(review2.getStars()).isEqualTo(5.0);
+
+            List<ReviewInfoDto> reviewInfoDtos = List.of(
+                    ReviewInfoDto.from(review1, isMyReview),
+                    ReviewInfoDto.from(review2, isMyReview)
+            );
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(reviewRepository.findRandom2ByCourseId(courseId)).willReturn(reviews);
+            given(reviewService.convertToReviewInfoDtos(reviews, memberId)).willReturn(reviewInfoDtos);
+            given(reviewService.calculateAverageStars(courseId)).willReturn(4.5);
+
+            // when
+            CourseSummaryDto result = courseService.getCourseSummary(courseId, memberId);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.distance()).isEqualTo(course.getDistance());
+            assertThat(result.duration()).isEqualTo(course.getDuration());
+            assertThat(result.maxElevation()).isEqualTo(course.getMaxElevation());
+            assertThat(result.reviewInfoListDto().starAverage()).isEqualTo(4.5);
+            assertThat(result.reviewInfoListDto().reviewInfoDtos().size()).isEqualTo(2);
+            assertThat(result.reviewInfoListDto().reviewInfoDtos().getFirst().reviewId()).isEqualTo(review1.getId());
+            assertThat(result.reviewInfoListDto().reviewInfoDtos().getLast().reviewId()).isEqualTo(review2.getId());
+
+            verify(courseRepository).findById(courseId);
+            verify(reviewRepository).findRandom2ByCourseId(courseId);
+            verify(reviewService).convertToReviewInfoDtos(reviews, memberId);
+        }
+
+        @Test
+        @DisplayName("코스 요약 조회 실패 - 존재하지 않는 코스")
+        void getCourseSummary_fail_courseNotFound() {
+            // given
+            Long memberId = 1L;
+            Long courseId = 999L; // 존재하지 않는 코스
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.getCourseSummary(courseId, memberId));
+            assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+        }
     }
 }

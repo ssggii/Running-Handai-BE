@@ -1,0 +1,166 @@
+package com.server.running_handai.domain.review.service;
+
+import com.server.running_handai.domain.course.entity.Course;
+import com.server.running_handai.domain.course.repository.CourseRepository;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.repository.MemberRepository;
+import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
+import com.server.running_handai.domain.review.dto.ReviewInfoDto;
+import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
+import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateRequestDto;
+import com.server.running_handai.domain.review.dto.ReviewUpdateResponseDto;
+import com.server.running_handai.domain.review.entity.Review;
+import com.server.running_handai.domain.review.repository.ReviewRepository;
+import com.server.running_handai.global.response.ResponseCode;
+import com.server.running_handai.global.response.exception.BusinessException;
+import java.util.List;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ReviewService {
+
+    private final ReviewRepository reviewRepository;
+    private final CourseRepository courseRepository;
+    private final MemberRepository memberRepository;
+
+    /**
+     * 코스의 리뷰를 생성합니다.
+     *
+     * @param courseId 리뷰 대상인 코스의 ID
+     * @param requestDto 리뷰 등록 요청 DTO
+     * @param memberId 리뷰를 작성한 회원의 ID
+     * @return 생성된 리뷰 정보를 담은 DTO
+     */
+    @Transactional
+    public ReviewCreateResponseDto createReview(Long courseId, ReviewCreateRequestDto requestDto, Long memberId) {
+        if ((requestDto.stars() * 2) % 1 != 0) {
+            throw new BusinessException(ResponseCode.INVALID_REVIEW_STARS);
+        }
+
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
+
+        Member writer = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+
+        Review review = Review.builder()
+                .stars(requestDto.stars())
+                .contents(requestDto.contents())
+                .build();
+
+        review.setCourse(course);
+        review.setWriter(writer);
+        return ReviewCreateResponseDto.from(reviewRepository.save(review));
+    }
+
+    /**
+     * 코스의 리뷰를 전체 조회합니다.
+     *
+     * @param courseId 리뷰 대상인 코스의 ID
+     * @return 조회된 리뷰 목록을 담는 DTO
+     */
+    public ReviewInfoListDto findAllReviewsByCourse(Long courseId, Long memberId) {
+        if (!courseRepository.existsById(courseId)) {
+            throw new BusinessException(ResponseCode.COURSE_NOT_FOUND);
+        }
+
+        double averageStars = calculateAverageStars(courseId);
+        List<ReviewInfoDto> reviewInfoDtos = convertToReviewInfoDtos(reviewRepository.findAllByCourseId(courseId), memberId);
+        return ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+    }
+
+    /**
+     * 코스의 별점 평균을 계산합니다.
+     *
+     * @param courseId 리뷰 평균을 계산할 코스의 ID
+     * @return 별점 평균
+     */
+    public double calculateAverageStars(Long courseId) {
+        double averageStars = Optional.ofNullable(
+                reviewRepository.findAverageStarsByCourseId(courseId)
+        ).orElse(0.0); // 리뷰가 없으면 0.0
+        averageStars = Math.round(averageStars * 10) / 10.0;
+        return averageStars;
+    }
+
+    /**
+     * 리뷰 엔티티 리스트를 리뷰 조회용 DTO 리스트로 변환합니다.
+     *
+     * @param reviews 변환 대상인 리뷰 엔티티 리스트
+     * @param memberId 요청 회원의 ID
+     * @return 리뷰 조회용 DTO 목록
+     */
+    public List<ReviewInfoDto> convertToReviewInfoDtos(List<Review> reviews, Long memberId) {
+        return reviews.stream()
+                .map(review -> {
+                    boolean isMyReview = reviewRepository.existsByIdAndWriterId(review.getId(), memberId);
+                    return ReviewInfoDto.from(review, isMyReview);
+                })
+                .toList();
+    }
+
+    /**
+     * 코스의 리뷰를 수정합니다.
+     *
+     * @param reviewId 수정하려는 리뷰의 ID
+     * @param requestDto 리뷰 수정 요청 DTO
+     * @param member 리뷰 수정을 요청한 회원
+     * @return 수정된 리뷰 정보를 담은 DTO
+     */
+    @Transactional
+    public ReviewUpdateResponseDto updateReview(Long reviewId, ReviewUpdateRequestDto requestDto, Member member) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.REVIEW_NOT_FOUND));
+
+        if (!review.getWriter().getId().equals(member.getId())) {
+            throw new BusinessException(ResponseCode.ACCESS_DENIED); // 작성자가 아니라면 접근 권한 없음
+        }
+
+        Double newStars = requestDto.stars();
+        String newContents = requestDto.contents();
+
+        // 별점을 수정하는 경우
+        if (newStars != null) {
+            if ((newStars * 2) % 1 != 0) {
+                throw new BusinessException(ResponseCode.INVALID_REVIEW_STARS);
+            }
+            review.updateStars(newStars);
+        }
+
+        // 리뷰 내용을 수정하는 경우
+        if (newContents != null) {
+            if (newContents.isBlank()) {
+                throw new BusinessException(ResponseCode.EMPTY_REVIEW_CONTENTS);
+            }
+            review.updateContents(newContents);
+        }
+
+        return ReviewUpdateResponseDto.from(reviewRepository.save(review));
+    }
+
+    /**
+     * 코스의 리뷰를 삭제합니다.
+     *
+     * @param reviewId 삭제하려는 리뷰 ID
+     * @param memberId 리뷰 삭제를 요청한 회원의 ID
+     */
+    @Transactional
+    public void deleteReview(Long reviewId, Long memberId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.REVIEW_NOT_FOUND));
+
+        if (!review.getWriter().getId().equals(memberId)) {
+            throw new BusinessException(ResponseCode.ACCESS_DENIED); // 작성자가 아니라면 접근 권한 없음
+        }
+
+        reviewRepository.delete(review);
+    }
+
+}
