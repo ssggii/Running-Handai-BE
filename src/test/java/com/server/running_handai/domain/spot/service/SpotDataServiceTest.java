@@ -248,7 +248,86 @@ class SpotDataServiceTest {
 
     /**
      * [즐길거리 수정] 성공
-     * 6. SpotApiResponseDto의 필드값이 유효하지 않은 값일 경우
+     * 6. 공통정보 조회 API 호출이 일부만 성공했을 경우
+     */
+    @Test
+    @DisplayName("즐길거리 수정 성공 - 공통정보 조회 API 일부만 성공")
+    void updateSpots_success_partialSpotApiFailure() {
+        // given
+        Set<String> externalIds = Set.of("externalId1", "externalId2");
+
+        given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+        given(trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId())).willReturn(List.of(startPoint, endPoint));
+
+        SpotLocationApiResponseDto spotLocationApiResponseDto = createSpotLocationApiResponse(externalIds);
+        given(spotLocationApiClient.fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt()))
+                .willReturn(spotLocationApiResponseDto);
+
+        given(spotRepository.findByExternalIdIn(anySet())).willReturn(Collections.emptyList());
+        // 공통정보 조회 API 응답값이 하나는 있고, 하나는 Null이라 가정
+        SpotApiResponseDto spotApiResponseDto = createSpotApiResponse("externalId1");
+        given(spotApiClient.fetchSpotData(eq("externalId1"))).willReturn(spotApiResponseDto);
+        given(spotApiClient.fetchSpotData(eq("externalId2"))).willReturn(null);
+
+        Spot spot = createMockSpot("externalId1");
+        given(spotRepository.saveAll(anyList())).willReturn(List.of(spot));
+
+        // when
+        spotDataService.updateSpots(COURSE_ID);
+
+        // then
+        // 공통정보 조회 API 호출은 각각 되지만, 이미지 업로드는 1번만 실행되고, 1개만 저장되는지 확인
+        verify(spotApiClient, times(2)).fetchSpotData(anyString());
+        verify(fileService, times(1)).uploadFileByUrl(anyString(), eq("spot"));
+        verify(courseSpotRepository).deleteByCourseId(COURSE_ID);
+        verify(spotRepository).saveAll(argThat(list -> ((Collection<?>) list).size() == 1));
+        verify(courseSpotRepository).saveAll(argThat(list -> ((Collection<?>) list).size() == 1));
+    }
+
+    /**
+     * [즐길거리 수정] 성공
+     * 7. 위치기반 정보조회 API 호출이 일부만 성공했을 경우
+     */
+    @Test
+    @DisplayName("즐길거리 수정 성공 - 위치기반 정보조회 API 일부만 성공")
+    void updateSpots_success_partialSpotLocationApiFailure() {
+        // given
+        Set<String> externalIds = Set.of("externalId1"); // 성공해서 가져온 externalId가 1개라고 가정
+
+        given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+        given(trackPointRepository.findByCourseIdOrderBySequenceAsc(course.getId())).willReturn(List.of(startPoint, endPoint));
+
+        // 위치기반 정보조회 API 응답값이 하나는 있고, 하나는 Null이라 가정
+        SpotLocationApiResponseDto spotLocationApiResponseDto = createSpotLocationApiResponse(externalIds);
+        given(spotLocationApiClient.fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt()))
+                .willReturn(spotLocationApiResponseDto)
+                .willReturn(null);
+
+        given(spotRepository.findByExternalIdIn(anySet())).willReturn(Collections.emptyList());
+
+        // 성공해서 가져온 externalId으로 공통정보 조회 API 호출
+        SpotApiResponseDto spotApiResponseDto = createSpotApiResponse("externalId1");
+        given(spotApiClient.fetchSpotData(eq("externalId1"))).willReturn(spotApiResponseDto);
+
+        Spot spot = createMockSpot("externalId1");
+        given(spotRepository.saveAll(anyList())).willReturn(List.of(spot));
+
+        // when
+        spotDataService.updateSpots(COURSE_ID);
+
+        // then
+        // 위치기반 정보조회 API 호출은 되지만, 공통정보 조회 API와 이미지 업로드는 1번씩만 실행되고, 1개만 저장되는지 확인
+        verify(spotLocationApiClient, times(4)).fetchSpotLocationData(anyInt(), anyInt(), anyString(), anyDouble(), anyDouble(), anyInt());
+        verify(spotApiClient, times(1)).fetchSpotData(anyString());
+        verify(fileService, times(1)).uploadFileByUrl(anyString(), eq("spot"));
+        verify(courseSpotRepository).deleteByCourseId(COURSE_ID);
+        verify(spotRepository).saveAll(argThat(list -> ((Collection<?>) list).size() == 1));
+        verify(courseSpotRepository).saveAll(argThat(list -> ((Collection<?>) list).size() == 1));
+    }
+
+    /**
+     * [즐길거리 수정] 성공
+     * 8. SpotApiResponseDto의 필드값이 유효하지 않은 값일 경우
      * - Null
      * - 빈 문자열
      * - 위도, 경도의 경우 Double로 변환 불가
@@ -306,7 +385,7 @@ class SpotDataServiceTest {
 
     /**
      * [즐길거리 수정] 성공
-     * 7. SpotLocationApiResponseDto의 필드값이 유효하지 않은 값일 경우
+     * 9. SpotLocationApiResponseDto의 필드값이 유효하지 않은 값일 경우
      * - Null
      * - 빈 문자열
      */
@@ -370,8 +449,7 @@ class SpotDataServiceTest {
     }
 
     private Spot createMockSpot(String externalId) {
-        Spot spot = Spot.builder().externalId(externalId).build();
-        return spot;
+        return Spot.builder().externalId(externalId).build();
     }
 
     private SpotLocationApiResponseDto createSpotLocationApiResponse(Set<String> externalIds) {

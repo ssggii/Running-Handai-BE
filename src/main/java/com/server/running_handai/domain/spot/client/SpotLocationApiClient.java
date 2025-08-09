@@ -51,7 +51,7 @@ public class SpotLocationApiClient {
                 .queryParam("pageNo", pageNo)
                 .queryParam("MobileOS", "ETC")
                 .queryParam("MobileApp", "runninghandai")
-                .queryParam("_type", "Json")
+                .queryParam("_type", "json")
                 .queryParam("arrange", arrange)
                 .queryParam("mapX", String.valueOf(lon))
                 .queryParam("mapY", String.valueOf(lat))

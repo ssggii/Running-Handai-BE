@@ -34,7 +34,7 @@ public class SpotApiClient {
                 .path("/detailCommon2")
                 .queryParam("MobileOS", "ETC")
                 .queryParam("MobileApp", "runninghandai")
-                .queryParam("_type", "Json")
+                .queryParam("_type", "json")
                 .queryParam("contentId", contentId)
                 .queryParam("serviceKey", serviceKey);
 
