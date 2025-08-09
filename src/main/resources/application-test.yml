@@ -70,7 +70,12 @@ spring:
 external:
   api:
     durunubi:
+      base-url: http://apis.data.go.kr/B551011/Durunubi
       service-key: "test-service-key"
+    spot:
+      base-url: http://apis.data.go.kr/B551011/KorService2
+      service-key: "test-spot-service-key"
+      radius: 50000
 
 jwt:
   secret-key: "test-jwt-secret-key"

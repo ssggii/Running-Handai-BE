@@ -9,20 +9,12 @@ import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
 import com.server.running_handai.domain.course.client.DurunubiApiClient;
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.dto.DurunubiApiResponseDto.Item;
-import com.server.running_handai.domain.course.entity.Area;
-import com.server.running_handai.domain.course.entity.Course;
-import com.server.running_handai.domain.course.entity.CourseImage;
-import com.server.running_handai.domain.course.entity.CourseLevel;
-import com.server.running_handai.domain.course.entity.RoadCondition;
-import com.server.running_handai.domain.course.entity.Theme;
-import com.server.running_handai.domain.course.entity.TrackPoint;
-import com.server.running_handai.domain.course.repository.CourseRepository;
-import com.server.running_handai.domain.course.repository.RoadConditionRepository;
-import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.course.entity.*;
+import com.server.running_handai.domain.course.repository.*;
 import com.server.running_handai.domain.course.util.TrackPointSimplificationUtil;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -410,7 +402,8 @@ public class CourseDataService {
         log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
 
         List<RoadCondition> newRoadConditions = descriptions.stream()
-                .map(description -> new RoadCondition(course, description))
+                .map(description ->
+                        RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
         roadConditionRepository.saveAll(newRoadConditions);
@@ -425,11 +418,11 @@ public class CourseDataService {
      * @param courseImageFile 업로드된 이미지 파일
      */
     @Transactional
-    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) throws IOException {
+    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // 새 파일을 S3에 먼저 업로드
-        String newImageUrl = fileService.uploadFile(courseImageFile, "image");
+        String newImageUrl = fileService.uploadFile(courseImageFile, "course");
         log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: newImageUrl={}", newImageUrl);
 
         // 삭제할 기존 파일 URL을 임시 변수에 저장
@@ -439,7 +432,7 @@ public class CourseDataService {
         if (oldImageUrl != null) {
             course.getCourseImage().updateImageUrl(newImageUrl);
         } else {
-            course.updateCourseImage(new CourseImage(newImageUrl));
+            course.updateCourseImage(CourseImage.builder().imgUrl(newImageUrl).build());
         }
         log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료: Course ID={}", courseId);
 
@@ -459,7 +452,7 @@ public class CourseDataService {
      * @param courseGpxFile 업로드된 GPX 파일
      */
     @Transactional
-    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) throws IOException {
+    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
         // 1. 코스 이름 조합
@@ -473,7 +466,7 @@ public class CourseDataService {
             log.info("[GPX 코스 생성] 트랙포인트 파싱 완료 ({}개)", trackPoints.size());
         } catch (Exception e) {
             log.error("[GPX 코스 생성] 트랙포인트 파싱 실패", e);
-            throw new BusinessException(GPX_FILE_PARSE_FAILED);
+            throw new BusinessException(ResponseCode.GPX_FILE_PARSE_FAILED);
         }
 
         // 3. 전체 거리 계산
@@ -557,7 +550,7 @@ public class CourseDataService {
         List<RoadCondition> roadConditions = descriptions.stream()
                 .skip(1)
                 .limit(5)
-                .map(description -> new RoadCondition(course, description))
+                .map(description -> RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
         roadConditionRepository.saveAll(roadConditions);
@@ -625,6 +618,11 @@ public class CourseDataService {
                             .build())
                     .collect(Collectors.toList());
         }
+
+        if (trackPoints.isEmpty()) {
+            throw new BusinessException(TRACK_POINTS_NOT_FOUND);
+        }
+
         return trackPoints;
     }
 
