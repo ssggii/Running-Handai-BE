@@ -93,8 +93,10 @@ public class CourseDataService {
         Map<String, Course> dbCourseMap = courseRepository.findByExternalIdIsNotNull().stream()
                 .collect(Collectors.toMap(Course::getExternalId, course -> course));
 
+        List<Course> newCourses = new ArrayList<>(); // 새롭게 추가된 코스
+        List<Course> updatedCourses = new ArrayList<>(); // 수정된 기존 코스
+
         // API 데이터를 기준으로 루프를 돌며 DB 데이터와 비교
-        List<Course> toSave = new ArrayList<>();
         for (Map.Entry<String, DurunubiApiResponseDto.Item> entry : apiCourseMap.entrySet()) {
             String externalId = entry.getKey();
             Item courseItem = entry.getValue();
@@ -123,21 +125,37 @@ public class CourseDataService {
                 log.info("[두루누비 코스 동기화] 트랙포인트 업데이트 완료: courseId={}, count={}", dbCourse.getId(), trackPoints.size());
 
                 if (dbCourse.syncWith(apiCourse)) {
-                    toSave.add(dbCourse);
-                    log.info("[두루누비 코스 동기화] 코스 데이터 변경 감지 (UPDATE): courseId={}, externalId={}", dbCourse.getId(), externalId);
+                    updatedCourses.add(dbCourse);
+                    log.info("[두루누비 코스 동기화] 기존 코스 변경 (UPDATE): courseId={}, externalId={}", dbCourse.getId(), externalId);
                 }
                 dbCourseMap.remove(externalId); // 업데이트 끝난 DB 데이터는 맵에서 제거 (남은 데이터는 DELETE 대상)
             } else { // DB에 없음 -> 신규 추가
                 trackPoints.forEach(trackPoint -> trackPoint.setCourse(apiCourse));
-                toSave.add(apiCourse);
+                newCourses.add(apiCourse);
                 log.info("[두루누비 코스 동기화] 신규 코스 저장 (INSERT): externalId={}", externalId);
             }
         }
 
-        // 추가 또는 수정된 Course 저장
-        if (!toSave.isEmpty()) {
-            courseRepository.saveAll(toSave);
-            log.info("[두루누비 코스 동기화] {}건의 코스 데이터가 추가/수정되었습니다.", toSave.size());
+        // 신규 코스 저장 및 길 상태 업데이트
+        if (!newCourses.isEmpty()) {
+            courseRepository.saveAll(newCourses);
+            log.info("[두루누비 코스 동기화] {}건의 신규 코스가 추가되었습니다.", newCourses.size());
+
+            log.info("[두루누비 코스 동기화] {}건의 신규 코스에 대한 길 상태 정보 업데이트를 시작합니다.", newCourses.size());
+            for (Course newCourse : newCourses) {
+                try {
+                    log.info("[두루누비 코스 동기화] 길 상태 업데이트 호출: courseId={}", newCourse.getId());
+                    updateRoadConditions(newCourse.getId());
+                } catch (Exception e) {
+                    log.error("[두루누비 코스 동기화] 길 상태 업데이트 실패: courseId={}. 동기화를 계속합니다.", newCourse.getId(), e);
+                }
+            }
+        }
+
+        // 수정된 코스 저장
+        if (!updatedCourses.isEmpty()) {
+            courseRepository.saveAll(updatedCourses);
+            log.info("[두루누비 코스 동기화] {}건의 코스 데이터가 수정되었습니다.", updatedCourses.size());
         }
 
         // DB에만 있고 두루누비에서 없어진 Course 삭제
