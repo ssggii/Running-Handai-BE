@@ -91,6 +91,10 @@ external:
     durunubi:
       base-url: http://apis.data.go.kr/B551011/Durunubi
       service-key: ${DURUNUBI_SERVICE_KEY}
+    spot:
+      base-url: http://apis.data.go.kr/B551011/KorService2
+      service-key: ${SPOT_SERVICE_KEY}
+      radius: 50000 # [국문 관광정보] 위치기반 관광정보 조회 API 거리 반경 (50000m = 5km)
 
 springdoc:
   default-produces-media-type: application/json
