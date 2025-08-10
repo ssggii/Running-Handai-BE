@@ -17,7 +17,7 @@ public class CourseScheduler {
      * 매일 새벽 4시에 코스 데이터 동기화 작업을 실행합니다.
      * cron = "[초] [분] [시] [일] [월] [요일]"
      */
-    @Scheduled(cron = "0 30 4 * * *", zone = "Asia/Seoul") // 매일 새벽 4시 0분 0초
+    @Scheduled(cron = "0 30 4 * * *", zone = "Asia/Seoul") // 매일 새벽 4시 30분 0초
     public void scheduleDurunubiCourseSync() {
         log.info("[스케줄러] 두루누비 코스 동기화 작업을 시작합니다.");
         try {
