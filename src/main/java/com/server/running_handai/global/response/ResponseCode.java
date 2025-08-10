@@ -57,6 +57,7 @@ public enum ResponseCode {
 
     // NOT_FOUND (404)
     RESOURCE_NOT_FOUND(NOT_FOUND, "존재하지 않는 리소스입니다."),
+    TRACK_POINTS_NOT_FOUND(NOT_FOUND, "파싱된 트랙 포인트가 없습니다."),
 
     // METHOD_NOT_ALLOWED (405)
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
@@ -68,7 +69,8 @@ public enum ResponseCode {
     FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
     ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
-    PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다.");
+    PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
+    UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
