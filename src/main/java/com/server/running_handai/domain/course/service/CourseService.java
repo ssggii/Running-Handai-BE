@@ -21,6 +21,8 @@ import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
+import com.server.running_handai.domain.spot.dto.SpotInfoDto;
+import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,9 +52,9 @@ public class CourseService {
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
     private final GeometryFactory geometryFactory;
+    private final SpotRepository spotRepository;
     private final ReviewRepository reviewRepository;
     private final ReviewService reviewService;
-    private final CourseDataService courseDataService;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -214,8 +216,9 @@ public class CourseService {
         double averageStars = reviewService.calculateAverageStars(courseId);
         ReviewInfoListDto reviewInfoListDto = ReviewInfoListDto.from(averageStars, reviewInfoDtos);
 
-        // TODO 즐길거리 조회
+        // 즐길거리 조회
+        List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
 
-        return CourseSummaryDto.from(course, reviewInfoListDto);
+        return CourseSummaryDto.from(course, reviewInfoListDto, spotInfoDtos);
     }
 }
