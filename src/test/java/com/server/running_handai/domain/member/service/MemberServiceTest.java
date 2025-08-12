@@ -1,5 +1,8 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
+import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
+import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.repository.MemberRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
@@ -12,10 +15,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
@@ -27,14 +36,15 @@ class MemberServiceTest {
     private MemberRepository memberRepository;
 
     @Nested
-    @DisplayName("닉네임 유효성 검증 메서드 테스트")
+    @DisplayName("닉네임 유효성 검증 테스트")
     class NicknameValidationTest {
+
         /**
-         * [닉네임 유효성 검증 메서드] 실패
+         * [닉네임 유효성 검증] 실패
          * 1. 현재 자신의 닉네임과 동일한 경우
          */
         @Test
-        @DisplayName("닉네임 유효성 검증 메서드 - 본인 닉네임과 동일")
+        @DisplayName("닉네임 유효성 검증 실패 - 본인 닉네임과 동일")
         void isNicknameValid_fail_sameAsCurrentNickname() {
             // given
             String currentNickname = "current";
@@ -46,28 +56,101 @@ class MemberServiceTest {
         }
 
         /**
-         * [닉네임 유효성 검증 메서드] 실패
+         * [닉네임 유효성 검증] 실패
          * 2. 글자수가 안맞는 경우 (2글자 ~ 10글자)
          */
         @ParameterizedTest
         @ValueSource(strings = {"a", "verylongnickname123"})
-        @DisplayName("닉네임 유효성 검증 메서드 - 글자수가 안맞음")
+        @DisplayName("닉네임 유효성 검증 실패 - 글자수가 안맞음")
         void isNicknameValid_fail_inValidNicknameLength(String newNickname) {
             BusinessException exception = assertThrows(BusinessException.class, () -> memberService.isNicknameValid(newNickname, "current"));
             assertThat(exception.getResponseCode()).isEqualTo(INVALID_NICKNAME_LENGTH);
         }
 
         /**
-         * [닉네임 유효성 검증 메서드] 실패
+         * [닉네임 유효성 검증] 실패
          * 3. 한글, 영문, 숫자 외의 문자가 존재하는 경우
          */
         @ParameterizedTest
         @ValueSource(strings = {"hello@", "닉네임!", "test#123"})
-        @DisplayName("닉네임 유효성 검증 메서드 - 한글, 영문, 숫자 외의 문자 존재")
+        @DisplayName("닉네임 유효성 검증 실패 - 한글, 영문, 숫자 외의 문자 존재")
         void isNicknameValid_fail_inValidNicknameFormat(String newNickname) {
             BusinessException exception = assertThrows(BusinessException.class, () -> memberService.isNicknameValid(newNickname, "current"));
             assertThat(exception.getResponseCode()).isEqualTo(INVALID_NICKNAME_FORMAT);
         }
     }
 
+    @Nested
+    @DisplayName("닉네임 중복 여부 조회 테스트")
+    class CheckNicknameDuplicateTest {
+        private static final Long MEMBER_ID = 1L;
+
+        // 헬퍼 메서드
+        private Member createMockMember(Long memberId) {
+            Member member = Member.builder().nickname("current").build();
+            ReflectionTestUtils.setField(member, "id", memberId);
+            return member;
+        }
+
+        /**
+         * [닉네임 중복 여부 조회] 성공
+         * 1. 중복되지 않은 닉네임인 경우 (true 응답)
+         */
+        @Test
+        @DisplayName("닉네임 중복 확인 성공 - 중복되지 않은 닉네임")
+        void checkNicknameDuplicate_success_notDuplicateNickname() {
+            // given
+            Member member = createMockMember(MEMBER_ID);
+            given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(member));
+
+            String newNickname = "new";
+            given(memberRepository.existsByNickname("new")).willReturn(false);
+
+            // when
+            Boolean result = memberService.checkNicknameDuplicate(member.getId(), newNickname);
+
+            // then
+            assertThat(result).isTrue();
+            verify(memberRepository).findById(MEMBER_ID);
+            verify(memberRepository).existsByNickname(newNickname);
+        }
+
+        /**
+         * [닉네임 중복 여부 조회] 성공
+         * 2. 중복된 닉네임인 경우 (false 응답)
+         */
+        @Test
+        @DisplayName("닉네임 중복 확인 성공 - 중복된 닉네임")
+        void checkNicknameDuplicate_success_duplicateNickname() {
+            // given
+            Member member = createMockMember(MEMBER_ID);
+            given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(member));
+
+            String newNickname = "duplicate";
+            given(memberRepository.existsByNickname("duplicate")).willReturn(true);
+
+            // when
+            Boolean result = memberService.checkNicknameDuplicate(member.getId(), newNickname);
+
+            // then
+            assertThat(result).isFalse();
+            verify(memberRepository).findById(MEMBER_ID);
+            verify(memberRepository).existsByNickname(newNickname);
+        }
+
+        /**
+         * [닉네임 중복 여부 조회] 실패
+         * 3. Member가 존재하지 않을 경우
+         */
+        @Test
+        @DisplayName("닉네임 중복 확인 실패 - 찾을 수 없는 사용자")
+        void checkNicknameDuplicate_fail_memberNotFound() {
+            // given
+            given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () -> memberService.checkNicknameDuplicate(MEMBER_ID, anyString()));
+            assertThat(exception.getResponseCode()).isEqualTo(MEMBER_NOT_FOUND);
+        }
+    }
 }
