@@ -1,5 +1,7 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
+import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
 import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
 import com.server.running_handai.global.response.ResponseCode;
@@ -10,7 +12,7 @@ import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -152,5 +154,51 @@ public class MemberService {
         }
 
         return nickname;
+    }
+
+    /**
+     * 닉네임 중복 여부를 조회합니다.
+     * 유효성 검증도 함께 수행합니다.
+     *
+     * @param memberId 사용자 Id
+     * @param nickname 검증할 닉네임
+     * @return 중복이지 않으면 true, 중복이면 false.
+     */
+    public Boolean checkNicknameDuplicate(Long memberId, String nickname) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+
+        // 중복 여부 조회 시 문자 앞, 뒤 공백과 영문 대, 소문자는 무시 (프론트 측에서 처리해서 보내줌)
+        String newNickname = nickname.trim().toLowerCase();
+        String currentNickname = member.getNickname().trim().toLowerCase();
+
+        return isNicknameValid(newNickname, currentNickname);
+    }
+
+    /**
+     * 닉네임 유효성을 검증합니다.
+     * 테스트를 위해 가시성을 완화했습니다. (private -> package-private)
+     *
+     * @param newNickname 검증할 닉네임
+     * @param currentNickname 사용자의 현재 닉네임
+     * @return 사용 가능하면 true, 사용 불가하면 false.
+     */
+    boolean isNicknameValid(String newNickname, String currentNickname) {
+        // 닉네임 글자수는 2글자부터 최대 10글자까지
+        if (newNickname.length() < 2 || newNickname.length() > 10) {
+            throw new BusinessException(ResponseCode.INVALID_NICKNAME_LENGTH);
+        }
+
+        // 닉네임은 한글, 숫자, 영문만 입력할 수 있음
+        String pattern = "^[가-힣a-zA-Z0-9]+$";
+        if (!newNickname.matches(pattern)) {
+            throw new BusinessException(ResponseCode.INVALID_NICKNAME_FORMAT);
+        }
+
+        // 이미 자신이 사용 중인 닉네임이어서는 안됨
+        if (currentNickname.equals(newNickname)) {
+            throw new BusinessException(ResponseCode.SAME_AS_CURRENT_NICKNAME);
+        }
+
+        return !memberRepository.existsByNickname(newNickname);
     }
 }
