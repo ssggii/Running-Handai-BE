@@ -40,7 +40,7 @@ public class MemberController {
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, tokenResponseDto));
     }
 
-    @Operation(summary = "닉네임 중복 조회",
+    @Operation(summary = "닉네임 중복 여부 조회",
             description = "사용자가 수정하려는 닉네임이 중복이 아닌 경우 true, 중복인 경우 false를 응답합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
@@ -56,8 +56,30 @@ public class MemberController {
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
-        log.info("[닉네임 유효성 조회] memberId: {} nickname: {}", memberId, nickname);
+        log.info("[닉네임 중복 여부 조회] memberId: {} nickname: {}", memberId, nickname);
         Boolean result = memberService.checkNicknameDuplicate(memberId, nickname);
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, result));
+    }
+
+    @Operation(summary = "내 정보 수정",
+            description = "내 정보를 수정합니다. 현재는 닉네임 수정만 제공합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
+            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
+            @ApiResponse(responseCode = "404", description = "실패 (찾을 수 없는 사용자) - MEMBER_NOT_FOUND"),
+            @ApiResponse(responseCode = "400", description = "실패 (글자수가 2글자 미만, 10글자 초과) - INVALID_NICKNAME_LENGTH"),
+            @ApiResponse(responseCode = "400", description = "실패 (한글, 영문, 숫자 외의 문자가 존재) - INVALID_NICKNAME_FORMAT"),
+            @ApiResponse(responseCode = "400", description = "실패 (현재 사용 중인 닉네임과 동일) - SAME_AS_CURRENT_NICKNAME"),
+            @ApiResponse(responseCode = "409", description = "실패 (중복된 닉네임) - DUPLICATE_NICKNAME"),
+    })
+    @PatchMapping("/me")
+    public ResponseEntity<CommonResponse<MemberUpdateResponseDto>> updateMemberInfo(
+            @RequestBody MemberUpdateRequestDto memberUpdateRequestDto,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        log.info("[내 정보 수정] memberId: {}", memberId);
+        MemberUpdateResponseDto memberUpdateResponseDto = memberService.updateMemberInfo(memberId, memberUpdateRequestDto);
+        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, memberUpdateResponseDto));
     }
 }

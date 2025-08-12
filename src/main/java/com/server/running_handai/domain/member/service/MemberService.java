@@ -158,7 +158,7 @@ public class MemberService {
 
     /**
      * 닉네임 중복 여부를 조회합니다.
-     * 유효성 검증도 함께 수행합니다.
+     * 닉네임 유효성 검증도 함께 수행합니다.
      *
      * @param memberId 사용자 Id
      * @param nickname 검증할 닉네임
@@ -172,6 +172,31 @@ public class MemberService {
         String currentNickname = member.getNickname().trim().toLowerCase();
 
         return isNicknameValid(newNickname, currentNickname);
+    }
+
+    /**
+     * 내 정보를 수정합니다.
+     * 닉네임 유효성 검증도 함께 수행합니다.
+     *
+     * @param memberId 사용자 Id
+     * @param memberUpdateRequestDto 수정하고 싶은 내 정보 Dto
+     * @return 수정된 내 정보 Dto (MemberUpdateResponseDto)
+     */
+    @Transactional
+    public MemberUpdateResponseDto updateMemberInfo(Long memberId, MemberUpdateRequestDto memberUpdateRequestDto) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+
+        // 중복 여부 조회 시 문자 앞, 뒤 공백과 영문 대, 소문자는 무시 (프론트 측에서 처리해서 보내줌)
+        String newNickname = memberUpdateRequestDto.nickname().trim().toLowerCase();
+        String currentNickname = member.getNickname().trim().toLowerCase();
+
+        if (isNicknameValid(newNickname, currentNickname)) {
+            member.updateNickname(newNickname);
+        } else {
+            throw new BusinessException(ResponseCode.DUPLICATE_NICKNAME);
+        }
+
+        return MemberUpdateResponseDto.from(member.getId(), member.getNickname());
     }
 
     /**
