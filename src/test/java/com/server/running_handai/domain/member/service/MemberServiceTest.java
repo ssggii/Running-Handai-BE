@@ -140,7 +140,7 @@ class MemberServiceTest {
 
         /**
          * [닉네임 중복 여부 조회] 실패
-         * 3. Member가 존재하지 않을 경우
+         * 1. Member가 존재하지 않을 경우
          */
         @Test
         @DisplayName("닉네임 중복 확인 실패 - 찾을 수 없는 사용자")
@@ -151,6 +151,77 @@ class MemberServiceTest {
             // when, then
             BusinessException exception = assertThrows(BusinessException.class, () -> memberService.checkNicknameDuplicate(MEMBER_ID, anyString()));
             assertThat(exception.getResponseCode()).isEqualTo(MEMBER_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("내 정보 수정 테스트")
+    class UpdateMemberInfoTest {
+        private static final Long MEMBER_ID = 1L;
+
+        // 헬퍼 메서드
+        private Member createMockMember(Long memberId) {
+            Member member = Member.builder().nickname("current").build();
+            ReflectionTestUtils.setField(member, "id", memberId);
+            return member;
+        }
+
+        /**
+         * [내 정보 수정] 성공
+         * 1. 수정을 성공한 경우
+         */
+        @Test
+        @DisplayName("내 정보 수정 성공")
+        void updateMemberInfo_success() {
+            // given
+            Member member = createMockMember(MEMBER_ID);
+            given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(member));
+
+            MemberUpdateRequestDto memberUpdateRequestDto = new MemberUpdateRequestDto("new");
+            given(memberRepository.existsByNickname("new")).willReturn(false);
+
+            // when
+            MemberUpdateResponseDto memberUpdateResponseDto = memberService.updateMemberInfo(member.getId(), memberUpdateRequestDto);
+
+            // then
+            assertThat(memberUpdateResponseDto.nickname()).isEqualTo("new");
+            verify(memberRepository).findById(MEMBER_ID);
+            verify(memberRepository).existsByNickname("new");
+        }
+
+        /**
+         * [내 정보 수정] 실패
+         * 1. Member가 존재하지 않을 경우
+         */
+        @Test
+        @DisplayName("내 정보 수정 실패 - 찾을 수 없는 사용자")
+        void updateMemberInfo_fail_memberNotFound() {
+            // given
+            given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.empty());
+            MemberUpdateRequestDto memberUpdateRequestDto = new MemberUpdateRequestDto("new");
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () -> memberService.updateMemberInfo(MEMBER_ID, memberUpdateRequestDto));
+            assertThat(exception.getResponseCode()).isEqualTo(MEMBER_NOT_FOUND);
+        }
+
+        /**
+         * [내 정보 수정] 실패
+         * 2. 중복된 닉네임인 경우
+         */
+        @Test
+        @DisplayName("내 정보 수정 - 중복된 닉네임")
+        void updateMemberInfo_fail_duplicateNickname() {
+            // given
+            Member member = createMockMember(MEMBER_ID);
+            given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(member));
+
+            MemberUpdateRequestDto memberUpdateRequestDto = new MemberUpdateRequestDto("duplicate");
+            given(memberRepository.existsByNickname("duplicate")).willReturn(true);
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () -> memberService.updateMemberInfo(MEMBER_ID, memberUpdateRequestDto));
+            assertThat(exception.getResponseCode()).isEqualTo(DUPLICATE_NICKNAME);
         }
     }
 }
