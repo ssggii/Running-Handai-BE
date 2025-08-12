@@ -212,13 +212,13 @@ public class CourseService {
 
         // 리뷰 조회
         List<ReviewInfoDto> reviewInfoDtos = reviewService.convertToReviewInfoDtos(
-                reviewRepository.findRandom2ByCourseId(courseId), memberId);
-        double averageStars = reviewService.calculateAverageStars(courseId);
-        ReviewInfoListDto reviewInfoListDto = ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+                reviewRepository.findRandom2ByCourseId(courseId), memberId); // TODO 최신순으로 수정
+        int reviewCount = (int) reviewRepository.countByCourseId(courseId); // 리뷰 전체 개수
+        double starAverage = reviewService.calculateAverageStars(courseId); // 리뷰 전체 평점
 
         // 즐길거리 조회
         List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
 
-        return CourseSummaryDto.from(course, reviewInfoListDto, spotInfoDtos);
+        return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
     }
 }

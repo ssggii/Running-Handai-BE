@@ -29,4 +29,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
      */
     @Query("SELECT AVG(r.stars) FROM Review r WHERE r.course.id = :courseId")
     Double findAverageStarsByCourseId(@Param("courseId") Long courseId);
+
+    /**
+     * courseId로 조회한 리뷰의 전체 개수 조회
+     */
+    long countByCourseId(Long courseId);
 }

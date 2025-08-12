@@ -73,7 +73,7 @@ public class ReviewService {
 
         double averageStars = calculateAverageStars(courseId);
         List<ReviewInfoDto> reviewInfoDtos = convertToReviewInfoDtos(reviewRepository.findAllByCourseId(courseId), memberId);
-        return ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+        return ReviewInfoListDto.from(averageStars, reviewInfoDtos.size(), reviewInfoDtos);
     }
 
     /**
