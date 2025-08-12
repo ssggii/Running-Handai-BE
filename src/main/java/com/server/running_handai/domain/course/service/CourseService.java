@@ -18,7 +18,6 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
-import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
@@ -212,7 +211,7 @@ public class CourseService {
 
         // 리뷰 조회
         List<ReviewInfoDto> reviewInfoDtos = reviewService.convertToReviewInfoDtos(
-                reviewRepository.findRandom2ByCourseId(courseId), memberId); // TODO 최신순으로 수정
+                reviewRepository.findRecent2ByCourseId(courseId), memberId);
         int reviewCount = (int) reviewRepository.countByCourseId(courseId); // 리뷰 전체 개수
         double starAverage = reviewService.calculateAverageStars(courseId); // 리뷰 전체 평점
 

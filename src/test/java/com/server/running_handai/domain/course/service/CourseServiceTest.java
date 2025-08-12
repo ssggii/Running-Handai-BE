@@ -486,7 +486,7 @@ class CourseServiceTest {
             );
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(reviewRepository.findRandom2ByCourseId(courseId)).willReturn(reviews);
+            given(reviewRepository.findRecent2ByCourseId(courseId)).willReturn(reviews);
             given(reviewRepository.countByCourseId(courseId)).willReturn(3L);
             given(reviewService.calculateAverageStars(courseId)).willReturn(4.2);
             given(reviewService.convertToReviewInfoDtos(reviews, memberId)).willReturn(reviewInfoDtos);
@@ -510,7 +510,7 @@ class CourseServiceTest {
             assertThat(result.spots().get(2).spotId()).isEqualTo(spot3.getId());
 
             verify(courseRepository).findById(courseId);
-            verify(reviewRepository).findRandom2ByCourseId(courseId);
+            verify(reviewRepository).findRecent2ByCourseId(courseId);
             verify(reviewRepository).countByCourseId(courseId);
             verify(reviewService).calculateAverageStars(courseId);
             verify(reviewService).convertToReviewInfoDtos(reviews, memberId);
