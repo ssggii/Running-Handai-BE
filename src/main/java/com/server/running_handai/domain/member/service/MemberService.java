@@ -27,6 +27,7 @@ public class MemberService {
     private final JwtProvider jwtProvider;
 
     public static final int NICKNAME_NUMBER = 10;
+    private static final String NICKNAME_PATTERN = "^[ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9]{2,10}$";
 
     /**
      * OAuth2 사용자 정보를 기반으로 회원을 생성하거나 기존 회원을 조회합니다.
@@ -208,20 +209,19 @@ public class MemberService {
      * @return 사용 가능하면 true, 사용 불가하면 false.
      */
     boolean isNicknameValid(String newNickname, String currentNickname) {
+        // 이미 자신이 사용 중인 닉네임이어서는 안됨
+        if (currentNickname.equals(newNickname)) {
+            throw new BusinessException(ResponseCode.SAME_AS_CURRENT_NICKNAME);
+        }
+
         // 닉네임 글자수는 2글자부터 최대 10글자까지
         if (newNickname.length() < 2 || newNickname.length() > 10) {
             throw new BusinessException(ResponseCode.INVALID_NICKNAME_LENGTH);
         }
 
         // 닉네임은 한글, 숫자, 영문만 입력할 수 있음
-        String pattern = "^[가-힣a-zA-Z0-9]+$";
-        if (!newNickname.matches(pattern)) {
+        if (!newNickname.matches(NICKNAME_PATTERN)) {
             throw new BusinessException(ResponseCode.INVALID_NICKNAME_FORMAT);
-        }
-
-        // 이미 자신이 사용 중인 닉네임이어서는 안됨
-        if (currentNickname.equals(newNickname)) {
-            throw new BusinessException(ResponseCode.SAME_AS_CURRENT_NICKNAME);
         }
 
         return !memberRepository.existsByNickname(newNickname);

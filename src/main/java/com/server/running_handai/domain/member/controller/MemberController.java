@@ -46,9 +46,11 @@ public class MemberController {
             @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
             @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
             @ApiResponse(responseCode = "404", description = "실패 (찾을 수 없는 사용자) - MEMBER_NOT_FOUND"),
-            @ApiResponse(responseCode = "400", description = "실패 (글자수가 2글자 미만, 10글자 초과) - INVALID_NICKNAME_LENGTH"),
-            @ApiResponse(responseCode = "400", description = "실패 (한글, 영문, 숫자 외의 문자가 존재) - INVALID_NICKNAME_FORMAT"),
-            @ApiResponse(responseCode = "400", description = "실패 (현재 사용 중인 닉네임과 동일) - SAME_AS_CURRENT_NICKNAME"),
+            @ApiResponse(responseCode = "400", description =
+                    "실패 (유효성 검증):<br>" +
+                            "• 글자수가 2글자 미만, 10글자 초과 - INVALID_NICKNAME_LENGTH<br>" +
+                            "• 한글, 영문, 숫자 외의 문자가 존재 - INVALID_NICKNAME_FORMAT<br>" +
+                            "• 현재 사용 중인 닉네임과 동일 - SAME_AS_CURRENT_NICKNAME"),
     })
     @GetMapping("/nickname")
     public ResponseEntity<CommonResponse<Boolean>> checkNicknameDuplicate(
@@ -67,9 +69,11 @@ public class MemberController {
             @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
             @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
             @ApiResponse(responseCode = "404", description = "실패 (찾을 수 없는 사용자) - MEMBER_NOT_FOUND"),
-            @ApiResponse(responseCode = "400", description = "실패 (글자수가 2글자 미만, 10글자 초과) - INVALID_NICKNAME_LENGTH"),
-            @ApiResponse(responseCode = "400", description = "실패 (한글, 영문, 숫자 외의 문자가 존재) - INVALID_NICKNAME_FORMAT"),
-            @ApiResponse(responseCode = "400", description = "실패 (현재 사용 중인 닉네임과 동일) - SAME_AS_CURRENT_NICKNAME"),
+            @ApiResponse(responseCode = "400", description =
+                        "실패 (유효성 검증):<br>" +
+                                "• 글자수가 2글자 미만, 10글자 초과 - INVALID_NICKNAME_LENGTH<br>" +
+                                "• 한글, 영문, 숫자 외의 문자가 존재 - INVALID_NICKNAME_FORMAT<br>" +
+                                "• 현재 사용 중인 닉네임과 동일 - SAME_AS_CURRENT_NICKNAME"),
             @ApiResponse(responseCode = "409", description = "실패 (중복된 닉네임) - DUPLICATE_NICKNAME"),
     })
     @PatchMapping("/me")
