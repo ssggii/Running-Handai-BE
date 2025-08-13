@@ -49,7 +49,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
             + "FROM Bookmark b "
             + "LEFT JOIN b.course c "
             + "LEFT JOIN c.courseImage ci "
-            + "WHERE b.member.id = :memberId"
+            + "WHERE b.member.id = :memberId "
+            + "ORDER BY b.createdAt DESC "
     )
     List<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberId(Long memberId);
 
@@ -67,7 +68,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
             + "LEFT JOIN b.course c "
             + "LEFT JOIN c.courseImage ci "
             + "WHERE b.member.id = :memberId "
-            + "AND c.area = :area"
+            + "AND c.area = :area "
+            + "ORDER BY b.createdAt DESC "
     )
     List<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberIdAndArea(Long memberId, Area area);
 }
