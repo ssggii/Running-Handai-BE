@@ -8,12 +8,14 @@ import static org.mockito.Mockito.verify;
 
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
+import com.server.running_handai.domain.course.entity.CourseImage;
 import com.server.running_handai.domain.course.entity.CourseLevel;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Provider;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.member.repository.MemberRepository;
+import com.server.running_handai.domain.review.dto.MyReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
@@ -28,6 +30,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -91,7 +94,7 @@ class ReviewServiceTest {
 
         course = Course.builder()
                 .name("courseName1")
-                .distance(10)
+                .distance(10.5)
                 .duration(120)
                 .level(CourseLevel.MEDIUM)
                 .area(Area.HAEUN_GWANGAN)
@@ -106,10 +109,14 @@ class ReviewServiceTest {
                 .contents(VALID_REVIEW_CONTENTS)
                 .build();
 
+        CourseImage courseImage = CourseImage.builder().imgUrl("img_url").build();
+
         // 테스트 리뷰에 연관관계 설정
         review.setWriter(member);
         review.setCourse(course);
+        course.updateCourseImage(courseImage);
 
+        ReflectionTestUtils.setField(course, "id", 10L);
         ReflectionTestUtils.setField(review, "id", 100L);
         ReflectionTestUtils.setField(member, "id", 50L);
         ReflectionTestUtils.setField(review, "createdAt", LocalDateTime.now());
@@ -546,5 +553,54 @@ class ReviewServiceTest {
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.ACCESS_DENIED);
         }
 
+    }
+
+    @Nested
+    @DisplayName("내 리뷰 조회 테스트")
+    class GetMyReviewTest {
+
+        @Test
+        @DisplayName("내 리뷰 조회 성공 - 리뷰가 있을 때")
+        void getMyReview_success_hasReview() {
+            // given
+            Long memberId = member.getId();
+            List<Review> myReviews = List.of(review);
+
+            given(reviewRepository.findReviewsWithDetailsByMemberId(memberId)).willReturn(myReviews);
+
+            // when
+            List<MyReviewInfoDto> myReviewInfoDtos = reviewService.getMyReviews(memberId);
+
+            // then
+            MyReviewInfoDto firstDto = myReviewInfoDtos.getFirst();
+            assertThat(myReviewInfoDtos.size()).isEqualTo(1);
+            assertThat(firstDto.reviewId()).isEqualTo(review.getId());
+            assertThat(firstDto.courseId()).isEqualTo(course.getId());
+            assertThat(firstDto.courseName()).isEqualTo(course.getName());
+            assertThat(firstDto.thumbnailUrl()).isEqualTo(course.getCourseImage().getImgUrl());
+            assertThat(firstDto.area()).isEqualTo(course.getArea().name());
+            assertThat(firstDto.distance()).isEqualTo(course.getDistance());
+            assertThat(firstDto.duration()).isEqualTo(course.getDuration());
+            assertThat(firstDto.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+
+            verify(reviewRepository).findReviewsWithDetailsByMemberId(memberId);
+        }
+
+        @Test
+        @DisplayName("내 리뷰 조회 성공 - 리뷰가 없을 때")
+        void getMyReview_success_HasNoReview() {
+            // given
+            Long memberId = member.getId();
+
+            given(reviewRepository.findReviewsWithDetailsByMemberId(memberId)).willReturn(Collections.emptyList());
+
+            // when
+            List<MyReviewInfoDto> myReviewInfoDtos = reviewService.getMyReviews(memberId);
+
+            // then
+            assertThat(myReviewInfoDtos).isEmpty();
+
+            verify(reviewRepository).findReviewsWithDetailsByMemberId(memberId);
+        }
     }
 }
