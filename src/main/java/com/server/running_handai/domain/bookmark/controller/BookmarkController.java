@@ -76,7 +76,7 @@ public class BookmarkController {
             @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)"),
             @ApiResponse(responseCode = "401", description = "실패 (인증 실패)")
     })
-    @GetMapping("/api/me/courses/bookmark")
+    @GetMapping("/api/members/me/courses/bookmarks")
     public ResponseEntity<CommonResponse<?>> getBookmarkedCourses(
             @Parameter(description = "지역 조건 (전체 보기인 경우 null)")
             @RequestParam(required = false) Area area,
