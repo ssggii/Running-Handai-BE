@@ -6,8 +6,8 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_THE
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.course.dto.BookmarkCountDto;
-import com.server.running_handai.domain.course.dto.BookmarkInfoDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;

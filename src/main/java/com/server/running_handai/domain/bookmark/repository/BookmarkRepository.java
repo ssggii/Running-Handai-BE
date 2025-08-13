@@ -2,7 +2,7 @@ package com.server.running_handai.domain.bookmark.repository;
 
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.entity.Bookmark;
-import com.server.running_handai.domain.course.dto.BookmarkCountDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.member.entity.Member;

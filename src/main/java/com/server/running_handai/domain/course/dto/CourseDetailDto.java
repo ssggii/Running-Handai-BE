@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.dto;
 
+import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.RoadCondition;
 import java.util.List;
