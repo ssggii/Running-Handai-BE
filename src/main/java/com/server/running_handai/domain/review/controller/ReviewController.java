@@ -110,11 +110,12 @@ public class ReviewController {
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "200", description = "성공 (리뷰 없음)")
     })
-    @GetMapping("/api/me/reviews")
+    @GetMapping("/api/members/me/reviews")
     public ResponseEntity<CommonResponse<List<MyReviewInfoDto>>> getMyReviews(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
-        List<MyReviewInfoDto> responseData = reviewService.getMyReviews(customOAuth2User.getMember().getId());
+        Long memberId = customOAuth2User.getMember().getId();
+        List<MyReviewInfoDto> responseData = reviewService.getMyReviews(memberId);
 
         if (responseData.isEmpty()) {
             return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_EMPTY_REVIEWS, responseData));
