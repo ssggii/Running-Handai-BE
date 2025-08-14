@@ -26,7 +26,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final JwtProvider jwtProvider;
 
-    public static final int NICKNAME_NUMBER = 10;
+    public static final int NICKNAME_MAX_LENGTH = 10;
+    public static final int NICKNAME_MIN_LENGTH = 2;
     private static final String NICKNAME_PATTERN = "^[ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9]{2,10}$";
 
     /**
@@ -133,7 +134,7 @@ public class MemberService {
             String animal = animals.get(random.nextInt(animals.size()));
 
             int usedLength = adjective.length() + animal.length();
-            int remainLength = NICKNAME_NUMBER - usedLength;
+            int remainLength = NICKNAME_MAX_LENGTH - usedLength;
 
             if (remainLength > 0) {
                 // 이미 선택된 형용사, 동물의 자리수를 확인하여, 남은 수를 숫자에 사용 (최소 1자리, 최대 remainLength)
@@ -215,7 +216,7 @@ public class MemberService {
         }
 
         // 닉네임 글자수는 2글자부터 최대 10글자까지
-        if (newNickname.length() < 2 || newNickname.length() > 10) {
+        if (newNickname.length() < NICKNAME_MIN_LENGTH || newNickname.length() > NICKNAME_MAX_LENGTH) {
             throw new BusinessException(ResponseCode.INVALID_NICKNAME_LENGTH);
         }
 
