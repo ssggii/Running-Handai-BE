@@ -1,4 +1,9 @@
 package com.server.running_handai.domain.member.dto;
 
-public record MemberUpdateRequestDto (String nickname) {
+import jakarta.validation.constraints.NotBlank;
+
+public record MemberUpdateRequestDto (
+        @NotBlank
+        String nickname
+) {
 }

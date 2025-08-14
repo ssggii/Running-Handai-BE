@@ -55,11 +55,11 @@ public enum ResponseCode {
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)
     ILLEGAL_ARGUMENT(BAD_REQUEST, "잘못된 인자 값입니다."),
-    METHOD_ARGUMENT_NOT_VALID(BAD_REQUEST, "유효하지 않은 인자 값입니다."),
     HTTP_MESSAGE_NOT_READABLE(BAD_REQUEST, "잘못된 요청 형식입니다."),
     MISSING_SERVLET_REQUEST_PARAMETER(BAD_REQUEST, "필수 요청 매개변수가 누락되었습니다."),
     ARGUMENT_TYPE_MISMATCH(BAD_REQUEST, "요청 매개변수의 타입이 올바르지 않습니다."),
     OPENAI_RESPONSE_INVALID(BAD_REQUEST, "OPEN AI 응답값이 유효하지 않습니다."),
+    INVALID_INPUT_VALUE(BAD_REQUEST, "유효하지 않은 입력 값입니다."),
 
     // NOT_FOUND (404)
     RESOURCE_NOT_FOUND(NOT_FOUND, "존재하지 않는 리소스입니다."),

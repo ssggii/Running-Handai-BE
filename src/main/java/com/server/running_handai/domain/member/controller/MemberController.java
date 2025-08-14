@@ -12,13 +12,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/members")
@@ -50,11 +54,13 @@ public class MemberController {
                     "실패 (유효성 검증):<br>" +
                             "• 글자수가 2글자 미만, 10글자 초과 - INVALID_NICKNAME_LENGTH<br>" +
                             "• 한글, 영문, 숫자 외의 문자가 존재 - INVALID_NICKNAME_FORMAT<br>" +
-                            "• 현재 사용 중인 닉네임과 동일 - SAME_AS_CURRENT_NICKNAME"),
+                            "• 현재 사용 중인 닉네임과 동일 - SAME_AS_CURRENT_NICKNAME<br>" +
+                            "• 공백이나 Null 값으로 호출 - INVALID_INPUT_VALUE"
+            ),
     })
     @GetMapping("/nickname")
     public ResponseEntity<CommonResponse<Boolean>> checkNicknameDuplicate(
-            @RequestParam("value") String nickname,
+            @NotBlank @RequestParam("value") String nickname,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
@@ -73,12 +79,14 @@ public class MemberController {
                         "실패 (유효성 검증):<br>" +
                                 "• 글자수가 2글자 미만, 10글자 초과 - INVALID_NICKNAME_LENGTH<br>" +
                                 "• 한글, 영문, 숫자 외의 문자가 존재 - INVALID_NICKNAME_FORMAT<br>" +
-                                "• 현재 사용 중인 닉네임과 동일 - SAME_AS_CURRENT_NICKNAME"),
+                                "• 현재 사용 중인 닉네임과 동일 - SAME_AS_CURRENT_NICKNAME<br>" +
+                                "• 공백이나 Null 값으로 호출 - INVALID_INPUT_VALUE"
+            ),
             @ApiResponse(responseCode = "409", description = "실패 (중복된 닉네임) - DUPLICATE_NICKNAME"),
     })
     @PatchMapping("/me")
     public ResponseEntity<CommonResponse<MemberUpdateResponseDto>> updateMemberInfo(
-            @RequestBody MemberUpdateRequestDto memberUpdateRequestDto,
+            @RequestBody @Valid MemberUpdateRequestDto memberUpdateRequestDto,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
