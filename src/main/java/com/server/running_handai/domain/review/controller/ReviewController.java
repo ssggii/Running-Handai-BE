@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.review.controller;
 
+import com.server.running_handai.domain.review.dto.MyReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateRequestDto;
@@ -14,9 +15,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -102,6 +103,25 @@ public class ReviewController {
     ) {
         reviewService.deleteReview(reviewId, customOAuth2User.getMember().getId());
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, null));
+    }
+
+    @Operation(summary = "내 리뷰 조회", description = "회원이 작성한 리뷰를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "200", description = "성공 (리뷰 없음)")
+    })
+    @GetMapping("/api/members/me/reviews")
+    public ResponseEntity<CommonResponse<List<MyReviewInfoDto>>> getMyReviews(
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        List<MyReviewInfoDto> responseData = reviewService.getMyReviews(memberId);
+
+        if (responseData.isEmpty()) {
+            return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_EMPTY_REVIEWS, responseData));
+        }
+
+        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
     }
 
 }
