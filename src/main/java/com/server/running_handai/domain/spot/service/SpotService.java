@@ -30,8 +30,10 @@ public class SpotService {
      * @return 조회된 즐길거리 목록 DTO
      */
     public SpotDetailDto getSpotDetails(Long courseId) {
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
-        List<Spot> spots = spotRepository.findByCourseIdWithSpotImage(course.getId());
+        if (!courseRepository.existsById(courseId)) {
+            throw new BusinessException(ResponseCode.COURSE_NOT_FOUND);
+        }
+        List<Spot> spots = spotRepository.findByCourseIdWithSpotImage(courseId);
 
         List<SpotInfoDto> spotInfoDtos = spots.stream()
                 .map(spot -> new SpotInfoDto(
