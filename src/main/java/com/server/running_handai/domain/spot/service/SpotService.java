@@ -36,14 +36,9 @@ public class SpotService {
         List<Spot> spots = spotRepository.findByCourseIdWithSpotImage(courseId);
 
         List<SpotInfoDto> spotInfoDtos = spots.stream()
-                .map(spot -> new SpotInfoDto(
-                        spot.getId(),
-                        spot.getName(),
-                        spot.getDescription(),
-                        spot.getSpotImage() != null ? spot.getSpotImage().getImgUrl() : null
-                ))
+                .map(SpotInfoDto::from)
                 .toList();
 
-        return new SpotDetailDto(courseId, spots.size(), spotInfoDtos);
+        return SpotDetailDto.from(courseId, spotInfoDtos);
     }
 }

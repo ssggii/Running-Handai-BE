@@ -7,4 +7,11 @@ public record SpotDetailDto (
     int spotCount,
     List<SpotInfoDto> spots
 ) {
+    public static SpotDetailDto from(long courseId, List<SpotInfoDto> spots) {
+        return new SpotDetailDto(
+                courseId,
+                spots.size(),
+                spots
+        );
+    }
 }
