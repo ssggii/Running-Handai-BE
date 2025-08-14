@@ -31,7 +31,7 @@ public class SpotService {
      */
     public SpotDetailDto getSpotDetails(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
-        List<Spot> spots = spotRepository.findByCourseId(course.getId());
+        List<Spot> spots = spotRepository.findByCourseIdWithSpotImage(course.getId());
 
         List<SpotInfoDto> spotInfoDtos = spots.stream()
                 .map(spot -> new SpotInfoDto(

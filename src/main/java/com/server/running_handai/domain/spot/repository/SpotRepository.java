@@ -23,7 +23,7 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
             "LEFT JOIN FETCH s.spotImage " +
             "JOIN CourseSpot cs ON cs.spot = s " +
             "WHERE cs.course.id = :courseId")
-    List<Spot> findByCourseId(@Param("courseId") Long courseId);
+    List<Spot> findByCourseIdWithSpotImage(@Param("courseId") Long courseId);
 
     /**
      * CourseId와 일치하는 Spot을 SpotImage와 함께 랜덤으로 3개 가져옵니다.
