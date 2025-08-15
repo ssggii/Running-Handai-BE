@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
 import com.server.running_handai.global.jwt.JwtProvider;
@@ -226,5 +227,17 @@ public class MemberService {
         }
 
         return !memberRepository.existsByNickname(newNickname);
+    }
+
+    /**
+     * 회원 정보를 조회합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @return 조회한 회원 정보를 담은 DTO
+     */
+    public MemberInfoDto getMemberInfo(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+        return MemberInfoDto.from(member);
     }
 }

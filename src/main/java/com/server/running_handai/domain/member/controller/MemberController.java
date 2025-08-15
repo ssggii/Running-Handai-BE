@@ -3,6 +3,7 @@ package com.server.running_handai.domain.member.controller;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
+import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.domain.member.dto.TokenRequestDto;
@@ -17,6 +18,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -94,4 +96,18 @@ public class MemberController {
         MemberUpdateResponseDto memberUpdateResponseDto = memberService.updateMemberInfo(memberId, memberUpdateRequestDto);
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, memberUpdateResponseDto));
     }
+
+    @Operation(summary = "내 정보 조회", description = "회원의 닉네임과 이메일을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "401", description = "실패 (유효하지 않은 토큰)"),
+    })
+    @GetMapping("/me")
+    public ResponseEntity<CommonResponse<MemberInfoDto>> getMyInfo(
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        MemberInfoDto memberInfo = memberService.getMemberInfo(customOAuth2User.getMember().getId());
+        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, memberInfo));
+    }
+
 }

@@ -2,7 +2,7 @@ package com.server.running_handai.domain.bookmark.repository;
 
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.entity.Bookmark;
-import com.server.running_handai.domain.course.dto.BookmarkCountDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.member.entity.Member;
@@ -25,7 +25,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     int countByCourseId(Long courseId);
 
     // 코스 ID별 북마크 수 조회
-    @Query("SELECT new com.server.running_handai.domain.course.dto.BookmarkCountDto(b.course.id, COUNT(b)) "
+    @Query("SELECT new com.server.running_handai.domain.bookmark.dto.BookmarkCountDto(b.course.id, COUNT(b)) "
             + "FROM Bookmark b "
             + "WHERE b.course.id "
             + "IN :courseIds "
