@@ -19,10 +19,10 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
-import com.server.running_handai.domain.course.util.TrackPointSimplificationUtil;
+import com.server.running_handai.global.util.TrackPointSimplificationUtil;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -93,8 +93,10 @@ public class CourseDataService {
         Map<String, Course> dbCourseMap = courseRepository.findByExternalIdIsNotNull().stream()
                 .collect(Collectors.toMap(Course::getExternalId, course -> course));
 
+        List<Course> newCourses = new ArrayList<>(); // 새롭게 추가된 코스
+        List<Course> updatedCourses = new ArrayList<>(); // 수정된 기존 코스
+
         // API 데이터를 기준으로 루프를 돌며 DB 데이터와 비교
-        List<Course> toSave = new ArrayList<>();
         for (Map.Entry<String, DurunubiApiResponseDto.Item> entry : apiCourseMap.entrySet()) {
             String externalId = entry.getKey();
             Item courseItem = entry.getValue();
@@ -123,21 +125,37 @@ public class CourseDataService {
                 log.info("[두루누비 코스 동기화] 트랙포인트 업데이트 완료: courseId={}, count={}", dbCourse.getId(), trackPoints.size());
 
                 if (dbCourse.syncWith(apiCourse)) {
-                    toSave.add(dbCourse);
-                    log.info("[두루누비 코스 동기화] 코스 데이터 변경 감지 (UPDATE): courseId={}, externalId={}", dbCourse.getId(), externalId);
+                    updatedCourses.add(dbCourse);
+                    log.info("[두루누비 코스 동기화] 기존 코스 변경 (UPDATE): courseId={}, externalId={}", dbCourse.getId(), externalId);
                 }
                 dbCourseMap.remove(externalId); // 업데이트 끝난 DB 데이터는 맵에서 제거 (남은 데이터는 DELETE 대상)
             } else { // DB에 없음 -> 신규 추가
                 trackPoints.forEach(trackPoint -> trackPoint.setCourse(apiCourse));
-                toSave.add(apiCourse);
+                newCourses.add(apiCourse);
                 log.info("[두루누비 코스 동기화] 신규 코스 저장 (INSERT): externalId={}", externalId);
             }
         }
 
-        // 추가 또는 수정된 Course 저장
-        if (!toSave.isEmpty()) {
-            courseRepository.saveAll(toSave);
-            log.info("[두루누비 코스 동기화] {}건의 코스 데이터가 추가/수정되었습니다.", toSave.size());
+        // 신규 코스 저장 및 길 상태 업데이트
+        if (!newCourses.isEmpty()) {
+            courseRepository.saveAll(newCourses);
+            log.info("[두루누비 코스 동기화] {}건의 신규 코스가 추가되었습니다.", newCourses.size());
+
+            log.info("[두루누비 코스 동기화] {}건의 신규 코스에 대한 길 상태 정보 업데이트를 시작합니다.", newCourses.size());
+            for (Course newCourse : newCourses) {
+                try {
+                    log.info("[두루누비 코스 동기화] 길 상태 업데이트 호출: courseId={}", newCourse.getId());
+                    updateRoadConditions(newCourse.getId());
+                } catch (Exception e) {
+                    log.error("[두루누비 코스 동기화] 길 상태 업데이트 실패: courseId={}. 동기화를 계속합니다.", newCourse.getId(), e);
+                }
+            }
+        }
+
+        // 수정된 코스 저장
+        if (!updatedCourses.isEmpty()) {
+            courseRepository.saveAll(updatedCourses);
+            log.info("[두루누비 코스 동기화] {}건의 코스 데이터가 수정되었습니다.", updatedCourses.size());
         }
 
         // DB에만 있고 두루누비에서 없어진 Course 삭제
@@ -410,7 +428,8 @@ public class CourseDataService {
         log.info("[길 상태 수정] 기존 길 상태 데이터 삭제 완료: courseId={}", courseId);
 
         List<RoadCondition> newRoadConditions = descriptions.stream()
-                .map(description -> new RoadCondition(course, description))
+                .map(description ->
+                        RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
         roadConditionRepository.saveAll(newRoadConditions);
@@ -425,7 +444,7 @@ public class CourseDataService {
      * @param courseImageFile 업로드된 이미지 파일
      */
     @Transactional
-    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) throws IOException {
+    public void updateCourseImage(Long courseId, MultipartFile courseImageFile) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // 새 파일을 S3에 먼저 업로드
@@ -439,7 +458,7 @@ public class CourseDataService {
         if (oldImageUrl != null) {
             course.getCourseImage().updateImageUrl(newImageUrl);
         } else {
-            course.updateCourseImage(new CourseImage(newImageUrl));
+            course.updateCourseImage(CourseImage.builder().imgUrl(newImageUrl).build());
         }
         log.info("[코스 이미지 수정] DB에 이미지 정보 갱신 완료: Course ID={}", courseId);
 
@@ -459,7 +478,7 @@ public class CourseDataService {
      * @param courseGpxFile 업로드된 GPX 파일
      */
     @Transactional
-    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) throws IOException {
+    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
         // 1. 코스 이름 조합
@@ -473,7 +492,7 @@ public class CourseDataService {
             log.info("[GPX 코스 생성] 트랙포인트 파싱 완료 ({}개)", trackPoints.size());
         } catch (Exception e) {
             log.error("[GPX 코스 생성] 트랙포인트 파싱 실패", e);
-            throw new BusinessException(GPX_FILE_PARSE_FAILED);
+            throw new BusinessException(ResponseCode.GPX_FILE_PARSE_FAILED);
         }
 
         // 3. 전체 거리 계산
@@ -557,7 +576,7 @@ public class CourseDataService {
         List<RoadCondition> roadConditions = descriptions.stream()
                 .skip(1)
                 .limit(5)
-                .map(description -> new RoadCondition(course, description))
+                .map(description -> RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
         roadConditionRepository.saveAll(roadConditions);
@@ -625,6 +644,11 @@ public class CourseDataService {
                             .build())
                     .collect(Collectors.toList());
         }
+
+        if (trackPoints.isEmpty()) {
+            throw new BusinessException(TRACK_POINTS_NOT_FOUND);
+        }
+
         return trackPoints;
     }
 

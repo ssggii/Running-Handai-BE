@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.entity;
 
+import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
@@ -88,6 +89,10 @@ public class Course extends BaseTimeEntity {
     // Review와 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Review> reviews = new ArrayList<>();
+
+    // CourseSpot과 일대다 관계
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CourseSpot> courseSpots = new ArrayList<>();
 
     @Builder
     public Course(String externalId, String name, double distance, int duration,

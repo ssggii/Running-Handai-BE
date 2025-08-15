@@ -1,4 +1,4 @@
-package com.server.running_handai.domain.course.util;
+package com.server.running_handai.global.util;
 
 import com.server.running_handai.domain.course.dto.SequenceTrackPointDto;
 import org.locationtech.jts.geom.Coordinate;

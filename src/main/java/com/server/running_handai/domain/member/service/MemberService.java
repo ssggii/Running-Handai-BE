@@ -1,5 +1,8 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.member.dto.MemberInfoDto;
+import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
+import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
 import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
 import com.server.running_handai.global.response.ResponseCode;
@@ -10,7 +13,7 @@ import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +27,9 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final JwtProvider jwtProvider;
 
-    public static final int NICKNAME_NUMBER = 10;
+    public static final int NICKNAME_MAX_LENGTH = 10;
+    public static final int NICKNAME_MIN_LENGTH = 2;
+    private static final String NICKNAME_PATTERN = "^[ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9]{2,10}$";
 
     /**
      * OAuth2 사용자 정보를 기반으로 회원을 생성하거나 기존 회원을 조회합니다.
@@ -130,7 +135,7 @@ public class MemberService {
             String animal = animals.get(random.nextInt(animals.size()));
 
             int usedLength = adjective.length() + animal.length();
-            int remainLength = NICKNAME_NUMBER - usedLength;
+            int remainLength = NICKNAME_MAX_LENGTH - usedLength;
 
             if (remainLength > 0) {
                 // 이미 선택된 형용사, 동물의 자리수를 확인하여, 남은 수를 숫자에 사용 (최소 1자리, 최대 remainLength)
@@ -152,5 +157,87 @@ public class MemberService {
         }
 
         return nickname;
+    }
+
+    /**
+     * 닉네임 중복 여부를 조회합니다.
+     * 닉네임 유효성 검증도 함께 수행합니다.
+     *
+     * @param memberId 사용자 Id
+     * @param nickname 검증할 닉네임
+     * @return 중복이지 않으면 true, 중복이면 false.
+     */
+    public Boolean checkNicknameDuplicate(Long memberId, String nickname) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+
+        // 중복 여부 조회 시 문자 앞, 뒤 공백과 영문 대, 소문자는 무시 (프론트 측에서 처리해서 보내줌)
+        String newNickname = nickname.trim().toLowerCase();
+        String currentNickname = member.getNickname().trim().toLowerCase();
+
+        return isNicknameValid(newNickname, currentNickname);
+    }
+
+    /**
+     * 내 정보를 수정합니다.
+     * 닉네임 유효성 검증도 함께 수행합니다.
+     *
+     * @param memberId 사용자 Id
+     * @param memberUpdateRequestDto 수정하고 싶은 내 정보 Dto
+     * @return 수정된 내 정보 Dto (MemberUpdateResponseDto)
+     */
+    @Transactional
+    public MemberUpdateResponseDto updateMemberInfo(Long memberId, MemberUpdateRequestDto memberUpdateRequestDto) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+
+        // 중복 여부 조회 시 문자 앞, 뒤 공백과 영문 대, 소문자는 무시 (프론트 측에서 처리해서 보내줌)
+        String newNickname = memberUpdateRequestDto.nickname().trim().toLowerCase();
+        String currentNickname = member.getNickname().trim().toLowerCase();
+
+        if (isNicknameValid(newNickname, currentNickname)) {
+            member.updateNickname(newNickname);
+        } else {
+            throw new BusinessException(ResponseCode.DUPLICATE_NICKNAME);
+        }
+
+        return MemberUpdateResponseDto.from(member.getId(), member.getNickname());
+    }
+
+    /**
+     * 닉네임 유효성을 검증합니다.
+     * 테스트를 위해 가시성을 완화했습니다. (private -> package-private)
+     *
+     * @param newNickname 검증할 닉네임
+     * @param currentNickname 사용자의 현재 닉네임
+     * @return 사용 가능하면 true, 사용 불가하면 false.
+     */
+    boolean isNicknameValid(String newNickname, String currentNickname) {
+        // 이미 자신이 사용 중인 닉네임이어서는 안됨
+        if (currentNickname.equals(newNickname)) {
+            throw new BusinessException(ResponseCode.SAME_AS_CURRENT_NICKNAME);
+        }
+
+        // 닉네임 글자수는 2글자부터 최대 10글자까지
+        if (newNickname.length() < NICKNAME_MIN_LENGTH || newNickname.length() > NICKNAME_MAX_LENGTH) {
+            throw new BusinessException(ResponseCode.INVALID_NICKNAME_LENGTH);
+        }
+
+        // 닉네임은 한글, 숫자, 영문만 입력할 수 있음
+        if (!newNickname.matches(NICKNAME_PATTERN)) {
+            throw new BusinessException(ResponseCode.INVALID_NICKNAME_FORMAT);
+        }
+
+        return !memberRepository.existsByNickname(newNickname);
+    }
+
+    /**
+     * 회원 정보를 조회합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @return 조회한 회원 정보를 담은 DTO
+     */
+    public MemberInfoDto getMemberInfo(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
+        return MemberInfoDto.from(member);
     }
 }

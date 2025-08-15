@@ -7,7 +7,7 @@ public record ReviewInfoListDto(
         int reviewCount,
         List<ReviewInfoDto> reviewInfoDtos
 ) {
-    public static ReviewInfoListDto from(double starAverage, List<ReviewInfoDto> reviewInfoDtos) {
-        return new ReviewInfoListDto(starAverage, reviewInfoDtos.size(), reviewInfoDtos);
+    public static ReviewInfoListDto from(double starAverage, int reviewCount, List<ReviewInfoDto> reviewInfoDtos) {
+        return new ReviewInfoListDto(starAverage, reviewCount, reviewInfoDtos);
     }
 }

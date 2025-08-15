@@ -4,6 +4,7 @@ import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.repository.MemberRepository;
+import com.server.running_handai.domain.review.dto.MyReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewCreateResponseDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
@@ -14,8 +15,10 @@ import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -73,7 +76,7 @@ public class ReviewService {
 
         double averageStars = calculateAverageStars(courseId);
         List<ReviewInfoDto> reviewInfoDtos = convertToReviewInfoDtos(reviewRepository.findAllByCourseId(courseId), memberId);
-        return ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+        return ReviewInfoListDto.from(averageStars, reviewInfoDtos.size(), reviewInfoDtos);
     }
 
     /**
@@ -161,6 +164,24 @@ public class ReviewService {
         }
 
         reviewRepository.delete(review);
+    }
+
+    /**
+     * 회원이 작성한 리뷰를 조회합니다.
+     *
+     * @param memberId 요청한 회원의 ID
+     * @return 내 리뷰 조회용 DTO
+     */
+    public List<MyReviewInfoDto> getMyReviews(Long memberId) {
+        List<Review> reviews = reviewRepository.findReviewsWithDetailsByMemberId(memberId);
+
+        if (reviews.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return reviews.stream()
+                .map(MyReviewInfoDto::from)
+                .collect(Collectors.toList());
     }
 
 }

@@ -6,8 +6,8 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_THE
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.course.dto.BookmarkCountDto;
-import com.server.running_handai.domain.course.dto.BookmarkInfoDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
@@ -18,9 +18,10 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
-import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
+import com.server.running_handai.domain.spot.dto.SpotInfoDto;
+import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,9 +51,9 @@ public class CourseService {
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
     private final GeometryFactory geometryFactory;
+    private final SpotRepository spotRepository;
     private final ReviewRepository reviewRepository;
     private final ReviewService reviewService;
-    private final CourseDataService courseDataService;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -210,12 +211,13 @@ public class CourseService {
 
         // 리뷰 조회
         List<ReviewInfoDto> reviewInfoDtos = reviewService.convertToReviewInfoDtos(
-                reviewRepository.findRandom2ByCourseId(courseId), memberId);
-        double averageStars = reviewService.calculateAverageStars(courseId);
-        ReviewInfoListDto reviewInfoListDto = ReviewInfoListDto.from(averageStars, reviewInfoDtos);
+                reviewRepository.findRecent2ByCourseId(courseId), memberId);
+        int reviewCount = (int) reviewRepository.countByCourseId(courseId); // 리뷰 전체 개수
+        double starAverage = reviewService.calculateAverageStars(courseId); // 리뷰 전체 평점
 
-        // TODO 즐길거리 조회
+        // 즐길거리 조회
+        List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
 
-        return CourseSummaryDto.from(course, reviewInfoListDto);
+        return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
     }
 }

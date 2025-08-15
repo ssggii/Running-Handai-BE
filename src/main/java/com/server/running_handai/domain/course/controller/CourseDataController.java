@@ -33,14 +33,14 @@ public class CourseDataController {
 
     @PutMapping(value = "/{courseId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<?>> updateCourseImage(@PathVariable Long courseId,
-                                                               @RequestParam MultipartFile courseImageFile) throws IOException {
+                                                               @RequestParam MultipartFile courseImageFile) {
         courseDataService.updateCourseImage(courseId, courseImageFile);
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 
     @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestPart("courseInfo") GpxCourseRequestDto gpxCourseRequestDto,
-                                                               @RequestParam("courseGpxFile") MultipartFile courseGpxFile) throws IOException {
+                                                               @RequestParam("courseGpxFile") MultipartFile courseGpxFile) {
         courseDataService.createCourseToGpx(gpxCourseRequestDto, courseGpxFile);
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }

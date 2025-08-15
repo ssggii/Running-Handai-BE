@@ -16,6 +16,7 @@ public enum ResponseCode {
     SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
+    SUCCESS_EMPTY_BOOKMARKS(OK, "북마크한 코스가 없습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -28,6 +29,9 @@ public enum ResponseCode {
     INVALID_REVIEW_STARS(BAD_REQUEST, "별점은 0.5점 단위여야합니다."),
     EMPTY_REVIEW_CONTENTS(BAD_REQUEST, "리뷰 내용은 비워둘 수 없습니다"),
     BAD_REQUEST_STATE_PARAMETER(BAD_REQUEST, "로그인 요청 시 유효한 state 값이 필요합니다."),
+    INVALID_NICKNAME_LENGTH(BAD_REQUEST, "닉네임은 2글자부터 10글자까지 입력할 수 있습니다."),
+    INVALID_NICKNAME_FORMAT(BAD_REQUEST, "닉네임은 영문, 한글, 숫자만 입력할 수 있습니다."),
+    SAME_AS_CURRENT_NICKNAME(BAD_REQUEST, "현재 사용 중인 닉네임과 동일합니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
@@ -46,17 +50,21 @@ public enum ResponseCode {
     BOOKMARK_NOT_FOUND(NOT_FOUND, "찾을 수 없는 북마크입니다."),
     REVIEW_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리뷰입니다."),
 
+    // CONFLICT (409)
+    DUPLICATE_NICKNAME(CONFLICT, "이미 사용 중인 닉네임입니다."),
+
     /** 시스템 및 공통 예외용 에러 코드 */
     // BAD_REQUEST (400)
     ILLEGAL_ARGUMENT(BAD_REQUEST, "잘못된 인자 값입니다."),
-    METHOD_ARGUMENT_NOT_VALID(BAD_REQUEST, "유효하지 않은 인자 값입니다."),
     HTTP_MESSAGE_NOT_READABLE(BAD_REQUEST, "잘못된 요청 형식입니다."),
     MISSING_SERVLET_REQUEST_PARAMETER(BAD_REQUEST, "필수 요청 매개변수가 누락되었습니다."),
     ARGUMENT_TYPE_MISMATCH(BAD_REQUEST, "요청 매개변수의 타입이 올바르지 않습니다."),
     OPENAI_RESPONSE_INVALID(BAD_REQUEST, "OPEN AI 응답값이 유효하지 않습니다."),
+    INVALID_INPUT_VALUE(BAD_REQUEST, "유효하지 않은 입력 값입니다."),
 
     // NOT_FOUND (404)
     RESOURCE_NOT_FOUND(NOT_FOUND, "존재하지 않는 리소스입니다."),
+    TRACK_POINTS_NOT_FOUND(NOT_FOUND, "파싱된 트랙 포인트가 없습니다."),
 
     // METHOD_NOT_ALLOWED (405)
     HTTP_REQUEST_METHOD_NOT_SUPPORTED(METHOD_NOT_ALLOWED, "잘못된 HTTP Method 요청입니다."),
@@ -68,7 +76,8 @@ public enum ResponseCode {
     FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
     ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
-    PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다.");
+    PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
+    UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

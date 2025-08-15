@@ -1,20 +1,32 @@
 package com.server.running_handai.domain.course.dto;
 
 import com.server.running_handai.domain.course.entity.Course;
+import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.dto.ReviewInfoListDto;
+import com.server.running_handai.domain.spot.dto.SpotInfoDto;
+
+import java.util.List;
 
 public record CourseSummaryDto(
-        double distance,
+        int distance,
         int duration,
-        double maxElevation,
-        ReviewInfoListDto reviewInfoListDto //TODO 즐길거리 dto 추가
+        int maxElevation,
+        int reviewCount,
+        double starAverage,
+        List<ReviewInfoDto> reviews,
+        List<SpotInfoDto> spots
 ) {
-    public static CourseSummaryDto from(Course course, ReviewInfoListDto reviewInfoListDto) {
+    public static CourseSummaryDto from(Course course, int reviewCount, double starAverage,
+                                        List<ReviewInfoDto> reviewInfoDtos, List<SpotInfoDto> spotInfoDtos) {
+
         return new CourseSummaryDto(
-                course.getDistance(),
+                (int) course.getDistance(),
                 course.getDuration(),
-                course.getMaxElevation(),
-                reviewInfoListDto
+                (int) course.getMaxElevation().doubleValue(),
+                reviewCount,
+                starAverage,
+                reviewInfoDtos,
+                spotInfoDtos
         );
     }
 }
