@@ -37,6 +37,9 @@ import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
+import com.server.running_handai.domain.spot.dto.SpotInfoDto;
+import com.server.running_handai.domain.spot.entity.Spot;
+import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.time.LocalDateTime;
@@ -80,6 +83,9 @@ class CourseServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
+
+    @Mock
+    private SpotRepository spotRepository;
 
     @Mock
     private ReviewService reviewService;
@@ -439,6 +445,12 @@ class CourseServiceTest {
             return review;
         }
 
+        private Spot createMockSpot(Long spotId) {
+            Spot spot = Spot.builder().build();
+            ReflectionTestUtils.setField(spot, "id", spotId);
+            return spot;
+        }
+
         private static Stream<Arguments> memberAndGuestCases() {
             return Stream.of(
                     Arguments.of(1L, true), // 회원이면 memberId=1L, isMyReview=true
@@ -458,18 +470,27 @@ class CourseServiceTest {
             Review review2 = createMockReview(2L, 5.0, "review2");
             List<Review> reviews = List.of(review1, review2);
 
-            assertThat(review1.getStars()).isEqualTo(4.0);
-            assertThat(review2.getStars()).isEqualTo(5.0);
-
             List<ReviewInfoDto> reviewInfoDtos = List.of(
                     ReviewInfoDto.from(review1, isMyReview),
                     ReviewInfoDto.from(review2, isMyReview)
             );
 
+            Spot spot1 = createMockSpot(101L);
+            Spot spot2 = createMockSpot(102L);
+            Spot spot3 = createMockSpot(103L);
+
+            List<SpotInfoDto> spotInfoDtos = List.of(
+                    new SpotInfoDto(101L, "Spot1", "Description1", "http://mock-image-url"),
+                    new SpotInfoDto(102L, "Spot2", "Description2", "http://mock-image-url"),
+                    new SpotInfoDto(103L, "Spot3", "Description3", "http://mock-image-url")
+            );
+
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(reviewRepository.findRandom2ByCourseId(courseId)).willReturn(reviews);
+            given(reviewRepository.findRecent2ByCourseId(courseId)).willReturn(reviews);
+            given(reviewRepository.countByCourseId(courseId)).willReturn(3L);
+            given(reviewService.calculateAverageStars(courseId)).willReturn(4.2);
             given(reviewService.convertToReviewInfoDtos(reviews, memberId)).willReturn(reviewInfoDtos);
-            given(reviewService.calculateAverageStars(courseId)).willReturn(4.5);
+            given(spotRepository.findRandom3ByCourseId(courseId)).willReturn(spotInfoDtos);
 
             // when
             CourseSummaryDto result = courseService.getCourseSummary(courseId, memberId);
@@ -479,14 +500,21 @@ class CourseServiceTest {
             assertThat(result.distance()).isEqualTo(course.getDistance());
             assertThat(result.duration()).isEqualTo(course.getDuration());
             assertThat(result.maxElevation()).isEqualTo(course.getMaxElevation());
-            assertThat(result.reviewInfoListDto().starAverage()).isEqualTo(4.5);
-            assertThat(result.reviewInfoListDto().reviewInfoDtos().size()).isEqualTo(2);
-            assertThat(result.reviewInfoListDto().reviewInfoDtos().getFirst().reviewId()).isEqualTo(review1.getId());
-            assertThat(result.reviewInfoListDto().reviewInfoDtos().getLast().reviewId()).isEqualTo(review2.getId());
+            assertThat(result.starAverage()).isEqualTo(4.2);
+            assertThat(result.reviewCount()).isEqualTo(3L);
+            assertThat(result.reviews().getFirst().reviewId()).isEqualTo(review1.getId());
+            assertThat(result.reviews().getLast().reviewId()).isEqualTo(review2.getId());
+            assertThat(result.spots().size()).isEqualTo(3);
+            assertThat(result.spots().get(0).spotId()).isEqualTo(spot1.getId());
+            assertThat(result.spots().get(1).spotId()).isEqualTo(spot2.getId());
+            assertThat(result.spots().get(2).spotId()).isEqualTo(spot3.getId());
 
             verify(courseRepository).findById(courseId);
-            verify(reviewRepository).findRandom2ByCourseId(courseId);
+            verify(reviewRepository).findRecent2ByCourseId(courseId);
+            verify(reviewRepository).countByCourseId(courseId);
+            verify(reviewService).calculateAverageStars(courseId);
             verify(reviewService).convertToReviewInfoDtos(reviews, memberId);
+            verify(spotRepository).findRandom3ByCourseId(courseId);
         }
 
         @Test

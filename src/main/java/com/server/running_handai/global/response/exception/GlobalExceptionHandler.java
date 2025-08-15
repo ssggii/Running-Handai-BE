@@ -2,6 +2,7 @@ package com.server.running_handai.global.response.exception;
 
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -27,10 +28,11 @@ public class GlobalExceptionHandler {
     /**
      * BAD_REQUEST (400)
      * IllegalArgumentException: 사용자가 값을 잘못 입력한 경우
-     * MethodArgumentNotValidException: 전달된 값이 유효하지 않은 경우
+     * MethodArgumentNotValidException: 전달된 값이 유효하지 않은 경우 (@Valid)
      * HttpMessageNotReadableException: 잘못된 형식으로 요청할 경우
      * MissingServletRequestParameterException: 필수 요청 매개변수가 누락된 경우
      * MethodArgumentTypeMismatchException: 요청 매개변수의 타입 변환을 실패한 경우
+     * ConstraintViolationException: 전달된 값이 유효하지 않은 경우 (@Validated)
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<CommonResponse<?>> handleIllegalArgumentException(IllegalArgumentException e) {
@@ -40,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<CommonResponse<?>> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e) {
-        return getErrorResponse(e, ResponseCode.METHOD_ARGUMENT_NOT_VALID);
+        return getErrorResponse(e, ResponseCode.INVALID_INPUT_VALUE);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -59,6 +61,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<CommonResponse<?>> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e) {
         return getErrorResponse(e, ResponseCode.ARGUMENT_TYPE_MISMATCH);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<CommonResponse<?>> handleConstraintViolationException(
+            ConstraintViolationException e) {
+        return getErrorResponse(e, ResponseCode.INVALID_INPUT_VALUE);
     }
 
     /**

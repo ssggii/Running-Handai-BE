@@ -60,7 +60,10 @@ public class Member extends BaseTimeEntity {
         this.role = role;
     }
 
+    // ==== 연관관계 편의 메서드 ==== //
     public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
     }
+
+    public void updateNickname(String nickname) { this.nickname = nickname; }
 }
