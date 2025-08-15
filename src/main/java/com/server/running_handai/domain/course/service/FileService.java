@@ -44,6 +44,8 @@ public class FileService {
         this.s3Client = s3Client;
     }
 
+    private static final String FILENAME_PATTERN = "[^A-Za-z0-9_-]";
+
     /**
      * MultipartFile을 S3 버킷에 업로드하고, 업로드된 파일의 URL을 반환합니다.
      * 파일에 따라 디렉토리로 구분하여 저장합니다. (예: gpx, image)
@@ -54,16 +56,17 @@ public class FileService {
      */
     public String uploadFile(MultipartFile multipartFile, String directory) {
         String originalFileName = multipartFile.getOriginalFilename();
+
         if (originalFileName == null || originalFileName.isBlank()) {
-            originalFileName = "no-name";
+            log.warn("[S3 파일 업로드] 파일명을 찾을 수 없어 기본값 제공");
+            originalFileName = "file";
         }
 
-        String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
-        String contentType = multipartFile.getContentType();
-        if (contentType == null || contentType.isBlank()) {
-            contentType = guessContentType(originalFileName);
-        }
+        String contentType = guessContentType(originalFileName);
         validateFileType(originalFileName);
+
+        String newFileName = changeFileName(originalFileName);
+        String fileName = directory + "/" + UUID.randomUUID() + "_" + newFileName;
 
         try {
             return uploadToS3(fileName, contentType, multipartFile.getInputStream(), multipartFile.getSize());
@@ -86,13 +89,17 @@ public class FileService {
             URL url = new URL(fileUrl);
             String path = url.getPath();
             String originalFileName = path.substring(path.lastIndexOf('/') + 1);
-            if (originalFileName == null || originalFileName.isBlank()) {
-                originalFileName = "no-name";
+
+            if (originalFileName.isBlank()) {
+                log.warn("[S3 파일 업로드] 파일명을 찾을 수 없어 기본값 제공");
+                originalFileName = "file";
             }
 
-            String fileName = directory + "/" + UUID.randomUUID() + "_" + originalFileName;
             String contentType = guessContentType(originalFileName);
             validateFileType(originalFileName);
+
+            String newFileName = changeFileName(originalFileName);
+            String fileName = directory + "/" + UUID.randomUUID() + "_" + newFileName;
 
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setRequestMethod("GET");
@@ -220,6 +227,31 @@ public class FileService {
         if (!isSupported) {
             throw new BusinessException(ResponseCode.UNSUPPORTED_FILE_TYPE);
         }
+    }
+
+    /**
+     * 저장 시 UTF-8 인코딩이 필요없는 영문으로 파일명을 바꿉니다.
+     * 확장자는 보존하고, 파일명이 비어있으면 기본값(file)을 사용합니다.
+     *
+     * @param originalFileName 원본 파일명
+     * @return 허용된 문자로 이루어진 파일명
+     */
+    private String changeFileName(String originalFileName) {
+        // 확장자 분리
+        int dotIndex = originalFileName.lastIndexOf('.');
+        String name = (dotIndex == -1) ? originalFileName : originalFileName.substring(0, dotIndex);
+        String extension = (dotIndex == -1) ? "" : originalFileName.substring(dotIndex).toLowerCase();
+
+        // 영문, 숫자, 하이픈, 언더스코어만 허용
+        String newFileName = name.replaceAll(FILENAME_PATTERN, "");
+
+        // 원본 파일명에 허용된 문자가 없어 빈 파일명일 경우 기본값 사용
+        if (newFileName.isBlank()) {
+            log.warn("[S3 파일 업로드] 원본 파일명에 허용된 문자가 없어 기본값 사용: originalFilName={}", originalFileName);
+            newFileName = "file";
+        }
+
+        return newFileName + extension;
     }
 
     /**
