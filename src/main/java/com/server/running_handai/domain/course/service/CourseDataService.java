@@ -448,7 +448,7 @@ public class CourseDataService {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // 새 파일을 S3에 먼저 업로드
-        String newImageUrl = fileService.uploadFile(courseImageFile, "course");
+        String newImageUrl = fileService.uploadFile(courseImageFile, "image");
         log.info("[코스 이미지 수정] S3 버킷에 이미지 업로드 완료: newImageUrl={}", newImageUrl);
 
         // 삭제할 기존 파일 URL을 임시 변수에 저장
