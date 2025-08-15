@@ -17,7 +17,14 @@ public interface BookmarkedCourseInfoDto {
     long getBookmarkId();
     long getCourseId();
     String getThumbnailUrl();
-    double getDistance();
+
+    @JsonIgnore
+    double getRawDistance();
+
+    default int getDistance() {
+        return (int) getRawDistance();
+    }
+
     int getDuration();
 
     @JsonIgnore

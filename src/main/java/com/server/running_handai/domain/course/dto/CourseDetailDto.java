@@ -8,7 +8,7 @@ import java.util.List;
 public record CourseDetailDto(
         Long courseId,
         String courseName,
-        double distance,
+        int distance,
         int duration,
         int minElevation,
         int maxElevation,
@@ -25,7 +25,7 @@ public record CourseDetailDto(
         return new CourseDetailDto(
                 course.getId(),
                 course.getName(),
-                course.getDistance(),
+                (int) course.getDistance(),
                 course.getDuration(),
                 (int) course.getMinElevation().doubleValue(),
                 (int) course.getMaxElevation().doubleValue(),

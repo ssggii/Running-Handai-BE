@@ -579,7 +579,7 @@ class ReviewServiceTest {
             assertThat(firstDto.courseName()).isEqualTo(course.getName());
             assertThat(firstDto.thumbnailUrl()).isEqualTo(course.getCourseImage().getImgUrl());
             assertThat(firstDto.area()).isEqualTo(course.getArea().name());
-            assertThat(firstDto.distance()).isEqualTo(course.getDistance());
+            assertThat(firstDto.distance()).isEqualTo((int) course.getDistance());
             assertThat(firstDto.duration()).isEqualTo(course.getDuration());
             assertThat(firstDto.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
 

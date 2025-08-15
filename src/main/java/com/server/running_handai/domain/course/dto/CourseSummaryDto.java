@@ -8,9 +8,9 @@ import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import java.util.List;
 
 public record CourseSummaryDto(
-        double distance,
+        int distance,
         int duration,
-        double maxElevation,
+        int maxElevation,
         int reviewCount,
         double starAverage,
         List<ReviewInfoDto> reviews,
@@ -20,9 +20,9 @@ public record CourseSummaryDto(
                                         List<ReviewInfoDto> reviewInfoDtos, List<SpotInfoDto> spotInfoDtos) {
 
         return new CourseSummaryDto(
-                course.getDistance(),
+                (int) course.getDistance(),
                 course.getDuration(),
-                course.getMaxElevation(),
+                (int) course.getMaxElevation().doubleValue(),
                 reviewCount,
                 starAverage,
                 reviewInfoDtos,
