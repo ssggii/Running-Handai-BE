@@ -32,6 +32,8 @@ public enum ResponseCode {
     INVALID_NICKNAME_LENGTH(BAD_REQUEST, "닉네임은 2글자부터 10글자까지 입력할 수 있습니다."),
     INVALID_NICKNAME_FORMAT(BAD_REQUEST, "닉네임은 영문, 한글, 숫자만 입력할 수 있습니다."),
     SAME_AS_CURRENT_NICKNAME(BAD_REQUEST, "현재 사용 중인 닉네임과 동일합니다."),
+    EMPTY_FILE(BAD_REQUEST, "파일이 누락되었습니다."),
+    INVALID_POINT_NAME(BAD_REQUEST, "포인트 이름이 누락되었습니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),

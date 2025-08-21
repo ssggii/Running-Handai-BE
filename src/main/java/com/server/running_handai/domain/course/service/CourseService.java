@@ -1,7 +1,9 @@
 package com.server.running_handai.domain.course.service;
 
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
+import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 
@@ -241,7 +243,16 @@ public class CourseService {
     @Transactional
     public Long createMemberCourse(Long memberId, GpxCourseRequestDto pointNames,
                                    MultipartFile gpxFile, MultipartFile thumbnailImgFile) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        if (pointNames == null || pointNames.startPointName() == null || pointNames.endPointName() == null) {
+            throw new BusinessException(INVALID_POINT_NAME);
+        }
+
+        if (gpxFile == null || thumbnailImgFile == null) {
+            throw new BusinessException(EMPTY_FILE);
+        }
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
         log.info("[내 코스 생성] 회원이 만든 코스 저장. memberId: {}", memberId);
         Course newCourse = courseDataService.createCourseToGpx(pointNames, gpxFile);
