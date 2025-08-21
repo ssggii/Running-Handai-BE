@@ -478,7 +478,7 @@ public class CourseDataService {
      * @param courseGpxFile 업로드된 GPX 파일
      */
     @Transactional
-    public void createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
+    public Course createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
         // 1. 코스 이름 조합
@@ -589,6 +589,7 @@ public class CourseDataService {
         log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
 
         log.info("[GPX 코스 생성] 전체 작업 완료: 코스명={})", courseName);
+        return course;
     }
 
     /**
