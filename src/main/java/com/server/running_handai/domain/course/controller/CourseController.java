@@ -33,7 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/courses")
 @RequiredArgsConstructor
 @Tag(name = "Course", description = "코스 관련 API")
 public class CourseController {
@@ -45,7 +44,7 @@ public class CourseController {
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "400", description = "실패 (요청 파라미터 오류)")
     })
-    @GetMapping
+    @GetMapping("/api/courses")
     public ResponseEntity<CommonResponse<List<CourseInfoWithDetailsDto>>> getFilteredCourses(
             @ParameterObject @ModelAttribute CourseFilterRequestDto filterOption,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
@@ -65,7 +64,7 @@ public class CourseController {
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)")
     })
-    @GetMapping("/{courseId}")
+    @GetMapping("/api/courses/{courseId}")
     public ResponseEntity<CommonResponse<CourseDetailDto>> getCourseDetails(
             @Parameter(description = "조회하려는 코스 ID", required = true)
             @PathVariable("courseId") Long courseId,
@@ -82,7 +81,7 @@ public class CourseController {
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)")
     })
-    @GetMapping("/{courseId}/summary")
+    @GetMapping("/api/courses/{courseId}/summary")
     public ResponseEntity<CommonResponse<CourseSummaryDto>> getCourseSummary(
             @Parameter(description = "조회하려는 코스 ID", required = true)
             @PathVariable("courseId") Long courseId,
@@ -99,7 +98,7 @@ public class CourseController {
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "400", description = "요청 파라미터 오류")
     })
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/api/members/me/courses", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<Long>> createMemberCourseWithGpx(
             @RequestPart("pointNames") GpxCourseRequestDto pointNames,
             @RequestPart("gpxFile") MultipartFile gpxFile,
