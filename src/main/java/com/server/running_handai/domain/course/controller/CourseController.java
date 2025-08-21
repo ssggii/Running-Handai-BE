@@ -22,6 +22,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -100,15 +101,36 @@ public class CourseController {
     })
     @PostMapping(value = "/api/members/me/courses", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<Long>> createMemberCourseWithGpx(
+            @Parameter(description = "시작/종료 포인트명", required = true)
             @RequestPart("pointNames") GpxCourseRequestDto pointNames,
+
+            @Parameter(description = "코스의 gpx 파일", required = true)
             @RequestPart("gpxFile") MultipartFile gpxFile,
+
+            @Parameter(description = "코스의 썸네일 이미지 파일", required = true)
             @RequestPart("thumbnailImage") MultipartFile thumbnailImageFile,
+
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
         log.info("startPointName: {}, endPointName: {}", pointNames.startPointName(), pointNames.endPointName());
         Long courseId = courseService.createMemberCourse(memberId, pointNames, gpxFile, thumbnailImageFile);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseId));
+    }
+
+    @Operation(summary = "내 코스 삭제", description = "회원의 코스를 삭제합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 코스")
+    })
+    @DeleteMapping(value = "/api/members/me/courses/{courseId}")
+    public ResponseEntity<CommonResponse<Long>> deleteMemberCourse(
+            @Parameter(description = "삭제하려는 코스 ID", required = true) @PathVariable Long courseId,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        courseService.deleteMemberCourse(memberId, courseId);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_REMOVE, null));
     }
 
 }

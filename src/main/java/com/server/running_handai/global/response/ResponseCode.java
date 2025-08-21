@@ -17,6 +17,7 @@ public enum ResponseCode {
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
     SUCCESS_EMPTY_BOOKMARKS(OK, "북마크한 코스가 없습니다."),
+    SUCCESS_COURSE_REMOVE(OK, "코스 삭제가 완료되었습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -43,6 +44,7 @@ public enum ResponseCode {
 
     // FORBIDDEN (403)
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
+    NO_AUTHORITY_TO_DELETE_COURSE(FORBIDDEN, "코스 삭제 권한이 없습니다."),
 
     // NOT_FOUND (404)
     AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),

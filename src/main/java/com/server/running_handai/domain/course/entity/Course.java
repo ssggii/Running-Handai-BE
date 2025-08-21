@@ -179,7 +179,7 @@ public class Course extends BaseTimeEntity {
         this.themes.remove(theme);
     }
 
-    public void setCreator(Member creator) {
+    public void updateCreator(Member creator) {
         // 기존 Member와의 연관관계 제거
         if (this.creator != null) {
             this.creator.getCourses().remove(this);
@@ -189,6 +189,15 @@ public class Course extends BaseTimeEntity {
         // 새로운 Member의 코스 목록에 자신을 추가
         if (creator != null) {
             creator.getCourses().add(this);
+        }
+    }
+
+    public void removeCreator() {
+        if (this.creator != null) {
+            // 기존 creator의 courses 리스트에서 현재 Course 제거
+            this.creator.getCourses().remove(this);
+            // 현재 Course의 creator 필드를 null로 설정
+            this.creator = null;
         }
     }
 

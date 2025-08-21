@@ -6,6 +6,7 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_ARE
 import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
@@ -256,11 +257,33 @@ public class CourseService {
 
         log.info("[내 코스 생성] 회원이 만든 코스 저장. memberId: {}", memberId);
         Course newCourse = courseDataService.createCourseToGpx(pointNames, gpxFile);
-        newCourse.setCreator(member);
+        newCourse.updateCreator(member);
 
         log.info("[내 코스 생성] 코스의 썸네일 이미지 저장. courseId={}", newCourse.getId());
         courseDataService.updateCourseImage(newCourse.getId(), thumbnailImgFile);
 
         return newCourse.getId();
+    }
+
+    /**
+     * 회원이 생성한 코스를 삭제합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param courseId 삭제하려는 코스의 ID
+     */
+    @Transactional
+    public void deleteMemberCourse(Long memberId, Long courseId) {
+        // 코스 조회
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 권한 검증 (요청자와 코스 생성자가 동일인인지 확인)
+        if (course.getCreator() == null || !course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(NO_AUTHORITY_TO_DELETE_COURSE);
+        }
+
+        // 회원과 코스의 연관관계 제거 후 DB에서 코스 삭제
+        course.removeCreator();
+        courseRepository.delete(course);
     }
 }
