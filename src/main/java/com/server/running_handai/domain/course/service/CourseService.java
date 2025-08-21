@@ -3,6 +3,7 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
+import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
@@ -12,11 +13,14 @@ import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
+import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.repository.MemberRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
@@ -38,6 +42,7 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -50,10 +55,13 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final GeometryFactory geometryFactory;
-    private final SpotRepository spotRepository;
     private final ReviewRepository reviewRepository;
+    private final SpotRepository spotRepository;
+    private final MemberRepository memberRepository;
+    private final GeometryFactory geometryFactory;
     private final ReviewService reviewService;
+    private final CourseDataService courseDataService;
+    private final FileService fileService;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -219,5 +227,29 @@ public class CourseService {
         List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
 
         return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
+    }
+
+    /**
+     * 회원이 생성한 코스를 저장합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param pointNames 코스의 시작 및 종료포인트 이름
+     * @param gpxFile 코스의 GPX 파일
+     * @param thumbnailImgFile 코스의 썸네일 이미지 파일
+     * @return 저장된 코스의 ID
+     */
+    @Transactional
+    public Long createMemberCourse(Long memberId, GpxCourseRequestDto pointNames,
+                                   MultipartFile gpxFile, MultipartFile thumbnailImgFile) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        log.info("[내 코스 생성] 회원이 만든 코스 저장. memberId: {}", memberId);
+        Course newCourse = courseDataService.createCourseToGpx(pointNames, gpxFile);
+        newCourse.setCreator(member);
+
+        log.info("[내 코스 생성] 코스의 썸네일 이미지 저장. courseId={}", newCourse.getId());
+        courseDataService.updateCourseImage(newCourse.getId(), thumbnailImgFile);
+
+        return newCourse.getId();
     }
 }

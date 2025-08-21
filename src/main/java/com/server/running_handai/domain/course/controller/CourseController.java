@@ -6,6 +6,7 @@ import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
+import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
@@ -18,13 +19,17 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -87,6 +92,24 @@ public class CourseController {
         log.info("[코스 요약 조회] courseId: {}, memberId: {}", courseId, memberId);
         CourseSummaryDto courseSummary = courseService.getCourseSummary(courseId, memberId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseSummary));
+    }
+
+    @Operation(summary = "내 코스 생성", description = "회원의 코스를 생성합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "요청 파라미터 오류")
+    })
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CommonResponse<Long>> createMemberCourseWithGpx(
+            @RequestPart("pointNames") GpxCourseRequestDto pointNames,
+            @RequestPart("gpxFile") MultipartFile gpxFile,
+            @RequestPart("thumbnailImage") MultipartFile thumbnailImageFile,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        log.info("startPointName: {}, endPointName: {}", pointNames.startPointName(), pointNames.endPointName());
+        Long courseId = courseService.createMemberCourse(memberId, pointNames, gpxFile, thumbnailImageFile);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseId));
     }
 
 }
