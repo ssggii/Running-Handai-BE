@@ -6,6 +6,7 @@ import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_
 import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -61,7 +62,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -548,7 +548,7 @@ class CourseServiceTest {
 
     @Nested
     @DisplayName("내 코스 생성 테스트")
-    class myCourseCreationTest {
+    class MyCourseCreateTest {
 
         private Member member;
         private MultipartFile gpxFile;
@@ -656,6 +656,88 @@ class CourseServiceTest {
                     Arguments.of("GPX 파일이 null인 경우", null, thumb),
                     Arguments.of("썸네일 파일이 null인 경우", gpx, null)
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("내 코스 삭제 테스트")
+    class MyCourseDeleteTest {
+
+        private Member member;
+
+        @BeforeEach
+        void setUp() {
+            member = Member.builder()
+                    .nickname("nickname1")
+                    .providerId("providerId1")
+                    .provider(Provider.GOOGLE)
+                    .email("email1")
+                    .role(Role.USER)
+                    .build();
+
+            ReflectionTestUtils.setField(member, "id", 1L);
+        }
+
+        @Test
+        @DisplayName("내 코스 삭제 - 성공")
+        void deleteMemberCourse_success() {
+            // given
+            Long memberId = 1L;
+            Long courseId = 100L;
+            Course course = createMockCourse(courseId);
+            course.updateCreator(member);
+
+            when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+
+            // when
+            courseService.deleteMemberCourse(memberId, courseId);
+
+            // then
+            verify(courseRepository).findById(courseId);
+            verify(courseRepository).delete(course);
+
+            assertThat(member.getCourses()).doesNotContain(course);
+            assertThat(course.getCreator()).isNull();
+        }
+
+        @Test
+        @DisplayName("내 코스 삭제 실패 - 존재하지 않는 코스")
+        void deleteMemberCourse_fail_courseNotFound() {
+            // given
+            Long memberId = 1L;
+            Long nonExistentCourseId = 999L;
+
+            when(courseRepository.findById(nonExistentCourseId)).thenReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.deleteMemberCourse(memberId, nonExistentCourseId));
+
+            assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+
+            verify(courseRepository, never()).delete(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("내 코스 삭제 실패 - 권한 없음")
+        void deleteMemberCourse_fail_noAuthority() {
+            // given
+            Long memberId = 1L; // 코스 생성자 ID
+            Long requesterId = 2L; // 삭제 요청자 ID (생성자와 다름)
+            Long courseId = 100L;
+
+            Course course = createMockCourse(courseId);
+            course.updateCreator(member);
+
+            when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.deleteMemberCourse(requesterId, courseId));
+
+            assertThat(exception.getResponseCode()).isEqualTo(NO_AUTHORITY_TO_DELETE_COURSE);
+
+            verify(courseRepository, never()).delete(any(Course.class));
         }
     }
 }
