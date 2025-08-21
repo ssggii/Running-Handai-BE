@@ -3,6 +3,9 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
+import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
+import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -13,6 +16,7 @@ import static org.mockito.BDDMockito.given;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
@@ -21,6 +25,7 @@ import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
+import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseFilter;
@@ -33,6 +38,7 @@ import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Provider;
 import com.server.running_handai.domain.member.entity.Role;
+import com.server.running_handai.domain.member.repository.MemberRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
@@ -55,6 +61,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -62,8 +69,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
@@ -92,6 +101,12 @@ class CourseServiceTest {
 
     @Mock
     private GeometryFactory geometryFactory;
+
+    @Mock
+    private CourseDataService courseDataService;
+
+    @Mock
+    private MemberRepository memberRepository;
 
     private static final Long COURSE_ID = 1L;
     private static final Long MEMBER_ID = 1L;
@@ -528,6 +543,119 @@ class CourseServiceTest {
             BusinessException exception = assertThrows(BusinessException.class,
                     () -> courseService.getCourseSummary(courseId, memberId));
             assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("내 코스 생성 테스트")
+    class myCourseCreationTest {
+
+        private Member member;
+        private MultipartFile gpxFile;
+        private MultipartFile thumbnailImgFile;
+        private GpxCourseRequestDto pointNames;
+
+        @BeforeEach
+        void setUp() {
+            member = Member.builder()
+                    .nickname("nickname1")
+                    .providerId("providerId1")
+                    .provider(Provider.GOOGLE)
+                    .email("email1")
+                    .role(Role.USER)
+                    .build();
+            gpxFile = new MockMultipartFile("gpxFile", "test.gpx", "application/gpx+xml", "<gpx></gpx>".getBytes());
+            thumbnailImgFile = new MockMultipartFile("thumbnail", "thumb.jpg", "image/jpeg", "thumbnail-image".getBytes());
+            pointNames = new GpxCourseRequestDto("startPoint", "endPoint");
+        }
+
+        @Test
+        @DisplayName("내 코스 생성 - 성공")
+        void createMemberCourse_success() {
+            // given
+            Long memberId = 1L;
+            Long courseId = 100L;
+            Course newCourse = createMockCourse(courseId);
+
+            when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+            when(courseDataService.createCourseToGpx(any(GpxCourseRequestDto.class), any(MultipartFile.class))).thenReturn(newCourse);
+
+            // when
+            Long result = courseService.createMemberCourse(memberId, pointNames, gpxFile, thumbnailImgFile);
+
+            // then
+            assertThat(result).isEqualTo(newCourse.getId());
+            assertThat(newCourse.getCreator()).isEqualTo(member);
+            assertThat(member.getCourses()).contains(newCourse);
+
+            verify(memberRepository).findById(memberId);
+            verify(courseDataService).createCourseToGpx(pointNames, gpxFile);
+            verify(courseDataService).updateCourseImage(newCourse.getId(), thumbnailImgFile);
+        }
+
+        @Test
+        @DisplayName("내 코스 생성 실패 - 존재하지 않는 회원")
+        void createMemberCourse_fail_memberNotFound() {
+            // given
+            Long nonExistentMemberId = 999L;
+
+            when(memberRepository.findById(nonExistentMemberId)).thenReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.createMemberCourse(nonExistentMemberId, pointNames, gpxFile, thumbnailImgFile));
+
+            assertThat(exception.getResponseCode()).isEqualTo(MEMBER_NOT_FOUND);
+
+            verify(courseDataService, never()).createCourseToGpx(any(), any());
+            verify(courseDataService, never()).updateCourseImage(any(), any());
+        }
+
+        @ParameterizedTest(name = "{index}: {0}")
+        @MethodSource("provideInvalidPointNames")
+        @DisplayName("내 코스 생성 실패 - 포인트명 누락")
+        void createMemberCourse_fail_invalidPointNames(String testName, GpxCourseRequestDto invalidDto) {
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.createMemberCourse(1L, invalidDto, gpxFile, thumbnailImgFile));
+
+            assertThat(exception.getResponseCode()).isEqualTo(INVALID_POINT_NAME);
+
+            verify(memberRepository, never()).findById(anyLong());
+            verify(courseDataService, never()).createCourseToGpx(any(), any());
+            verify(courseDataService, never()).updateCourseImage(any(), any());
+        }
+
+        @ParameterizedTest(name = "{index}: {0}")
+        @MethodSource("provideMissingFiles")
+        @DisplayName("내 코스 생성 실패 - 파일 누락")
+        void createMemberCourse_fail_emptyFile(String testName, MultipartFile gpxFile, MultipartFile thumbnailFile) {
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.createMemberCourse(1L, pointNames, gpxFile, thumbnailFile));
+
+            assertThat(exception.getResponseCode()).isEqualTo(EMPTY_FILE);
+
+            verify(memberRepository, never()).findById(anyLong());
+            verify(courseDataService, never()).createCourseToGpx(any(), any());
+            verify(courseDataService, never()).updateCourseImage(any(), any());
+        }
+
+        private static Stream<Arguments> provideInvalidPointNames() {
+            return Stream.of(
+                    Arguments.of("GpxCourseRequestDto 자체가 null인 경우", null),
+                    Arguments.of("출발지 이름이 null인 경우", new GpxCourseRequestDto(null, "endPoint")),
+                    Arguments.of("도착지 이름이 null인 경우", new GpxCourseRequestDto("startPoint", null))
+            );
+        }
+
+        private static Stream<Arguments> provideMissingFiles() {
+            MultipartFile gpx = new MockMultipartFile("gpx", new byte[0]);
+            MultipartFile thumb = new MockMultipartFile("thumb", new byte[0]);
+            return Stream.of(
+                    Arguments.of("GPX 파일이 null인 경우", null, thumb),
+                    Arguments.of("썸네일 파일이 null인 경우", gpx, null)
+            );
         }
     }
 }
