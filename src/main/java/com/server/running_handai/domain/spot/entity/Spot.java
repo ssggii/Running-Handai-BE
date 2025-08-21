@@ -63,6 +63,48 @@ public class Spot extends BaseTimeEntity {
         this.lon = lon;
     }
 
+    /**
+     * API 데이터와 비교하여 Spot 엔티티의 필드를 업데이트합니다.
+     * 변경이 발생했을 경우에만 true를 반환합니다.
+     *
+     * @param source 비교 대상이 되는, API 응답으로부터 변환된 Spot 객체
+     * @return 내용 변경이 있었는지 여부
+     */
+    public boolean syncWith(Spot source) {
+        boolean isUpdated = false;
+
+        if (!this.name.equals(source.getName())) {
+            this.name = source.getName();
+            isUpdated = true;
+        }
+        if (!this.address.equals(source.getAddress())) {
+            this.address = source.getAddress();
+            isUpdated = true;
+        }
+        if (!this.description.equals(source.getDescription())) {
+            this.description = source.getDescription();
+            isUpdated = true;
+        }
+        if (this.spotCategory != source.getSpotCategory()) {
+            this.spotCategory = source.getSpotCategory();
+            isUpdated = true;
+        }
+        if (this.lat != source.getLat()) {
+            this.lat = source.getLat();
+            isUpdated = true;
+        }
+        if (this.lon != source.getLon()) {
+            this.lon = source.getLon();
+            isUpdated = true;
+        }
+        if (this.lon != source.getLon()) {
+            this.lon = source.getLon();
+            isUpdated = true;
+        }
+
+        return isUpdated;
+    }
+
     // ==== 연관관계 편의 메서드 ==== //
     public void setSpotImage(SpotImage spotImage) {
         this.spotImage = spotImage;

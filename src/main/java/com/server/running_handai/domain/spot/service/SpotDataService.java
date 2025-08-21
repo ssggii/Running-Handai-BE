@@ -7,8 +7,10 @@ import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.course.service.FileService;
 import com.server.running_handai.domain.spot.client.SpotApiClient;
 import com.server.running_handai.domain.spot.client.SpotLocationApiClient;
+import com.server.running_handai.domain.spot.client.SpotSyncApiClient;
 import com.server.running_handai.domain.spot.dto.SpotApiResponseDto;
 import com.server.running_handai.domain.spot.dto.SpotLocationApiResponseDto;
+import com.server.running_handai.domain.spot.dto.SpotSyncApiResponseDto;
 import com.server.running_handai.domain.spot.entity.SpotCategory;
 import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.domain.spot.entity.Spot;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,6 +35,7 @@ import java.util.stream.Collectors;
 public class SpotDataService {
     private final SpotLocationApiClient spotLocationApiClient;
     private final SpotApiClient spotApiClient;
+    private final SpotSyncApiClient spotSyncApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final SpotRepository spotRepository;
@@ -41,6 +45,9 @@ public class SpotDataService {
     // [국문 관광정보] 관광 타입
     private static final int TOURIST_SPOT_TYPE = 12;
     private static final int RESTAURANT_TYPE = 39;
+
+    // [국문 관광정보] 지역 코드
+    private static final int BUSAN_AREA_CODE = 6;
 
     /**
      * 코스에 맞는 즐길거리 정보를 [국문 관광정보]의 위치기반 관광정보 API와 공통정보조회 API를 통해 가져옵니다.
@@ -101,55 +108,123 @@ public class SpotDataService {
     }
 
     /**
+     * DB에 저장된 즐길거리 정보를 [국문 관광정보]의 관광정보 동기화 목록 조회 API 호출을 통해 동기화합니다.
+     * 변경된 정보가 있을 경우, 공통정보 조회 API를 호출하여 DB와 비교한 후 업데이트합니다.
+     *
+     * @param date 국문 관광정보 API에서 정보가 수정된 날짜 (YYYYMMDD)
+     */
+    @Transactional
+    public void syncSpots(String date) {
+        // 1. 변경된 장소 정보 수집
+        List<SpotSyncApiResponseDto.Item> modifiedItems = fetchSpotsSync(date);
+
+        if (modifiedItems.isEmpty()) {
+            log.info("[즐길거리 동기화] 변경된 장소 데이터가 없습니다.");
+            return;
+        }
+
+        // 2. 현재 DB에 있는 External Id만 필터링
+        Set<String> modifiedExternalIds = modifiedItems.stream()
+                .map(SpotSyncApiResponseDto.Item::getSpotExternalId)
+                .collect(Collectors.toSet());
+
+        Set<String> existingExternalIds = spotRepository.findExternalIdsByExternalIdIn(modifiedExternalIds);
+
+        if (existingExternalIds.isEmpty()) {
+            log.info("[즐길거리 동기화] DB에 존재하는 장소 데이터 변경 사항이 없어 종료합니다.");
+            return;
+        }
+
+        log.info("[즐길거리 동기화] 변경된 장소 중 DB에 저장된 장소: {}개", existingExternalIds.size());
+
+        // 3. showflag별로 분류
+        // 표출(1)일 경우 업데이트하고, 비표출(0)일 경우 DB에서 삭제
+        Set<String> toDelete = modifiedItems.stream()
+                .filter(item -> existingExternalIds.contains(item.getSpotExternalId()))
+                .filter(item -> "0".equals(item.getSpotShowflag()))
+                .map(SpotSyncApiResponseDto.Item::getSpotExternalId)
+                .collect(Collectors.toSet());
+
+        Set<String> toUpdate = modifiedItems.stream()
+                .filter(item -> existingExternalIds.contains(item.getSpotExternalId()))
+                .filter(item -> "1".equals(item.getSpotShowflag()))
+                .map(SpotSyncApiResponseDto.Item::getSpotExternalId)
+                .collect(Collectors.toSet());
+
+        // 4. DB 삭제 혹은 업데이트
+        List<Spot> updatedSpots = new ArrayList<>();
+        int deletedSpots = 0;
+
+        if (!toDelete.isEmpty()) {
+            for (String externalId : toDelete) {
+                Spot spot = spotRepository.findByExternalId(externalId);
+                if (spot != null) {
+                    spotRepository.delete(spot);
+                    log.info("[즐길거리 동기화] 장소 삭제: externalId={}, 이전 이미지 주소={}", externalId, spot.getSpotImage().getImgUrl());
+                    deletedSpots++;
+                }
+            }
+        }
+
+        if (!toUpdate.isEmpty()) {
+            // 공통정보 조회 API 호출하여 최신 정보 가져오기
+            List<SpotApiResponseDto.Item> items = fetchSpotsInParallel(toUpdate);
+
+            for (SpotApiResponseDto.Item item : items) {
+                Optional<Spot> newSpot = createSpot(item);
+                if (newSpot.isPresent()) {
+                    Spot spot = spotRepository.findByExternalId(item.getSpotExternalId());
+                    if (spot != null) {
+                        boolean isUpdated = spot.syncWith(newSpot.get());
+                         updateSpotImage(spot, item);
+                        if (isUpdated) {
+                            updatedSpots.add(spot);
+                        }
+                    }
+                }
+            }
+        }
+
+        log.info("[즐길거리 동기화] 완료: 업데이트 대상={}, 삭제 대상={}, 실제 업데이트={}, 실제 삭제={}", toUpdate.size(), toDelete.size(), updatedSpots.size(), deletedSpots);
+    }
+
+    @Transactional
+    public void syncSpotsByLocation() {
+
+    }
+
+    /**
      * [국문 관광정보] 위치기반 관광정보 조회 API를 요청해 장소의 externalId를 수집합니다.
      * API 응답값의 spotExternalId가 유효하지 않을 경우, Set에 포함하지 않습니다.
      *
      * @param lon 경도 (x)
      * @param lat 위도 (y)
      * @param contentTypeId 관광 타입 (12: 관광지, 39: 음식점)
-     * @return 유효한 externalId의 Set
+     * @return externalId Set
      */
     private Set<String> fetchSpotsByLocation(double lon, double lat, int contentTypeId) {
-        SpotLocationApiResponseDto spotLocationApiResponseDto = spotLocationApiClient.fetchSpotLocationData(1, 5, "E", lon, lat, contentTypeId);
+        try {
+            SpotLocationApiResponseDto spotLocationApiResponseDto = spotLocationApiClient.fetchSpotLocationData(1, 5, "E", lon, lat, contentTypeId);
 
-        if (spotLocationApiResponseDto == null || spotLocationApiResponseDto.getResponse() == null ||
-                spotLocationApiResponseDto.getResponse().getBody() == null || spotLocationApiResponseDto.getResponse().getBody().getItems() == null) {
+            if (spotLocationApiResponseDto == null || spotLocationApiResponseDto.getResponse() == null ||
+                    spotLocationApiResponseDto.getResponse().getBody() == null || spotLocationApiResponseDto.getResponse().getBody().getItems() == null) {
+                return Collections.emptySet();
+            }
+
+            List<SpotLocationApiResponseDto.Item> items = spotLocationApiResponseDto.getResponse().getBody().getItems().getItemList();
+
+            if (items == null || items.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            return items.stream()
+                    .filter(item -> isFieldValid(item.getSpotExternalId(), "spotExternalId", null))
+                    .map(SpotLocationApiResponseDto.Item::getSpotExternalId)
+                    .collect(Collectors.toSet());
+        } catch (Exception e) {
+            log.warn("[즐길거리 수정] 위치기반 관광정보 조회 API 응답 파싱 오류: {}", e.getMessage());
             return Collections.emptySet();
         }
-
-        List<SpotLocationApiResponseDto.Item> items = spotLocationApiResponseDto.getResponse().getBody().getItems().getItemList();
-
-        if (items == null || items.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        return items.stream()
-                .filter(item -> isFieldValid(item.getSpotExternalId(), "spotExternalId", null))
-                .map(SpotLocationApiResponseDto.Item::getSpotExternalId)
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * [국문 관광정보] 공통정보 조회 API를 요청해 externalId에 대한 SpotApiResponseDto.Item을 반환합니다.
-     *
-     * @param externalId 장소 고유번호
-     * @return SpotApiResponseDto.Item 정보, 없으면 Optional.empty()
-     */
-    public Optional<SpotApiResponseDto.Item> fetchSpot(String externalId) {
-        SpotApiResponseDto spotApiResponseDto = spotApiClient.fetchSpotData(externalId);
-
-        if (spotApiResponseDto == null || spotApiResponseDto.getResponse() == null ||
-                spotApiResponseDto.getResponse().getBody() == null || spotApiResponseDto.getResponse().getBody().getItems() == null) {
-            return Optional.empty();
-        }
-
-        List<SpotApiResponseDto.Item> items = spotApiResponseDto.getResponse().getBody().getItems().getItemList();
-
-        if (items == null || items.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(items.getFirst());
     }
 
     /**
@@ -157,7 +232,7 @@ public class SpotDataService {
      *
      * @param startPoint 시작점
      * @param endPoint 도착점
-     * @return 수집한 중복 없는 externalId Set
+     * @return externalId Set
      */
     private Set<String> fetchSpotsByLocationInParallel(TrackPoint startPoint, TrackPoint endPoint) {
         List<Callable<Collection<String>>> tasks = List.of(
@@ -182,6 +257,34 @@ public class SpotDataService {
     }
 
     /**
+     * [국문 관광정보] 공통정보 조회 API를 요청해 externalId에 대한 SpotApiResponseDto.Item을 반환합니다.
+     *
+     * @param externalId 장소 고유번호
+     * @return SpotApiResponseDto.Item 정보, 없으면 Optional.empty()
+     */
+    private Optional<SpotApiResponseDto.Item> fetchSpot(String externalId) {
+        try {
+            SpotApiResponseDto spotApiResponseDto = spotApiClient.fetchSpotData(externalId);
+
+            if (spotApiResponseDto == null || spotApiResponseDto.getResponse() == null ||
+                    spotApiResponseDto.getResponse().getBody() == null || spotApiResponseDto.getResponse().getBody().getItems() == null) {
+                return Optional.empty();
+            }
+
+            List<SpotApiResponseDto.Item> items = spotApiResponseDto.getResponse().getBody().getItems().getItemList();
+
+            if (items == null || items.isEmpty()) {
+                return Optional.empty();
+            }
+
+            return Optional.of(items.getFirst());
+        } catch (Exception e){
+            log.warn("[즐길거리 수정] 공통정보 조회 API 응답 파싱 오류: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
      * [국문 관광정보] 공통정보 조회 API를 요청을 병렬로 요청해 externalId의 관광 정보를 수집합니다.
      *
      * @param externalIds 처리할 externalId Set
@@ -200,6 +303,47 @@ public class SpotDataService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * [국문 관광정보] 관광정보 동기화 목록 조회 API를 요청해 변경된 데이터의 SpotSyncApiResponseDto.Item을 수집합니다.
+     *
+     * @param date 국문 관광정보 API에서 정보가 수정된 날짜 (YYYYMMDD)
+     * @return SpotSyncApiResponseDto.Item List
+     */
+    private List<SpotSyncApiResponseDto.Item> fetchSpotsSync(String date) {
+        try {
+            SpotSyncApiResponseDto spotSyncApiResponseDto = spotSyncApiClient.fetchSpotSyncData(BUSAN_AREA_CODE, date);
+
+            if (spotSyncApiResponseDto == null || spotSyncApiResponseDto.getResponse() == null || spotSyncApiResponseDto.getResponse().getBody() == null) {
+                return Collections.emptyList();
+            }
+
+            SpotSyncApiResponseDto.Body body = spotSyncApiResponseDto.getResponse().getBody();
+
+            // 변경 사항이 없는 경우, items = "" 형태로 응답되기 때문에 totalCount 기준으로 분기 처리
+            if (body.getTotalCount() == 0) {
+                return Collections.emptyList();
+            }
+
+            if (body.getItems() == null) {
+                return Collections.emptyList();
+            }
+
+            List<SpotSyncApiResponseDto.Item> items = body.getItems().getItemList();
+
+            if (items == null || items.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            return items.stream()
+                    .filter(item -> isFieldValid(item.getSpotExternalId(), "spotExternalId", null))
+                    .filter(item -> isFieldValid(item.getSpotShowflag(), "spotShowflag", null))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("[즐길거리 동기화] 관광정보 동기화 목록 조회 API 응답 파싱 오류: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -278,7 +422,30 @@ public class SpotDataService {
                     .originalUrl(thumbnailImage)
                     .build();
         }
+
         return null;
+    }
+
+    /**
+     * API 데이터와 비교하여 Spot 엔티티의 이미지를 업데이트합니다.
+     * 기존 이미지 URL과 새로운 이미지 URL들이 모두 다른 경우에만 S3 업로드 및 업데이트를 수행합니다.
+     *
+     * @param spot DB에서 조회한 기존 Spot 엔티티
+     * @param item 공통정보 조회 API로부터 받은 응답
+     */
+    private void updateSpotImage(Spot spot, SpotApiResponseDto.Item item) {
+        String oldOriginalUrl = spot.getSpotImage() != null ? spot.getSpotImage().getOriginalUrl() : null;
+
+        String newOriginalImage = item.getSpotOriginalImage();
+        String newThumbnailImage = item.getSpotThumbnailImage();
+
+        if (!Objects.equals(oldOriginalUrl, newOriginalImage) && !Objects.equals(oldOriginalUrl, newThumbnailImage)) {
+            SpotImage spotImage = createSpotImage(item);
+            if (spotImage != null) {
+                spot.setSpotImage(spotImage);
+                log.info("[즐길거리 동기화] 이미지 업데이트: externalId={}, 이전 이미지 주소={}", item.getSpotExternalId(), spot.getSpotImage().getImgUrl());
+            }
+        }
     }
 
     /**

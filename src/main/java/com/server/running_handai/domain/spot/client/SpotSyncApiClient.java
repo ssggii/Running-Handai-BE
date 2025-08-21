@@ -31,12 +31,7 @@ public class SpotSyncApiClient {
      * @param areaCode 지역 코드
      * @return SpotSyncApiResponseDto
      */
-    public SpotSyncApiResponseDto fetchSpotSyncData(int areaCode) {
-        // 호출 기준 전날 날짜 계산 (YYYYMMDD)
-        String modifiedDate = LocalDate.now()
-                .minusDays(1)
-                .format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-
+    public SpotSyncApiResponseDto fetchSpotSyncData(int areaCode, String date) {
         // URL 생성
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl)
                 .path("/areaBasedSyncList2")
@@ -44,7 +39,7 @@ public class SpotSyncApiClient {
                 .queryParam("MobileApp", "runninghandai")
                 .queryParam("_type", "json")
                 .queryParam("areaCode", String.valueOf(areaCode))
-                .queryParam("modifiedtime", modifiedDate)
+                .queryParam("modifiedtime", date)
                 .queryParam("serviceKey", serviceKey);
 
         URI uri = builder.build(true).toUri();
