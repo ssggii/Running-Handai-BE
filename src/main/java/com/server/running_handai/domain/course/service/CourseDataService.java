@@ -746,7 +746,7 @@ public class CourseDataService {
 
         // Area 설정
         Area area;
-        if (dongName.equals("송정동")) {
+        if (districtName.equals("해운대구") && dongName.equals("송정동")) {
             area = Area.SONGJEONG_GIJANG;
         } else {
             area = Area.findBySubRegion(districtName).orElseGet(() -> {
