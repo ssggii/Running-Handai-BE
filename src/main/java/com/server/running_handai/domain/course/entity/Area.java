@@ -16,7 +16,7 @@ public enum Area {
     SOUTHERN_COAST("남부해안", List.of("남구")),
     WESTERN_NAKDONGRIVER("서부/낙동강", List.of("사상구", "강서구", "사하구")),
     NORTHERN_BUSAN("북부산", List.of("금정구", "북구")),
-    UNKNOWN("알수없음", List.of());
+    ETC("기타", List.of());
 
     private final String description;
     private final List<String> subRegions;
