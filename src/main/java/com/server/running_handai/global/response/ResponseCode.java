@@ -75,7 +75,6 @@ public enum ResponseCode {
     FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "파일 업로드를 실패했습니다."),
     FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
-    ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
     PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
     UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다.");
 

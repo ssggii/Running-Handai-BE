@@ -1,7 +1,5 @@
 package com.server.running_handai.domain.course.service;
 
-import com.server.running_handai.global.response.ResponseCode;
-import com.server.running_handai.global.response.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -26,7 +24,7 @@ public class KakaoMapService {
      *
      * @param longitude 경도 (x)
      * @param latitude 위도 (y)
-     * @return 주소 정보가 담긴 JsonNode (성공 시 documents[0]), 없으면 null
+     * @return 주소 정보가 담긴 JsonNode (성공 시 documents[0]), 없거나 파싱 실패시 null
      */
     public JsonNode getAddressFromCoordinate(double longitude, double latitude) {
         String requestUrl = "https://dapi.kakao.com/v2/local/geo/coord2address.json"
@@ -40,14 +38,14 @@ public class KakaoMapService {
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(
-                requestUrl,
-                HttpMethod.GET,
-                entity,
-                String.class
-        );
-
         try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    requestUrl,
+                    HttpMethod.GET,
+                    entity,
+                    String.class
+            );
+
             JsonNode root = objectMapper.readTree(response.getBody());
 
             // documents 안에 도로명 주소(road_address)와 지번 주소(address)가 포함되어 응답
@@ -56,12 +54,13 @@ public class KakaoMapService {
             if (documents.isArray() && !documents.isEmpty()) {
                 return documents.get(0);
             }
+
+            log.warn("[카카오 지도 API 호출] 카카오 지도 API에서 주소 정보 없음: x={}, y={}", longitude, latitude);
+            return null;
+
         } catch (Exception e) {
             log.error("[카카오 지도 API 호출] 카카오 지도 API 파싱 실패: x={}, y={}", longitude, latitude, e);
-            throw new BusinessException(ResponseCode.ADDRESS_PARSE_FAILED);
+            return null;
         }
-
-        log.warn("[카카오 지도 API 호출] 카카오 지도 API에서 주소 정보 없음: x={}, y={}", longitude, latitude);
-        return null;
     }
 }
