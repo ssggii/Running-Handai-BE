@@ -41,6 +41,7 @@ public enum ResponseCode {
 
     // FORBIDDEN (403)
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
+    NOT_COURSE_CREATOR(FORBIDDEN, "해당 코스를 만든 사용자가 아닙니다."),
 
     // NOT_FOUND (404)
     AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
