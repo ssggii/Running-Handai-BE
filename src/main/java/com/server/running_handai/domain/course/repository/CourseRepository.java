@@ -4,6 +4,8 @@ import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.entity.Course;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -91,4 +93,25 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
            "JOIN FETCH c.trackPoints " +
            "WHERE c.id = :courseId")
     Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
+
+    /**
+     * Member가 생성한 Course 목록을 정렬 조건에 따라 조회
+     */
+    @Query(
+            value = "SELECT " +
+                    "    c.course_id AS id, " +
+                    "    c.name, " +
+                    "    ci.img_url AS thumbnailUrl, " +
+                    "    c.distance, " +
+                    "    c.duration, " +
+                    "    c.max_ele AS maxElevation, " +
+                    "    0.0 AS distanceFromUser " +
+                    "FROM " +
+                    "    course c " +
+                    "LEFT JOIN " +
+                    "    course_image ci ON c.course_id = ci.course_id " +
+                    "WHERE c.member_id = :memberId ",
+            nativeQuery = true
+    )
+    List<CourseInfoDto> findMyCoursesBySort(@Param("memberId") Long memberId, Sort sort);
 }

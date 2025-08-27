@@ -33,6 +33,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -239,5 +240,24 @@ public class CourseService {
         String gpxPath = fileService.getPresignedGetUrl(course.getGpxPath(), 60);
 
         return GpxPathDto.from(courseId, gpxPath);
+    }
+
+    /**
+     * 사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다.
+     *
+     * @param memberId 조회 요청한 회원 ID
+     * @param sortBy 정렬 조건 (latest, oldest, short, long)
+     * @return 정렬된 코스 목록이 포함된 DTO
+     */
+    public MyCourseDetailDto getMyCourses(Long memberId, String sortBy) {
+        Sort sort = switch (sortBy) {
+            case "oldest" -> Sort.by("created_at").ascending();
+            case "short" -> Sort.by("distance").ascending();
+            case "long" -> Sort.by("distance").descending();
+            default -> Sort.by("created_at").descending();
+        };
+
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
+        return MyCourseDetailDto.from(courseInfoDtos);
     }
 }
