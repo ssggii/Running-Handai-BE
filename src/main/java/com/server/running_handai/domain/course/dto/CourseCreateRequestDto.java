@@ -18,6 +18,9 @@ public record CourseCreateRequestDto(
         MultipartFile gpxFile,
 
         @NotNull(message = "썸네일 이미지는 필수입니다.")
-        MultipartFile thumbnailImage
+        MultipartFile thumbnailImage,
+
+        @NotNull(message = "부산 지역 여부는 필수입니다.")
+        boolean isInsideBusan
 ) {
 }

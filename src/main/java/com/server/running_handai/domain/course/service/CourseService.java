@@ -20,6 +20,7 @@ import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
+import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.member.entity.Member;
@@ -43,9 +44,9 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -66,6 +67,7 @@ public class CourseService {
     private final CourseDataService courseDataService;
     private final FileService fileService;
     private final KakaoMapService kakaoMapService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -255,7 +257,7 @@ public class CourseService {
     }
 
     /**
-     * 회원이 생성한 코스를 저장하고, 해당 코스의 즐길거리를 초기화합니다.
+     * 회원이 생성한 코스를 저장하고, 트랜잭션 커밋 후 이벤트를 발행합니다.
      *
      * @param memberId 요청 회원의 ID
      * @param request 코스 생성에 필요한 데이터 DTO
@@ -266,6 +268,7 @@ public class CourseService {
         checkCourseNameDuplicated(request);
         Course newCourse = saveMemberCourse(memberId, request);
         courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
+        publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
         return newCourse.getId();
     }
 
@@ -282,5 +285,11 @@ public class CourseService {
                 new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
         newCourse.setCreator(member);
         return newCourse;
+    }
+
+    private void publishCourseCreatedEvent(Long courseId, boolean isInsideBusan) {
+        CourseCreatedEvent event = new CourseCreatedEvent(courseId, isInsideBusan);
+        log.info("코스 생성 이벤트 발행. courseId: {}, isInsideBusan: {}", courseId, isInsideBusan);
+        eventPublisher.publishEvent(event);
     }
 }
