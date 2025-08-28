@@ -311,6 +311,9 @@ public class CourseService {
             throw new BusinessException(NO_AUTHORITY_TO_DELETE_COURSE);
         }
 
+        fileService.deleteFile(course.getGpxPath()); // s3에서 gpx 파일 삭제
+        fileService.deleteFile(course.getCourseImage().getImgUrl()); // s3에서 썸네일 이미지 삭제
+        
         course.removeCreator();
         courseRepository.delete(course);
     }
