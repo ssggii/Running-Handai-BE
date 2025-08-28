@@ -18,6 +18,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
@@ -107,6 +109,9 @@ class CourseServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
+
+    @Mock
+    private KakaoMapService kakaoMapService;
 
     private static final Long COURSE_ID = 1L;
     private static final Long MEMBER_ID = 1L;
@@ -543,6 +548,70 @@ class CourseServiceTest {
             BusinessException exception = assertThrows(BusinessException.class,
                     () -> courseService.getCourseSummary(courseId, memberId));
             assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("지역 판별 테스트")
+    class RegionCheckTest {
+        private final ObjectMapper objectMapper = new ObjectMapper();
+
+        @Test
+        @DisplayName("부산 지역 판별 성공 - true 반환")
+        void isInsideBusan_whenCoordinateIsInBusan_shouldReturnTrue() throws Exception {
+            // given
+            double busanLon = 129.004480714;
+            double busanLat = 35.08747067199999;
+            JsonNode busanAddressNode = createMockAddressNode("부산광역시");
+
+            when(kakaoMapService.getAddressFromCoordinate(busanLon, busanLat)).thenReturn(busanAddressNode);
+
+            // when
+            boolean result = courseService.isInsideBusan(busanLon, busanLat);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("부산이 아닌 지역 판별 성공 - false 반환")
+        void isInsideBusan_whenCoordinateIsNotInBusan_shouldReturnFalse() throws Exception {
+            // given
+            double seoulLon = 127.0276;
+            double seoulLat = 37.4979;
+            JsonNode seoulAddressNode = createMockAddressNode("서울특별시");
+
+            when(kakaoMapService.getAddressFromCoordinate(seoulLon, seoulLat)).thenReturn(seoulAddressNode);
+
+            // when
+            boolean result = courseService.isInsideBusan(seoulLon, seoulLat);
+
+            // then
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("카카오 API에서 주소 정보를 반환하지 않은 경우(null) false 반환")
+        void isInsideBusan_whenAddressNodeIsNull_shouldReturnFalse() {
+            // given
+            double someLon = 128.0;
+            double someLat = 36.0;
+
+            when(kakaoMapService.getAddressFromCoordinate(someLon, someLat)).thenReturn(null);
+
+            // when
+            boolean result = courseService.isInsideBusan(someLon, someLat);
+
+            // then
+            assertThat(result).isFalse();
+        }
+
+        private JsonNode createMockAddressNode(String cityName) throws Exception {
+            String jsonString = String.format(
+                    "{\"address\": {\"region_1depth_name\": \"%s\"}}",
+                    cityName
+            );
+            return objectMapper.readTree(jsonString);
         }
     }
 
