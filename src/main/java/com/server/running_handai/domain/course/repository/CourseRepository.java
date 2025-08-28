@@ -91,4 +91,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
            "JOIN FETCH c.trackPoints " +
            "WHERE c.id = :courseId")
     Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
+
+    boolean existsByName(String name);
 }

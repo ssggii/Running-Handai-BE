@@ -1,14 +1,15 @@
 package com.server.running_handai.domain.course.service;
 
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
+import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
-import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
+import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
@@ -20,6 +21,7 @@ import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.dto.TrackPointDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
+import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.member.entity.Member;
@@ -43,9 +45,9 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -65,6 +67,8 @@ public class CourseService {
     private final ReviewService reviewService;
     private final CourseDataService courseDataService;
     private final FileService fileService;
+    private final KakaoMapService kakaoMapService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -233,36 +237,61 @@ public class CourseService {
     }
 
     /**
-     * 회원이 생성한 코스를 저장합니다.
+     * 주어진 좌표가 부산 내에 있는지 판별합니다.
+     *
+     * @param longitude 경도 (x)
+     * @param latitude  위도 (y)
+     * @return 부산 지역 내에 있으면 true, 아니면 false
+     */
+    public boolean isInsideBusan(double longitude, double latitude) {
+        JsonNode addressNode = kakaoMapService.getAddressFromCoordinate(longitude, latitude);
+
+        if (addressNode == null) {
+            log.warn("[지역 판별] 주소 정보를 찾을 수 없어 부산 외 지역으로 판별합니다: x={}, y={}", longitude, latitude);
+            return false;
+        }
+
+        String city = addressNode.path("address").path("region_1depth_name").asText();
+        log.info("[지역 판별] city={}", city);
+
+        return city.startsWith("부산");
+    }
+
+    /**
+     * 회원이 생성한 코스를 저장하고, 트랜잭션 커밋 후 이벤트를 발행합니다.
      *
      * @param memberId 요청 회원의 ID
-     * @param pointNames 코스의 시작 및 종료포인트 이름
-     * @param gpxFile 코스의 GPX 파일
-     * @param thumbnailImgFile 코스의 썸네일 이미지 파일
+     * @param request 코스 생성에 필요한 데이터 DTO
      * @return 저장된 코스의 ID
      */
     @Transactional
-    public Long createMemberCourse(Long memberId, GpxCourseRequestDto pointNames,
-                                   MultipartFile gpxFile, MultipartFile thumbnailImgFile) {
-        if (pointNames == null || pointNames.startPointName() == null || pointNames.endPointName() == null) {
-            throw new BusinessException(INVALID_POINT_NAME);
-        }
-
-        if (gpxFile == null || thumbnailImgFile == null) {
-            throw new BusinessException(EMPTY_FILE);
-        }
-
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
-        log.info("[내 코스 생성] 회원이 만든 코스 저장. memberId: {}", memberId);
-        Course newCourse = courseDataService.createCourseToGpx(pointNames, gpxFile);
-        newCourse.updateCreator(member);
-
-        log.info("[내 코스 생성] 코스의 썸네일 이미지 저장. courseId={}", newCourse.getId());
-        courseDataService.updateCourseImage(newCourse.getId(), thumbnailImgFile);
-
+    public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        checkCourseNameDuplicated(request);
+        Course newCourse = saveMemberCourse(memberId, request);
+        courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
+        publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
         return newCourse.getId();
+    }
+
+    private void checkCourseNameDuplicated(CourseCreateRequestDto request) {
+        String courseName = request.startPointName().trim() + "-" + request.endPointName().trim();
+        if (courseRepository.existsByName(courseName)) {
+            throw new BusinessException(DUPLICATE_COURSE_NAME);
+        }
+    }
+
+    private Course saveMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Course newCourse = courseDataService.createCourseToGpx(
+                new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
+        newCourse.setCreator(member);
+        return newCourse;
+    }
+
+    private void publishCourseCreatedEvent(Long courseId, boolean isInsideBusan) {
+        CourseCreatedEvent event = new CourseCreatedEvent(courseId, isInsideBusan);
+        log.info("코스 생성 이벤트 발행. courseId: {}, isInsideBusan: {}", courseId, isInsideBusan);
+        eventPublisher.publishEvent(event);
     }
 
     /**
