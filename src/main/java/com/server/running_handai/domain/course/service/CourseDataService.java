@@ -259,8 +259,8 @@ public class CourseDataService {
             Area area;
             if (districtName.equals("해운대구")) { // 해운대구인 경우, 카카오 지도 API 사용하여 동 단위 분류
                 JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
-                Map<String, String> addressMap = extractDistrictNameAndDongName(startAddress);
-                area = extractArea(addressMap);
+                KakaoMapService.AddressInfo startAddressInfo = kakaoMapService.extractDistrictNameAndDongName(startAddress);
+                area = extractArea(startAddressInfo);
             } else {
                 area = Area.findBySubRegion(districtName).orElseThrow(() -> {
                     log.error("[두루누비 코스 동기화] 지역 파싱을 실패했습니다. subRegionName: {}", districtName);
@@ -511,8 +511,8 @@ public class CourseDataService {
         // 6. 시작점을 기준으로 Area 분류 (카카오 지도 API 호출)
         Point startPoint = extractStartPoint(trackPoints);
         JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
-        Map<String, String> startAddressMap = extractDistrictNameAndDongName(startAddress);
-        Area area = extractArea(startAddressMap);
+        KakaoMapService.AddressInfo startAddressInfo = kakaoMapService.extractDistrictNameAndDongName(startAddress);
+        Area area = extractArea(startAddressInfo);
         log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
         // 7. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
@@ -568,7 +568,7 @@ public class CourseDataService {
                 .build();
 
         // 10. Theme 설정
-        List<Theme> themes = extractTheme(startAddressMap);
+        List<Theme> themes = extractTheme(startAddressInfo);
         themes.forEach(course::addTheme);
 
         courseRepository.save(course);
@@ -735,100 +735,34 @@ public class CourseDataService {
     }
 
     /**
-     * 카카오 지도 API에서 가져온 주소 정보에서 구 단위, 동 단위를 추출합니다.
-     * 도로명 주소(road_address)는 좌표에 따라 반환되지 않을 수 있기 때문에 지번 주소(address)를 기준으로 합니다.
-     *
-     * @param jsonNode 주소 정보 JSON
-     * @return Map<districtName, dongName>, 없으면 null
-     */
-    private Map<String, String> extractDistrictNameAndDongName(JsonNode jsonNode) {
-        Map<String, String> addressMap = new HashMap<>(Map.of());
-
-        if (jsonNode == null) {
-            addressMap.put("districtName", null);
-            addressMap.put("dongName", null);
-            return addressMap;
-        }
-
-        String districtName = jsonNode.path("address").path("region_2depth_name").asText();
-        String dongName = jsonNode.path("address").path("region_3depth_name").asText();
-
-        if (districtName == null || districtName.isEmpty()) {
-            districtName = null;
-        }
-
-        if (dongName == null || dongName.isEmpty()) {
-            dongName = null;
-        }
-
-        addressMap.put("districtName", districtName);
-        addressMap.put("dongName", dongName);
-
-        return addressMap;
-    }
-
-    /**
      * 카카오 지도 API에서 가져온 주소 정보에서 행정구역(Area)을 추출합니다.
      *
-     * @param addressMap Map<districtName, dongName>
+     * @param addressInfo 주소 정보 Record
      * @return Area, 없으면 Area.ETC
      */
-    private Area extractArea(Map<String, String> addressMap) {
-        // addressMap이 null로 반환되면 ETC으로 설정
-        if (addressMap == null) {
-            log.warn("[GPX 코스 생성] 카카오 지도 API에서 주소 정보가 null로 반환. Area.ETC으로 설정");
-            return Area.ETC;
+    private Area extractArea(KakaoMapService.AddressInfo addressInfo) {
+        Area area = Area.fromAddress(addressInfo);
+
+        // ETC로 분류된 경우, 서비스 로그 남기기
+        if (area == Area.ETC) {
+            log.warn("매칭되는 지역 없음. Area.ETC으로 설정: districtName={}, dongName={}", addressInfo.districtName(), addressInfo.dongName());
         }
 
-        String districtName = addressMap.get("districtName");
-        String dongName = addressMap.get("dongName");
-
-        // districtName이 없으면 ETC으로 설정
-        if (districtName == null || districtName.isEmpty()) {
-            log.warn("[GPX 코스 생성] 구 단위 정보 없음. Area.ETC으로 설정: districtName='{}'", districtName);
-            return Area.ETC;
-        }
-
-        // "해운대구 송정동"만 SONGJEONG_GIJANG으로 분류
-        if (districtName.equals("해운대구") && dongName != null && dongName.equals("송정동")) {
-            return Area.SONGJEONG_GIJANG;
-        }
-
-        // districtName으로 Area 설정, 매칭되는 Area 없으면 ETC로 설정
-        return Area.findBySubRegion(districtName).orElseGet(() -> {
-            log.warn("[GPX 코스 생성] 매칭되는 행정구역 없음. Area.ETC으로 설정: districtName='{}', dongName='{}'", districtName, dongName);
-            return Area.ETC;
-        });
+        return area;
     }
 
     /**
      * 카카오 지도 API에서 가져온 주소 정보에서 테마(Theme)을 추출합니다.
      *
-     * @param addressMap Map<districtName, dongName>
+     * @param addressInfo 주소 정보 Record
      * @return List<Theme>, 없으면 List.of(Theme.ETC)
      */
-    private List<Theme> extractTheme(Map<String, String> addressMap) {
-        // addressMap이 null로 반환되면 ETC으로 설정
-        if (addressMap == null) {
-            log.warn("[GPX 코스 생성] 카카오 지도 API에서 주소 정보가 null로 반환. Theme.ETC으로 설정");
-            return List.of(Theme.ETC);
-        }
+    private List<Theme> extractTheme(KakaoMapService.AddressInfo addressInfo) {
+        List<Theme> themes = Theme.fromAddress(addressInfo);
 
-        String districtName = addressMap.get("districtName");
-
-        // districtName이 없으면 ETC으로 설정
-        if (districtName == null || districtName.isEmpty()) {
-            log.warn("[GPX 코스 생성] 구 단위 정보 없음. Theme.ETC으로 설정: districtName='{}'", districtName);
-            return List.of(Theme.ETC);
-        }
-
-        // districtName으로 Theme 설정
-        List<Theme> themes = Theme.findBySubRegion(districtName);
-
-        // 매칭되는 Theme 없으면 ETC로 설정
-        if (themes.isEmpty()) {
-            log.warn("[GPX 코스 생성] 매칭되는 테마 없음. Theme.ETC으로 설정: districtName='{}'", districtName);
-            return List.of(Theme.ETC);
+        // ETC로 분류된 경우, 서비스 로그 남기기
+        if (themes.contains(Theme.ETC)) {
+            log.warn("매칭되는 테마 없음. Theme.ETC으로 설정: districtName={}", addressInfo.districtName());
         }
 
         return themes;
