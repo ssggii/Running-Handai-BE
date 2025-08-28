@@ -91,7 +91,7 @@ public class CourseController {
             @ApiResponse(responseCode = "403", description = "실패 (해당 사용자가 만든 코스가 아님) - NOT_COURSE_CREATOR"),
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스) - COURSE_NOT_FOUND")
     })
-    @GetMapping("/api/members/me/courses/{courseId}")
+    @GetMapping("/api/members/me/courses/{courseId}/gpx")
     public ResponseEntity<CommonResponse<GpxPathDto>> downloadGpx(
             @Parameter(description = "다운로드하려는 코스 ID", required = true)
             @PathVariable("courseId") Long courseId,

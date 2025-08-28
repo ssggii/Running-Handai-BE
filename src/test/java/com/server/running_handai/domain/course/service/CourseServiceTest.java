@@ -11,16 +11,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
-import com.server.running_handai.domain.course.dto.CourseDetailDto;
-import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
-import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
-import com.server.running_handai.domain.course.dto.CourseSummaryDto;
+import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseFilter;
@@ -43,9 +38,7 @@ import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +48,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -62,6 +56,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -528,6 +523,76 @@ class CourseServiceTest {
             BusinessException exception = assertThrows(BusinessException.class,
                     () -> courseService.getCourseSummary(courseId, memberId));
             assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("내 코스 전체 조회 테스트")
+    class GetMyCoursesTest {
+        // 헬퍼 메서드
+        private CourseInfoDto createCourseInfoDto(Long courseId, String courseName, double distance) {
+            CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
+            given(courseInfoDto.getId()).willReturn(courseId);
+            given(courseInfoDto.getName()).willReturn(courseName);
+            given(courseInfoDto.getDistance()).willReturn(distance);
+            return courseInfoDto;
+        }
+
+        /**
+         * [내 코스 전체 조회] 성공
+         * 1. Course가 존재하는 경우
+         */
+        @ParameterizedTest
+        @ValueSource(strings = {"latest", "oldest", "short", "long"})
+        @DisplayName("내 코스 전체 조회 - Course가 존재")
+        void getMyCourses_success_courseExists(String sortBy) {
+            // given
+            Sort sort = switch (sortBy) {
+                case "oldest" -> Sort.by("created_at").ascending();
+                case "short" -> Sort.by("distance").ascending();
+                case "long" -> Sort.by("distance").descending();
+                default -> Sort.by("created_at").descending();
+            };
+
+            List<CourseInfoDto> courseInfoDtos = List.of(
+                    createCourseInfoDto(1L, "코스1", 13.5),
+                    createCourseInfoDto(2L, "코스2", 12.1),
+                    createCourseInfoDto(3L, "코스3", 10.8)
+            );
+
+            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(courseInfoDtos);
+
+            // when
+            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+
+            // then
+            assertThat(result.courseCount()).isEqualTo(3);
+            assertThat(result.courses()).hasSize(3);
+
+            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+        }
+
+        /**
+         * [내 코스 전체 조회] 성공
+         * 2. Course가 존재하지 않는 경우
+         */
+        @Test
+        @DisplayName("내 코스 전체 조회 - Course가 존재하지 않음")
+        void getMyCourses_success_noCourse() {
+            // given
+            // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
+            String sortBy = "latest";
+            Sort sort = Sort.by("created_at").descending();
+            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(Collections.emptyList());
+
+            // when
+            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+
+            // then
+            assertThat(result.courseCount()).isEqualTo(0);
+            assertThat(result.courses()).isEmpty();
+
+            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
         }
     }
 }
