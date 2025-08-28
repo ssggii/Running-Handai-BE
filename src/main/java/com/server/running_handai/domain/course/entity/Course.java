@@ -179,7 +179,7 @@ public class Course extends BaseTimeEntity {
         this.themes.remove(theme);
     }
 
-    public void updateCreator(Member creator) {
+    public void setCreator(Member creator) {
         // 기존 Member와의 연관관계 제거
         if (this.creator != null) {
             this.creator.getCourses().remove(this);

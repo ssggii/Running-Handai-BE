@@ -717,4 +717,84 @@ class CourseServiceTest {
             verify(courseDataService, never()).updateCourseImage(any(), any());
         }
     }
+
+    @Nested
+    @DisplayName("내 코스 삭제 테스트")
+    class MyCourseDeleteTest {
+
+        private Member member;
+
+        @BeforeEach
+        void setUp() {
+            member = Member.builder()
+                    .nickname("nickname1")
+                    .providerId("providerId1")
+                    .provider(Provider.GOOGLE)
+                    .email("email1")
+                    .role(Role.USER)
+                    .build();
+
+            ReflectionTestUtils.setField(member, "id", 1L);
+        }
+
+        @Test
+        @DisplayName("내 코스 삭제 - 성공")
+        void deleteMemberCourse_success() {
+            // given
+            Long memberId = 1L;
+            Long courseId = 100L;
+            Course course = createMockCourse(courseId);
+            course.setCreator(member);
+
+            when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+
+            // when
+            courseService.deleteMemberCourse(memberId, courseId);
+
+            // then
+            verify(courseRepository).findById(courseId);
+            verify(courseRepository).delete(course);
+
+            assertThat(member.getCourses()).doesNotContain(course);
+            assertThat(course.getCreator()).isNull();
+        }
+
+        @Test
+        @DisplayName("내 코스 삭제 실패 - 존재하지 않는 코스")
+        void deleteMemberCourse_fail_courseNotFound() {
+            // given
+            Long memberId = 1L;
+            Long nonExistentCourseId = 999L;
+
+            when(courseRepository.findById(nonExistentCourseId)).thenReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.deleteMemberCourse(memberId, nonExistentCourseId));
+
+            assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+
+            verify(courseRepository, never()).delete(any(Course.class));
+        }
+
+        @Test
+        @DisplayName("내 코스 삭제 실패 - 권한 없음")
+        void deleteMemberCourse_fail_noAuthority() {
+            // given
+            Long requesterId = 2L; // 삭제 요청자 ID (생성자와 다름)
+            Long courseId = 100L;
+            Course course = createMockCourse(courseId);
+            course.setCreator(member);
+
+            when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.deleteMemberCourse(requesterId, courseId));
+
+            assertThat(exception.getResponseCode()).isEqualTo(NO_AUTHORITY_TO_DELETE_COURSE);
+
+            verify(courseRepository, never()).delete(any(Course.class));
+        }
+    }
 }

@@ -296,13 +296,13 @@ public class CourseService {
 
     /**
      * 회원이 생성한 코스를 삭제합니다.
+     * 코스에 저장된 즐길거리가 있는 경우 함께 삭제합니다.
      *
      * @param memberId 요청 회원의 ID
      * @param courseId 삭제하려는 코스의 ID
      */
     @Transactional
     public void deleteMemberCourse(Long memberId, Long courseId) {
-        // 코스 조회
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
@@ -311,7 +311,6 @@ public class CourseService {
             throw new BusinessException(NO_AUTHORITY_TO_DELETE_COURSE);
         }
 
-        // 회원과 코스의 연관관계 제거 후 DB에서 코스 삭제
         course.removeCreator();
         courseRepository.delete(course);
     }
