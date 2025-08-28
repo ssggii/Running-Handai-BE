@@ -2,6 +2,7 @@ package com.server.running_handai.domain.course.controller;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
 
+import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,14 +118,12 @@ public class CourseController {
     })
     @PostMapping(value = "/api/members/me/courses", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<Long>> createMemberCourseWithGpx(
-            @RequestPart("pointNames") GpxCourseRequestDto pointNames,
-            @RequestPart("gpxFile") MultipartFile gpxFile,
-            @RequestPart("thumbnailImage") MultipartFile thumbnailImageFile,
+            @Valid @ModelAttribute CourseCreateRequestDto request,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
-        log.info("startPointName: {}, endPointName: {}", pointNames.startPointName(), pointNames.endPointName());
-        Long courseId = courseService.createMemberCourse(memberId, pointNames, gpxFile, thumbnailImageFile);
+        log.info("[내 코스 생성] startPointName: {}, endPointName: {}", request.startPointName(), request.endPointName());
+        Long courseId = courseService.createMemberCourse(memberId, request);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseId));
     }
 

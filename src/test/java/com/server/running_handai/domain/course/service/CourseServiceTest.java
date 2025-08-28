@@ -3,6 +3,7 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
+import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
 import com.server.running_handai.domain.course.dto.CourseDetailDto;
 import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
@@ -617,12 +619,16 @@ class CourseServiceTest {
 
     @Nested
     @DisplayName("내 코스 생성 테스트")
-    class myCourseCreationTest {
+    class MyCourseCreationTest {
+
+        private final String START_POINT_NAME = "광안리해수욕장";
+        private final String END_POINT_NAME = "해운대해수욕장";
+        private final String COURSE_NAME = START_POINT_NAME + "-" + END_POINT_NAME;
 
         private Member member;
         private MultipartFile gpxFile;
         private MultipartFile thumbnailImgFile;
-        private GpxCourseRequestDto pointNames;
+        private CourseCreateRequestDto request;
 
         @BeforeEach
         void setUp() {
@@ -635,96 +641,66 @@ class CourseServiceTest {
                     .build();
             gpxFile = new MockMultipartFile("gpxFile", "test.gpx", "application/gpx+xml", "<gpx></gpx>".getBytes());
             thumbnailImgFile = new MockMultipartFile("thumbnail", "thumb.jpg", "image/jpeg", "thumbnail-image".getBytes());
-            pointNames = new GpxCourseRequestDto("startPoint", "endPoint");
+            request = new CourseCreateRequestDto(START_POINT_NAME, END_POINT_NAME, gpxFile, thumbnailImgFile);
         }
 
         @Test
-        @DisplayName("내 코스 생성 - 성공")
+        @DisplayName("내 코스 생성 성공")
         void createMemberCourse_success() {
             // given
             Long memberId = 1L;
             Long courseId = 100L;
             Course newCourse = createMockCourse(courseId);
 
+            when(courseRepository.existsByName(COURSE_NAME)).thenReturn(false); // 중복된 이름 없음
             when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
             when(courseDataService.createCourseToGpx(any(GpxCourseRequestDto.class), any(MultipartFile.class))).thenReturn(newCourse);
 
             // when
-            Long result = courseService.createMemberCourse(memberId, pointNames, gpxFile, thumbnailImgFile);
+            Long result = courseService.createMemberCourse(memberId, request);
 
             // then
             assertThat(result).isEqualTo(newCourse.getId());
             assertThat(newCourse.getCreator()).isEqualTo(member);
-            assertThat(member.getCourses()).contains(newCourse);
 
+            verify(courseRepository).existsByName(COURSE_NAME);
             verify(memberRepository).findById(memberId);
-            verify(courseDataService).createCourseToGpx(pointNames, gpxFile);
+            verify(courseDataService).createCourseToGpx(any(GpxCourseRequestDto.class), eq(gpxFile));
             verify(courseDataService).updateCourseImage(newCourse.getId(), thumbnailImgFile);
         }
 
         @Test
-        @DisplayName("내 코스 생성 실패 - 존재하지 않는 회원")
-        void createMemberCourse_fail_memberNotFound() {
+        @DisplayName("실패 - 중복된 코스 이름")
+        void createMemberCourse_fail_duplicateCourseName() {
             // given
-            Long nonExistentMemberId = 999L;
-
-            when(memberRepository.findById(nonExistentMemberId)).thenReturn(Optional.empty());
+            Long memberId = 1L;
+            when(courseRepository.existsByName(COURSE_NAME)).thenReturn(true); // 코스 이름이 이미 존재함
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class,
-                    () -> courseService.createMemberCourse(nonExistentMemberId, pointNames, gpxFile, thumbnailImgFile));
+                    () -> courseService.createMemberCourse(memberId, request));
+            assertThat(exception.getResponseCode()).isEqualTo(DUPLICATE_COURSE_NAME);
 
+            verify(memberRepository, never()).findById(anyLong());
+            verify(courseDataService, never()).createCourseToGpx(any(), any());
+            verify(courseDataService, never()).updateCourseImage(any(), any());
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 회원")
+        void createMemberCourse_fail_memberNotFound() {
+            // given
+            Long nonExistentMemberId = 999L;
+            when(courseRepository.existsByName(COURSE_NAME)).thenReturn(false); // 중복은 통과
+            when(memberRepository.findById(nonExistentMemberId)).thenReturn(Optional.empty()); // 존재하지 않는 회원
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.createMemberCourse(nonExistentMemberId, request));
             assertThat(exception.getResponseCode()).isEqualTo(MEMBER_NOT_FOUND);
 
             verify(courseDataService, never()).createCourseToGpx(any(), any());
             verify(courseDataService, never()).updateCourseImage(any(), any());
-        }
-
-        @ParameterizedTest(name = "{index}: {0}")
-        @MethodSource("provideInvalidPointNames")
-        @DisplayName("내 코스 생성 실패 - 포인트명 누락")
-        void createMemberCourse_fail_invalidPointNames(String testName, GpxCourseRequestDto invalidDto) {
-            // when, then
-            BusinessException exception = assertThrows(BusinessException.class,
-                    () -> courseService.createMemberCourse(1L, invalidDto, gpxFile, thumbnailImgFile));
-
-            assertThat(exception.getResponseCode()).isEqualTo(INVALID_POINT_NAME);
-
-            verify(memberRepository, never()).findById(anyLong());
-            verify(courseDataService, never()).createCourseToGpx(any(), any());
-            verify(courseDataService, never()).updateCourseImage(any(), any());
-        }
-
-        @ParameterizedTest(name = "{index}: {0}")
-        @MethodSource("provideMissingFiles")
-        @DisplayName("내 코스 생성 실패 - 파일 누락")
-        void createMemberCourse_fail_emptyFile(String testName, MultipartFile gpxFile, MultipartFile thumbnailFile) {
-            // when, then
-            BusinessException exception = assertThrows(BusinessException.class,
-                    () -> courseService.createMemberCourse(1L, pointNames, gpxFile, thumbnailFile));
-
-            assertThat(exception.getResponseCode()).isEqualTo(EMPTY_FILE);
-
-            verify(memberRepository, never()).findById(anyLong());
-            verify(courseDataService, never()).createCourseToGpx(any(), any());
-            verify(courseDataService, never()).updateCourseImage(any(), any());
-        }
-
-        private static Stream<Arguments> provideInvalidPointNames() {
-            return Stream.of(
-                    Arguments.of("GpxCourseRequestDto 자체가 null인 경우", null),
-                    Arguments.of("출발지 이름이 null인 경우", new GpxCourseRequestDto(null, "endPoint")),
-                    Arguments.of("도착지 이름이 null인 경우", new GpxCourseRequestDto("startPoint", null))
-            );
-        }
-
-        private static Stream<Arguments> provideMissingFiles() {
-            MultipartFile gpx = new MockMultipartFile("gpx", new byte[0]);
-            MultipartFile thumb = new MockMultipartFile("thumb", new byte[0]);
-            return Stream.of(
-                    Arguments.of("GPX 파일이 null인 경우", null, thumb),
-                    Arguments.of("썸네일 파일이 null인 경우", gpx, null)
-            );
         }
     }
 }

@@ -1,14 +1,14 @@
 package com.server.running_handai.domain.course.service;
 
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
+import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
-import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
+import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
@@ -234,40 +234,6 @@ public class CourseService {
     }
 
     /**
-     * 회원이 생성한 코스를 저장합니다.
-     *
-     * @param memberId 요청 회원의 ID
-     * @param pointNames 코스의 시작 및 종료포인트 이름
-     * @param gpxFile 코스의 GPX 파일
-     * @param thumbnailImgFile 코스의 썸네일 이미지 파일
-     * @return 저장된 코스의 ID
-     */
-    @Transactional
-    public Long createMemberCourse(Long memberId, GpxCourseRequestDto pointNames,
-                                   MultipartFile gpxFile, MultipartFile thumbnailImgFile) {
-        if (pointNames == null || pointNames.startPointName() == null || pointNames.endPointName() == null) {
-            throw new BusinessException(INVALID_POINT_NAME);
-        }
-
-        if (gpxFile == null || thumbnailImgFile == null) {
-            throw new BusinessException(EMPTY_FILE);
-        }
-
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
-        log.info("[내 코스 생성] 회원이 만든 코스 저장. memberId: {}", memberId);
-        Course newCourse = courseDataService.createCourseToGpx(pointNames, gpxFile);
-        newCourse.setCreator(member);
-
-        log.info("[내 코스 생성] 코스의 썸네일 이미지 저장. courseId={}", newCourse.getId());
-        courseDataService.updateCourseImage(newCourse.getId(), thumbnailImgFile);
-
-        return newCourse.getId();
-    }
-
-
-    /**
      * 주어진 좌표가 부산 내에 있는지 판별합니다.
      *
      * @param longitude 경도 (x)
@@ -286,5 +252,35 @@ public class CourseService {
         log.info("[지역 판별] city={}", city);
 
         return city.startsWith("부산");
+    }
+
+    /**
+     * 회원이 생성한 코스를 저장하고, 해당 코스의 즐길거리를 초기화합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param request 코스 생성에 필요한 데이터 DTO
+     * @return 저장된 코스의 ID
+     */
+    @Transactional
+    public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        checkCourseNameDuplicated(request);
+        Course newCourse = saveMemberCourse(memberId, request);
+        courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
+        return newCourse.getId();
+    }
+
+    private void checkCourseNameDuplicated(CourseCreateRequestDto request) {
+        String courseName = request.startPointName().trim() + "-" + request.endPointName().trim();
+        if (courseRepository.existsByName(courseName)) {
+            throw new BusinessException(DUPLICATE_COURSE_NAME);
+        }
+    }
+
+    private Course saveMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Course newCourse = courseDataService.createCourseToGpx(
+                new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
+        newCourse.setCreator(member);
+        return newCourse;
     }
 }
