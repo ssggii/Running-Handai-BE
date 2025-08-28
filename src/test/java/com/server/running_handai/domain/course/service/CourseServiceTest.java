@@ -32,6 +32,7 @@ import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.CourseFilter;
+import com.server.running_handai.domain.course.entity.CourseImage;
 import com.server.running_handai.domain.course.entity.CourseLevel;
 import com.server.running_handai.domain.course.entity.RoadCondition;
 import com.server.running_handai.domain.course.entity.Theme;
@@ -118,6 +119,9 @@ class CourseServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private FileService fileService;
 
     private static final Long COURSE_ID = 1L;
     private static final Long MEMBER_ID = 1L;
@@ -384,6 +388,7 @@ class CourseServiceTest {
      */
     private Course createMockCourse(Long courseId) {
         // Course 객체 생성 (빌더로 설정 가능한 필드 우선 설정)
+        CourseImage courseImage = new CourseImage("img/thumb.jpg");
         Course course = Course.builder()
                 .name("courseName1")
                 .distance(15.3)
@@ -391,7 +396,9 @@ class CourseServiceTest {
                 .minElevation(30.4)
                 .maxElevation(150.5)
                 .level(CourseLevel.MEDIUM)
+                .gpxPath("gpx/test.gpx")
                 .build();
+        course.updateCourseImage(courseImage);
 
         // 연관관계 필드(컬렉션)를 위한 더미 데이터 생성
         List<RoadCondition> roadConditions = createDummyRoadConditions();
@@ -733,7 +740,6 @@ class CourseServiceTest {
                     .email("email1")
                     .role(Role.USER)
                     .build();
-
             ReflectionTestUtils.setField(member, "id", 1L);
         }
 
@@ -752,6 +758,9 @@ class CourseServiceTest {
             courseService.deleteMemberCourse(memberId, courseId);
 
             // then
+            verify(fileService).deleteFile(course.getGpxPath());
+            verify(fileService).deleteFile(course.getCourseImage().getImgUrl());
+
             verify(courseRepository).findById(courseId);
             verify(courseRepository).delete(course);
 
