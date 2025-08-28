@@ -4,8 +4,6 @@ import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
-import static com.server.running_handai.global.response.ResponseCode.EMPTY_FILE;
-import static com.server.running_handai.global.response.ResponseCode.INVALID_POINT_NAME;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +35,7 @@ import com.server.running_handai.domain.course.entity.CourseLevel;
 import com.server.running_handai.domain.course.entity.RoadCondition;
 import com.server.running_handai.domain.course.entity.Theme;
 import com.server.running_handai.domain.course.entity.TrackPoint;
+import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.member.entity.Member;
@@ -69,10 +68,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -114,6 +115,9 @@ class CourseServiceTest {
 
     @Mock
     private KakaoMapService kakaoMapService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private static final Long COURSE_ID = 1L;
     private static final Long MEMBER_ID = 1L;
@@ -641,7 +645,7 @@ class CourseServiceTest {
                     .build();
             gpxFile = new MockMultipartFile("gpxFile", "test.gpx", "application/gpx+xml", "<gpx></gpx>".getBytes());
             thumbnailImgFile = new MockMultipartFile("thumbnail", "thumb.jpg", "image/jpeg", "thumbnail-image".getBytes());
-            request = new CourseCreateRequestDto(START_POINT_NAME, END_POINT_NAME, gpxFile, thumbnailImgFile);
+            request = new CourseCreateRequestDto(START_POINT_NAME, END_POINT_NAME, gpxFile, thumbnailImgFile, true);
         }
 
         @Test
@@ -662,6 +666,16 @@ class CourseServiceTest {
             // then
             assertThat(result).isEqualTo(newCourse.getId());
             assertThat(newCourse.getCreator()).isEqualTo(member);
+            assertThat(member.getCourses()).contains(newCourse);
+
+            // 이벤트 캡처
+            ArgumentCaptor<CourseCreatedEvent> eventCaptor = ArgumentCaptor.forClass(CourseCreatedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            // 캡처한 이벤트의 내용 검증
+            CourseCreatedEvent capturedEvent = eventCaptor.getValue();
+            assertThat(capturedEvent.courseId()).isEqualTo(newCourse.getId());
+            assertThat(capturedEvent.isInsideBusan()).isTrue();
 
             verify(courseRepository).existsByName(COURSE_NAME);
             verify(memberRepository).findById(memberId);
