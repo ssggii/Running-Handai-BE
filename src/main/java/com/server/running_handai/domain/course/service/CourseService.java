@@ -7,6 +7,7 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_POI
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.CourseSummaryDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
@@ -64,6 +65,7 @@ public class CourseService {
     private final ReviewService reviewService;
     private final CourseDataService courseDataService;
     private final FileService fileService;
+    private final KakaoMapService kakaoMapService;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -262,5 +264,27 @@ public class CourseService {
         courseDataService.updateCourseImage(newCourse.getId(), thumbnailImgFile);
 
         return newCourse.getId();
+    }
+
+
+    /**
+     * 주어진 좌표가 부산 내에 있는지 판별합니다.
+     *
+     * @param longitude 경도 (x)
+     * @param latitude  위도 (y)
+     * @return 부산 지역 내에 있으면 true, 아니면 false
+     */
+    public boolean isInsideBusan(double longitude, double latitude) {
+        JsonNode addressNode = kakaoMapService.getAddressFromCoordinate(longitude, latitude);
+
+        if (addressNode == null) {
+            log.warn("[지역 판별] 주소 정보를 찾을 수 없어 부산 외 지역으로 판별합니다: x={}, y={}", longitude, latitude);
+            return false;
+        }
+
+        String city = addressNode.path("address").path("region_1depth_name").asText();
+        log.info("[지역 판별] city={}", city);
+
+        return city.startsWith("부산");
     }
 }

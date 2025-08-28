@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -91,6 +92,21 @@ public class CourseController {
         log.info("[코스 요약 조회] courseId: {}, memberId: {}", courseId, memberId);
         CourseSummaryDto courseSummary = courseService.getCourseSummary(courseId, memberId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseSummary));
+    }
+
+    @Operation(summary = "지역 판별", description = "특정 위치 좌표가 부산 내 지역인지 판별합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공")
+    })
+    @GetMapping("/api/locations/is-in-busan")
+    public ResponseEntity<CommonResponse<Boolean>> isBusanCourse(
+            @Parameter(description = "시작포인트의 경도", required = true, example = "129.004480714")
+            @RequestParam("lon") double longitude,
+            @Parameter(description = "시작포인트의 위도", required = true, example = "35.08747067199999")
+            @RequestParam("lat") double latitude
+    ) {
+        boolean isBusanCourse = courseService.isInsideBusan(longitude, latitude);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, isBusanCourse));
     }
 
     @Operation(summary = "내 코스 생성", description = "회원의 코스를 생성합니다.")
