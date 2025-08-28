@@ -6,6 +6,7 @@ import static com.server.running_handai.global.response.ResponseCode.INVALID_ARE
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
+import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_UPDATE_COURSE;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
@@ -44,6 +45,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -52,6 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CourseService {
 
     public static final String MYSQL_POINT_FORMAT = "POINT(%f %f)";
+    public static final String COURSE_NAME_DELIMITER = "-";
 
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
@@ -272,7 +275,7 @@ public class CourseService {
         List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
         return MyCourseDetailDto.from(courseInfoDtos);
     }
-  
+
     /**
      * 주어진 좌표가 부산 내에 있는지 판별합니다.
      *
@@ -303,16 +306,16 @@ public class CourseService {
      */
     @Transactional
     public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
-        checkCourseNameDuplicated(request);
+        String newCourseName = request.startPointName().trim() + COURSE_NAME_DELIMITER + request.endPointName().trim();
+        checkCourseNameDuplicated(newCourseName);
         Course newCourse = saveMemberCourse(memberId, request);
         courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
         publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
         return newCourse.getId();
     }
 
-    private void checkCourseNameDuplicated(CourseCreateRequestDto request) {
-        String courseName = request.startPointName().trim() + "-" + request.endPointName().trim();
-        if (courseRepository.existsByName(courseName)) {
+    private void checkCourseNameDuplicated(String newCourseName) {
+        if (courseRepository.existsByName(newCourseName)) {
             throw new BusinessException(DUPLICATE_COURSE_NAME);
         }
     }
@@ -353,5 +356,59 @@ public class CourseService {
 
         course.removeCreator();
         courseRepository.delete(course);
+    }
+
+    /**
+     * 회원이 생성한 코스의 일부 정보를 수정합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param courseId 수정하려는 코스의 ID
+     * @param request  수정할 데이터가 담긴 DTO
+     */
+    @Transactional
+    public void updateCourse(Long memberId, Long courseId, CourseUpdateRequestDto request) {
+        // 코스 조회
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 권한 검사
+        if (course.getCreator() == null || !course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(NO_AUTHORITY_TO_UPDATE_COURSE);
+        }
+
+        // 필드 업데이트
+        updateCourseName(course, request.startPointName(), request.endPointName());
+        updateThumbnailImage(course, request.thumbnailImage());
+    }
+
+    private void updateCourseName(Course course, String newStartPointName, String newEndPointName) {
+        // 시작 및 종료 포인트 이름 결정
+        String updatedStartPointName = getUpdatedValue(newStartPointName,
+                course.getName().split(COURSE_NAME_DELIMITER)[0]);
+        String updatedEndPointName = getUpdatedValue(newEndPointName,
+                course.getName().split(COURSE_NAME_DELIMITER)[1]);
+
+        // 새로운 코스 이름 생성 및 변경 여부 확인
+        String updatedCourseName = updatedStartPointName + COURSE_NAME_DELIMITER + updatedEndPointName;
+        boolean isCourseNameChanged = !updatedCourseName.equals(course.getName());
+
+        // 변경되었다면 중복 검사 후 이름 업데이트
+        if (isCourseNameChanged) {
+            checkCourseNameDuplicated(updatedCourseName);
+            course.updateName(updatedCourseName);
+        }
+    }
+
+    private String getUpdatedValue(String newValue, String oldValue) {
+        return (newValue != null && !newValue.isBlank()) ? newValue.trim() : oldValue;
+    }
+
+    private void updateThumbnailImage(Course course, MultipartFile newImageFile) {
+        if (newImageFile != null && !newImageFile.isEmpty()) {
+            if (course.getCourseImage() != null) {
+                fileService.deleteFile(course.getCourseImage().getImgUrl());
+            }
+            courseDataService.updateCourseImage(course.getId(), newImageFile);
+        }
     }
 }

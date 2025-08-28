@@ -18,6 +18,7 @@ public enum ResponseCode {
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
     SUCCESS_EMPTY_BOOKMARKS(OK, "북마크한 코스가 없습니다."),
     SUCCESS_COURSE_REMOVE(OK, "코스 삭제가 완료되었습니다."),
+    SUCCESS_COURSE_UPDATE(OK, "코스 수정이 완료되었습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -47,6 +48,7 @@ public enum ResponseCode {
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
     NOT_COURSE_CREATOR(FORBIDDEN, "해당 코스를 만든 사용자가 아닙니다."),
     NO_AUTHORITY_TO_DELETE_COURSE(FORBIDDEN, "코스 삭제 권한이 없습니다."),
+    NO_AUTHORITY_TO_UPDATE_COURSE(FORBIDDEN, "코스 수정 권한이 없습니다."),
 
     // NOT_FOUND (404)
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),

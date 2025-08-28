@@ -187,4 +187,8 @@ public class Course extends BaseTimeEntity {
         }
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
 }
