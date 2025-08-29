@@ -246,7 +246,7 @@ public class SpotDataService {
                 .address(item.getSpotAddress())
                 .description(item.getSpotDescription())
                 .spotCategory(SpotCategory.findByCategoryNumber(item.getSpotCategoryNumber())
-                        .orElse(SpotCategory.UNKNOWN))
+                        .orElse(SpotCategory.ETC))
                 .lat(Double.parseDouble(item.getSpotLatitude()))
                 .lon(Double.parseDouble(item.getSpotLongitude()))
                 .build();

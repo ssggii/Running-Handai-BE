@@ -17,6 +17,8 @@ public enum ResponseCode {
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
     SUCCESS_EMPTY_BOOKMARKS(OK, "북마크한 코스가 없습니다."),
+    SUCCESS_COURSE_REMOVE(OK, "코스 삭제가 완료되었습니다."),
+    SUCCESS_COURSE_UPDATE(OK, "코스 수정이 완료되었습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -32,6 +34,9 @@ public enum ResponseCode {
     INVALID_NICKNAME_LENGTH(BAD_REQUEST, "닉네임은 2글자부터 10글자까지 입력할 수 있습니다."),
     INVALID_NICKNAME_FORMAT(BAD_REQUEST, "닉네임은 영문, 한글, 숫자만 입력할 수 있습니다."),
     SAME_AS_CURRENT_NICKNAME(BAD_REQUEST, "현재 사용 중인 닉네임과 동일합니다."),
+    EMPTY_FILE(BAD_REQUEST, "파일이 누락되었습니다."),
+    INVALID_POINT_NAME(BAD_REQUEST, "포인트 이름이 누락되었습니다."),
+    DUPLICATE_COURSE_NAME(BAD_REQUEST, "이미 존재하는 코스 이름입니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
@@ -41,9 +46,11 @@ public enum ResponseCode {
 
     // FORBIDDEN (403)
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
+    NOT_COURSE_CREATOR(FORBIDDEN, "해당 코스를 만든 사용자가 아닙니다."),
+    NO_AUTHORITY_TO_DELETE_COURSE(FORBIDDEN, "코스 삭제 권한이 없습니다."),
+    NO_AUTHORITY_TO_UPDATE_COURSE(FORBIDDEN, "코스 수정 권한이 없습니다."),
 
     // NOT_FOUND (404)
-    AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),
     MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
     REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),
@@ -75,7 +82,6 @@ public enum ResponseCode {
     FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "파일 업로드를 실패했습니다."),
     FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
-    ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
     PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
     UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다.");
 

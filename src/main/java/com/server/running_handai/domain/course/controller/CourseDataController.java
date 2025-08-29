@@ -1,6 +1,7 @@
 package com.server.running_handai.domain.course.controller;
 
 import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
+import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.service.CourseDataService;
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
@@ -40,7 +41,7 @@ public class CourseDataController {
 
     @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestPart("courseInfo") GpxCourseRequestDto gpxCourseRequestDto,
-                                                               @RequestParam("courseGpxFile") MultipartFile courseGpxFile) {
+                                                               @RequestPart("courseGpxFile") MultipartFile courseGpxFile) {
         courseDataService.createCourseToGpx(gpxCourseRequestDto, courseGpxFile);
         return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }

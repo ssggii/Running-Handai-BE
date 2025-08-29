@@ -1,28 +1,33 @@
 package com.server.running_handai.domain.course.service;
 
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
+import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
+import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_UPDATE_COURSE;
 
-import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
-import com.server.running_handai.domain.course.dto.CourseSummaryDto;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
-import com.server.running_handai.domain.course.dto.CourseDetailDto;
-import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
-import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
-import com.server.running_handai.domain.course.dto.TrackPointDto;
+import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
+import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
+import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.repository.MemberRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -36,8 +41,11 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -46,14 +54,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class CourseService {
 
     public static final String MYSQL_POINT_FORMAT = "POINT(%f %f)";
+    public static final String COURSE_NAME_DELIMITER = "-";
 
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final GeometryFactory geometryFactory;
-    private final SpotRepository spotRepository;
     private final ReviewRepository reviewRepository;
+    private final SpotRepository spotRepository;
+    private final MemberRepository memberRepository;
+    private final GeometryFactory geometryFactory;
     private final ReviewService reviewService;
+    private final FileService fileService;
+    private final CourseDataService courseDataService;
+    private final KakaoMapService kakaoMapService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -219,5 +233,179 @@ public class CourseService {
         List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
 
         return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
+    }
+
+    /**
+     * 내가 생성한 코스의 GPX 파일 다운로드를 위한 Presigned GET URL을 발급합니다.
+     * 해당 URL의 유효시간은 1시간입니다.
+     *
+     * @param courseId 다운로드하려는 코스 ID
+     * @param memberId 다운로드 요청한 회원 ID
+     * @return GPX 파일 다운로드용 Presigned GET URL이 포함된 DTO
+     */
+    public GpxPathDto downloadGpx(Long courseId, Long memberId) {
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 해당 Course를 만든 Member가 아닌 경우
+        if (!course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(ResponseCode.NOT_COURSE_CREATOR);
+        }
+
+        // Presigned GET URL 발급 (1시간)
+        String gpxPath = fileService.getPresignedGetUrl(course.getGpxPath(), 60);
+
+        return GpxPathDto.from(courseId, gpxPath);
+    }
+
+    /**
+     * 사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다.
+     *
+     * @param memberId 조회 요청한 회원 ID
+     * @param sortBy 정렬 조건 (latest, oldest, short, long)
+     * @return 정렬된 코스 목록이 포함된 DTO
+     */
+    public MyCourseDetailDto getMyCourses(Long memberId, String sortBy) {
+        Sort sort = switch (sortBy) {
+            case "oldest" -> Sort.by("created_at").ascending();
+            case "short" -> Sort.by("distance").ascending();
+            case "long" -> Sort.by("distance").descending();
+            default -> Sort.by("created_at").descending();
+        };
+
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
+        return MyCourseDetailDto.from(courseInfoDtos);
+    }
+
+    /**
+     * 주어진 좌표가 부산 내에 있는지 판별합니다.
+     *
+     * @param longitude 경도 (x)
+     * @param latitude  위도 (y)
+     * @return 부산 지역 내에 있으면 true, 아니면 false
+     */
+    public boolean isInsideBusan(double longitude, double latitude) {
+        JsonNode addressNode = kakaoMapService.getAddressFromCoordinate(longitude, latitude);
+
+        if (addressNode == null) {
+            log.warn("[지역 판별] 주소 정보를 찾을 수 없어 부산 외 지역으로 판별합니다: x={}, y={}", longitude, latitude);
+            return false;
+        }
+
+        String city = addressNode.path("address").path("region_1depth_name").asText();
+        log.info("[지역 판별] city={}", city);
+
+        return city.startsWith("부산");
+    }
+
+    /**
+     * 회원이 생성한 코스를 저장하고, 트랜잭션 커밋 후 이벤트를 발행합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param request 코스 생성에 필요한 데이터 DTO
+     * @return 저장된 코스의 ID
+     */
+    @Transactional
+    public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        String newCourseName = request.startPointName().trim() + COURSE_NAME_DELIMITER + request.endPointName().trim();
+        checkCourseNameDuplicated(newCourseName);
+        Course newCourse = saveMemberCourse(memberId, request);
+        courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
+        publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
+        return newCourse.getId();
+    }
+
+    private void checkCourseNameDuplicated(String newCourseName) {
+        if (courseRepository.existsByName(newCourseName)) {
+            throw new BusinessException(DUPLICATE_COURSE_NAME);
+        }
+    }
+
+    private Course saveMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Course newCourse = courseDataService.createCourseToGpx(
+                new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
+        newCourse.setCreator(member);
+        return newCourse;
+    }
+
+    private void publishCourseCreatedEvent(Long courseId, boolean isInsideBusan) {
+        CourseCreatedEvent event = new CourseCreatedEvent(courseId, isInsideBusan);
+        log.info("코스 생성 이벤트 발행. courseId: {}, isInsideBusan: {}", courseId, isInsideBusan);
+        eventPublisher.publishEvent(event);
+    }
+
+    /**
+     * 회원이 생성한 코스를 삭제합니다.
+     * 코스에 저장된 즐길거리가 있는 경우 함께 삭제합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param courseId 삭제하려는 코스의 ID
+     */
+    @Transactional
+    public void deleteMemberCourse(Long memberId, Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 권한 검증 (요청자와 코스 생성자가 동일인인지 확인)
+        if (course.getCreator() == null || !course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(NO_AUTHORITY_TO_DELETE_COURSE);
+        }
+
+        fileService.deleteFile(course.getGpxPath()); // s3에서 gpx 파일 삭제
+        fileService.deleteFile(course.getCourseImage().getImgUrl()); // s3에서 썸네일 이미지 삭제
+
+        course.removeCreator();
+        courseRepository.delete(course);
+    }
+
+    /**
+     * 회원이 생성한 코스의 일부 정보를 수정합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param courseId 수정하려는 코스의 ID
+     * @param request  수정할 데이터가 담긴 DTO
+     */
+    @Transactional
+    public void updateCourse(Long memberId, Long courseId, CourseUpdateRequestDto request) {
+        // 코스 조회
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 권한 검사
+        if (course.getCreator() == null || !course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(NO_AUTHORITY_TO_UPDATE_COURSE);
+        }
+
+        // 필드 업데이트
+        updateCourseName(course, request.startPointName(), request.endPointName());
+        updateThumbnailImage(course, request.thumbnailImage());
+    }
+
+    private void updateCourseName(Course course, String newStartPointName, String newEndPointName) {
+        // 시작 및 종료 포인트 이름 결정
+        String updatedStartPointName = getUpdatedValue(newStartPointName,
+                course.getName().split(COURSE_NAME_DELIMITER)[0]);
+        String updatedEndPointName = getUpdatedValue(newEndPointName,
+                course.getName().split(COURSE_NAME_DELIMITER)[1]);
+
+        // 새로운 코스 이름 생성 및 변경 여부 확인
+        String updatedCourseName = updatedStartPointName + COURSE_NAME_DELIMITER + updatedEndPointName;
+        boolean isCourseNameChanged = !updatedCourseName.equals(course.getName());
+
+        // 변경되었다면 중복 검사 후 이름 업데이트
+        if (isCourseNameChanged) {
+            checkCourseNameDuplicated(updatedCourseName);
+            course.updateName(updatedCourseName);
+        }
+    }
+
+    private String getUpdatedValue(String newValue, String oldValue) {
+        return (newValue != null && !newValue.isBlank()) ? newValue.trim() : oldValue;
+    }
+
+    private void updateThumbnailImage(Course course, MultipartFile newImageFile) {
+        if (newImageFile != null && !newImageFile.isEmpty()) {
+            courseDataService.updateCourseImage(course.getId(), newImageFile);
+        }
     }
 }

@@ -206,6 +206,7 @@ public class FileService {
             case "png" -> "image/png";
             case "jpg", "jpeg" -> "image/jpeg";
             case "gpx" -> "application/gpx+xml";
+            case "webp" -> "image/webp";
             default -> {
                 log.warn("[S3 파일 업로드] 감지하지 못한 content-type: extension={}", extension);
                 yield "application/octet-stream";
@@ -222,7 +223,7 @@ public class FileService {
         String lowerName = fileName.toLowerCase();
 
         boolean isSupported = lowerName.endsWith(".png") || lowerName.endsWith(".jpg") ||
-                lowerName.endsWith(".jpeg") || (lowerName.endsWith(".gpx"));
+                lowerName.endsWith(".jpeg") || (lowerName.endsWith(".gpx") || lowerName.endsWith(".webp"));
 
         if (!isSupported) {
             throw new BusinessException(ResponseCode.UNSUPPORTED_FILE_TYPE);

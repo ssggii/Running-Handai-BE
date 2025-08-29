@@ -1,21 +1,10 @@
 package com.server.running_handai.domain.course.entity;
 
+import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -23,6 +12,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.locationtech.jts.geom.Point;
 
 @Entity
@@ -93,6 +84,12 @@ public class Course extends BaseTimeEntity {
     // CourseSpot과 일대다 관계
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CourseSpot> courseSpots = new ArrayList<>();
+
+    // Member와 다대일 관계
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    private Member creator;
 
     @Builder
     public Course(String externalId, String name, double distance, int duration,
@@ -166,6 +163,32 @@ public class Course extends BaseTimeEntity {
 
     public void removeTheme(Theme theme) {
         this.themes.remove(theme);
+    }
+
+    public void setCreator(Member creator) {
+        // 기존 Member와의 연관관계 제거
+        if (this.creator != null) {
+            this.creator.getCourses().remove(this);
+        }
+        // 새로운 Member와의 연관관계 설정
+        this.creator = creator;
+        // 새로운 Member의 코스 목록에 자신을 추가
+        if (creator != null) {
+            creator.getCourses().add(this);
+        }
+    }
+
+    public void removeCreator() {
+        if (this.creator != null) {
+            // 기존 creator의 courses 리스트에서 현재 Course 제거
+            this.creator.getCourses().remove(this);
+            // 현재 Course의 creator 필드를 null로 설정
+            this.creator = null;
+        }
+    }
+
+    public void updateName(String name) {
+        this.name = name;
     }
 
 }

@@ -24,7 +24,7 @@ public enum SpotCategory {
     GLOBAL_FOOD("이색음식점", List.of("A05020700")),
     CAFE("카페", List.of("A05020900")),
     CLUB("클럽", List.of("A05021000")),
-    UNKNOWN("알수없음", List.of());
+    ETC("기타", List.of());
 
     private final String description;
     private final List<String> categoryNumber;
