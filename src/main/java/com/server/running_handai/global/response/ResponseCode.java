@@ -43,7 +43,6 @@ public enum ResponseCode {
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
 
     // NOT_FOUND (404)
-    AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),
     MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
     REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),
@@ -75,7 +74,6 @@ public enum ResponseCode {
     FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "파일 업로드를 실패했습니다."),
     FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
-    ADDRESS_PARSE_FAILED(INTERNAL_SERVER_ERROR, "주소 파싱을 실패했습니다"),
     PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
     UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다.");
 
