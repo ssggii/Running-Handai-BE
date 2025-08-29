@@ -43,7 +43,6 @@ public enum ResponseCode {
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
 
     // NOT_FOUND (404)
-    AREA_NOT_FOUND(NOT_FOUND, "지원하지 않는 지역입니다."),
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),
     MEMBER_NOT_FOUND(NOT_FOUND, "찾을 수 없는 사용자입니다."),
     REFRESH_TOKEN_NOT_FOUND(NOT_FOUND, "찾을 수 없는 리프래시 토큰입니다."),

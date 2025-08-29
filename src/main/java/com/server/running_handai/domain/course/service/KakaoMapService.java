@@ -85,7 +85,7 @@ public class KakaoMapService {
     }
 
     /**
-     * 주어진 텍스트가 Null인 경우 Null로 반환합니다.
+     * 주어진 텍스트가 Null이거나 공백 문자인 경우 Null로 반환합니다.
      */
     private String textToNull(String text) {
         return (text == null || text.isBlank()) ? null : text;

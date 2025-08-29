@@ -19,6 +19,7 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.course.service.KakaoMapService.AddressInfo;
 import com.server.running_handai.global.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
@@ -256,17 +257,8 @@ public class CourseDataService {
             }
 
             String districtName = sigun.split(WHITE_SPACE)[1]; // 구 단위 행정구역명
-            Area area;
-            if (districtName.equals("해운대구")) { // 해운대구인 경우, 카카오 지도 API 사용하여 동 단위 분류
-                JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
-                KakaoMapService.AddressInfo startAddressInfo = kakaoMapService.extractDistrictNameAndDongName(startAddress);
-                area = extractArea(startAddressInfo);
-            } else {
-                area = Area.findBySubRegion(districtName).orElseThrow(() -> {
-                    log.error("[두루누비 코스 동기화] 지역 파싱을 실패했습니다. subRegionName: {}", districtName);
-                    return new BusinessException(AREA_NOT_FOUND);
-                });
-            }
+            KakaoMapService.AddressInfo addressInfo = determineAddressInfo(districtName, startPoint);
+            Area area = extractArea(addressInfo);
 
             Course course = Course.builder()
                     .externalId(externalId)
@@ -281,12 +273,31 @@ public class CourseDataService {
                     .maxElevation(maxElevation)
                     .build();
 
-            Theme.findBySubRegion(districtName).forEach(course::addTheme);
+            extractTheme(addressInfo).forEach(course::addTheme);
             return course;
         } catch (Exception e) {
             log.error("[두루누비 코스 동기화] API 데이터 파싱 중 예상치 못한 예외가 발생했습니다. courseIndex: {}", item.getCourseIndex(), e);
             return null;
         }
+    }
+
+    /**
+     * 시작점 좌표와 두루누비측 행정구역명을 기반으로 주소 정보를 결정합니다.
+     * 두루누비의 행정구역명이 '해운대구'의 경우 카카오 API를 호출하여 동 단위 주소를 포함한 AddressInfo를 생성하고,
+     * 그 외의 경우 구 단위 주소만 포함한 AddressInfo를 생성합니다.
+     *
+     * @param districtName 두루누비 API로 받은 행정구역명 (구 단위)
+     * @param startPoint 코스의 시작점 좌표
+     * @return 주소 정보를 담은 AddressInfo 객체
+     */
+    private KakaoMapService.AddressInfo determineAddressInfo(String districtName, Point startPoint) {
+        // 행정구역이 해운대구인 경우, 카카오 지도 API를 사용하여 구 단위 정보까지 생성
+        if ("해운대구".equals(districtName)) {
+            JsonNode startAddress = kakaoMapService.getAddressFromCoordinate(startPoint.getX(), startPoint.getY());
+            return kakaoMapService.extractDistrictNameAndDongName(startAddress);
+        }
+        // 그 외 지역은 districtName만 사용하여 기본 주소 정보 생성
+        return new KakaoMapService.AddressInfo(districtName, null);
     }
 
     /**
@@ -735,7 +746,7 @@ public class CourseDataService {
     }
 
     /**
-     * 카카오 지도 API에서 가져온 주소 정보에서 행정구역(Area)을 추출합니다.
+     * 주소 정보에서 행정구역(Area)을 추출합니다.
      *
      * @param addressInfo 주소 정보 Record
      * @return Area, 없으면 Area.ETC
@@ -743,7 +754,6 @@ public class CourseDataService {
     private Area extractArea(KakaoMapService.AddressInfo addressInfo) {
         Area area = Area.fromAddress(addressInfo);
 
-        // ETC로 분류된 경우, 서비스 로그 남기기
         if (area == Area.ETC) {
             log.warn("매칭되는 지역 없음. Area.ETC으로 설정: districtName={}, dongName={}", addressInfo.districtName(), addressInfo.dongName());
         }
@@ -752,7 +762,7 @@ public class CourseDataService {
     }
 
     /**
-     * 카카오 지도 API에서 가져온 주소 정보에서 테마(Theme)을 추출합니다.
+     * 주소 정보에서 테마(Theme)을 추출합니다.
      *
      * @param addressInfo 주소 정보 Record
      * @return List<Theme>, 없으면 List.of(Theme.ETC)
@@ -760,7 +770,6 @@ public class CourseDataService {
     private List<Theme> extractTheme(KakaoMapService.AddressInfo addressInfo) {
         List<Theme> themes = Theme.fromAddress(addressInfo);
 
-        // ETC로 분류된 경우, 서비스 로그 남기기
         if (themes.contains(Theme.ETC)) {
             log.warn("매칭되는 테마 없음. Theme.ETC으로 설정: districtName={}", addressInfo.districtName());
         }

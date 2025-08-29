@@ -40,8 +40,8 @@ public enum Area {
             return Area.SONGJEONG_GIJANG;
         }
 
-        // districtName으로 Area 설정, 매칭되는 Area 없으면 ETC로 설정
-        return Area.findBySubRegion(addressInfo.districtName()).orElse(Area.ETC);
+        // districtName으로 Area 설정
+        return Area.findBySubRegion(addressInfo.districtName());
     }
 
 
@@ -49,11 +49,12 @@ public enum Area {
      * 하위 지역명(String)을 포함하는 Area enum을 찾아 반환합니다.
      *
      * @param subRegionName (ex. "해운대구", "중구")
-     * @return 일치하는 Area enum을 Optional로 감싸서 반환, 없으면 Optional.empty()
+     * @return 하위지역이 일치하는 Area, 없으면 Area.ETC
      */
-    public static Optional<Area> findBySubRegion(String subRegionName) {
+    private static Area findBySubRegion(String subRegionName) {
         return Arrays.stream(Area.values())
                 .filter(area -> area.getSubRegions().contains(subRegionName))
-                .findFirst();
+                .findFirst()
+                .orElse(Area.ETC); // 매칭되는 Area 없으면 ETC로 설정
     }
 }
