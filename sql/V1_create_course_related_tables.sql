@@ -3,21 +3,21 @@
 -- 1. course 테이블 생성
 create table course
 (
-    distance    int                                                                                                                                               not null,
-    duration    int                                                                                                                                               not null,
-    max_ele     double                                                                                                                                            not null,
-    min_ele     double                                                                                                                                            not null,
+    distance    int                                                                                                                                           not null,
+    duration    int                                                                                                                                           not null,
+    max_ele     double                                                                                                                                        not null,
+    min_ele     double                                                                                                                                        not null,
     course_id   bigint auto_increment
         primary key,
-    created_at  datetime(6)                                                                                                                                       not null,
-    updated_at  datetime(6)                                                                                                                                       not null,
-    external_id varchar(255)                                                                                                                                      null,
-    gpx_path    varchar(255)                                                                                                                                      not null,
-    name        varchar(255)                                                                                                                                      not null,
-    tour_point  text                                                                                                                                              null,
-    area        enum ('HAEUN_GWANGAN', 'NORTHERN_BUSAN', 'SEOMYEON_DONGNAE', 'SONGJEONG_GIJANG', 'SOUTHERN_COAST', 'UNKNOWN', 'WESTERN_NAKDONGRIVER', 'WONDOSIM') not null,
-    level       enum ('EASY', 'HARD', 'MEDIUM')                                                                                                                   not null,
-    start_point point                                                                                                                                             not null,
+    created_at  datetime(6)                                                                                                                                   not null,
+    updated_at  datetime(6)                                                                                                                                   not null,
+    external_id varchar(255)                                                                                                                                  null,
+    gpx_path    varchar(255)                                                                                                                                  not null,
+    name        varchar(255)                                                                                                                                  not null,
+    tour_point  text                                                                                                                                          null,
+    area        enum ('HAEUN_GWANGAN', 'NORTHERN_BUSAN', 'SEOMYEON_DONGNAE', 'SONGJEONG_GIJANG', 'SOUTHERN_COAST', 'ETC', 'WESTERN_NAKDONGRIVER', 'WONDOSIM') not null,
+    level       enum ('EASY', 'HARD', 'MEDIUM')                                                                                                               not null,
+    start_point point                                                                                                                                         not null,
     constraint UK4xqvdpkafb91tt3hsb67ga3fj
         unique (name),
     constraint UKftj9sywcqetdlrcts15h17nx3
@@ -44,8 +44,8 @@ create table course_image
 -- 3. course_themes 테이블 생성
 create table course_themes
 (
-    course_course_id bigint                                            not null,
-    theme            enum ('DOWNTOWN', 'MOUNTAIN', 'RIVERSIDE', 'SEA') null,
+    course_course_id bigint                                                   not null,
+    theme            enum ('DOWNTOWN', 'MOUNTAIN', 'RIVERSIDE', 'SEA', 'ETC') null,
     constraint FKlmlrl4xgc258abdvsrfh9pvft
         foreign key (course_course_id) references course (course_id)
 );
@@ -124,7 +124,7 @@ create table spot (
     description  TEXT,
     category     ENUM('NATURE', 'HISTORY', 'RECREATION', 'EXPERIENCE', 'INDUSTRIAL', 'ARCHITECTURE',
                    'KOREAN_FOOD', 'WESTERN_FOOD', 'JAPANESE_FOOD', 'CHINESE_FOOD', 'GLOBAL_FOOD',
-                   'CAFE', 'CLUB', 'UNKNOWN') NOT NULL,
+                   'CAFE', 'CLUB', 'ETC') NOT NULL,
     lat          DOUBLE NOT NULL,
     lon          DOUBLE NOT NULL,
     created_at   DATETIME(6) NOT NULL,

@@ -40,11 +40,9 @@ public class CourseDataController {
     }
 
     @PostMapping(value = "/gpx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CommonResponse<Long>> createCourseToGpx(
-            @RequestPart("courseInfo") GpxCourseRequestDto gpxCourseRequestDto,
-            @RequestParam("courseGpxFile") MultipartFile courseGpxFile
-    ) {
-        Long courseId = courseDataService.createCourseToGpx(gpxCourseRequestDto, courseGpxFile).getId();
-        return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, courseId));
+    public ResponseEntity<CommonResponse<?>> createCourseToGpx(@RequestPart("courseInfo") GpxCourseRequestDto gpxCourseRequestDto,
+                                                               @RequestPart("courseGpxFile") MultipartFile courseGpxFile) {
+        courseDataService.createCourseToGpx(gpxCourseRequestDto, courseGpxFile);
+        return ResponseEntity.ok().body(CommonResponse.success(ResponseCode.SUCCESS, null));
     }
 }
