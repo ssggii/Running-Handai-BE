@@ -2,28 +2,27 @@ package com.server.running_handai.domain.course.controller;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
 
-import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
-import com.server.running_handai.domain.course.dto.CourseDetailDto;
-import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
-import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
+import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -97,6 +96,44 @@ public class CourseController {
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseSummary));
     }
 
+    @Operation(summary = "GPX 파일 다운로드", description = "GPX 파일을 다운로드할 수 있는 Presigned GET URL을 발급합니다. 해당 URL의 유효시간은 1시간입니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
+            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
+            @ApiResponse(responseCode = "403", description = "실패 (해당 사용자가 만든 코스가 아님) - NOT_COURSE_CREATOR"),
+            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스) - COURSE_NOT_FOUND")
+    })
+    @GetMapping("/api/members/me/courses/{courseId}/gpx")
+    public ResponseEntity<CommonResponse<GpxPathDto>> downloadGpx(
+            @Parameter(description = "다운로드하려는 코스 ID", required = true)
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        log.info("[코스 GPX 다운로드] courseId: {}, memberId: {}", courseId, memberId);
+        GpxPathDto gpxPath = courseService.downloadGpx(courseId, memberId);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, gpxPath));
+    }
+
+    @Operation(summary = "내 코스 전체 조회", description = "사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다. 정렬 조건은 최신순, 오래된순, 짧은 거리순, 긴 거리순으로 총 4개입니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
+            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS")
+    })
+    @GetMapping("/api/members/me/courses")
+    public ResponseEntity<CommonResponse<MyCourseDetailDto>> getMyCourses(
+            @Parameter(
+                    description = "정렬 조건",
+                    schema = @Schema(allowableValues = {"latest", "oldest", "short", "long"})
+            )
+            @RequestParam(defaultValue = "latest") String sortBy,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        MyCourseDetailDto myCourseDetail = courseService.getMyCourses(memberId, sortBy);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetail));
+    }
+
     @Operation(summary = "지역 판별", description = "특정 위치 좌표가 부산 내 지역인지 판별합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공")
@@ -145,5 +182,4 @@ public class CourseController {
         courseService.deleteMemberCourse(memberId, courseId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_REMOVE, null));
     }
-
 }

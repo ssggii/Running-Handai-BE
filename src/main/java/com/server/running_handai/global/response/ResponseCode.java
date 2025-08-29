@@ -45,6 +45,7 @@ public enum ResponseCode {
 
     // FORBIDDEN (403)
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
+    NOT_COURSE_CREATOR(FORBIDDEN, "해당 코스를 만든 사용자가 아닙니다."),
     NO_AUTHORITY_TO_DELETE_COURSE(FORBIDDEN, "코스 삭제 권한이 없습니다."),
 
     // NOT_FOUND (404)

@@ -3,6 +3,7 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.NOT_COURSE_CREATOR;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
@@ -14,29 +15,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
-import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
-import com.server.running_handai.domain.course.dto.CourseDetailDto;
-import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
-import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
-import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
-import com.server.running_handai.domain.course.entity.Area;
-import com.server.running_handai.domain.course.entity.Course;
-import com.server.running_handai.domain.course.entity.CourseFilter;
-import com.server.running_handai.domain.course.entity.CourseImage;
-import com.server.running_handai.domain.course.entity.CourseLevel;
-import com.server.running_handai.domain.course.entity.RoadCondition;
-import com.server.running_handai.domain.course.entity.Theme;
-import com.server.running_handai.domain.course.entity.TrackPoint;
+import com.server.running_handai.domain.course.dto.*;
+import com.server.running_handai.domain.course.entity.*;
 import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
@@ -54,9 +40,7 @@ import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -74,6 +59,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -565,6 +551,85 @@ class CourseServiceTest {
     }
 
     @Nested
+    @DisplayName("GPX 다운로드 테스트"
+)
+    class CourseGpxDownloadTest {
+        // 헬퍼 메서드
+        private Member createMockMember(Long memberId) {
+            Member member = Member.builder().build();
+            ReflectionTestUtils.setField(member, "id", memberId);
+            return member;
+        }
+
+        private Course createMockCourse(Long courseId, Member member) {
+            Course course = Course.builder().gpxPath("https://s3-bucket.com/course-1.gpx").build();
+            ReflectionTestUtils.setField(course, "id", courseId);
+            ReflectionTestUtils.setField(course, "creator", member);
+            return course;
+        }
+
+        /**
+         * [GPX 다운로드] 성공
+         */
+        @Test
+        @DisplayName("GPX 파일 다운로드 성공")
+        void gpxDownload_success() {
+            // given
+            Member member = createMockMember(MEMBER_ID);
+            Course course = createMockCourse(COURSE_ID, member);
+            String presignedUrl = "https://presigned-url.com/course-1.gpx";
+
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+            given(fileService.getPresignedGetUrl(course.getGpxPath(), 60)).willReturn(presignedUrl);
+
+            // when
+            GpxPathDto result = courseService.downloadGpx(course.getId(), member.getId());
+
+            // then
+            assertThat(result.courseId()).isEqualTo(course.getId());
+            assertThat(result.gpxPath()).isEqualTo(presignedUrl);
+
+            verify(courseRepository).findById(COURSE_ID);
+            verify(fileService).getPresignedGetUrl(course.getGpxPath(), 60);
+        }
+
+        /**
+         * [GPX 다운로드] 실패
+         * 1. 요청한 Course가 없는 경우
+         */
+        @Test
+        @DisplayName("GPX 파일 다운로드 실패 - Course가 없음")
+        void gpxDownload_fail_courseNotFound() {
+            // given
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () -> courseService.downloadGpx(COURSE_ID, MEMBER_ID));
+            assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
+        }
+
+        /**
+         * [GPX 다운로드] 실패
+         * 2. 요청한 사용자가 만든 Course가 아닐 경우
+         */
+        @Test
+        @DisplayName("GPX 파일 다운로드 실패 - 요청한 사용자가 만든 Course가 아님")
+        void gpxDownload_fail_notCourseCreator() {
+            // given
+            Long otherMemberId = 999L;
+            Member otherMember = createMockMember(otherMemberId);
+            Course course = createMockCourse(COURSE_ID, otherMember);
+
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () -> courseService.downloadGpx(COURSE_ID, MEMBER_ID));
+            assertThat(exception.getResponseCode()).isEqualTo(NOT_COURSE_CREATOR);
+
+            verify(courseRepository).findById(COURSE_ID);
+            verify(fileService, never()).getPresignedGetUrl(course.getGpxPath(), 60);
+        }
+
     @DisplayName("지역 판별 테스트")
     class RegionCheckTest {
         private final ObjectMapper objectMapper = new ObjectMapper();
@@ -726,6 +791,71 @@ class CourseServiceTest {
     }
 
     @Nested
+    @DisplayName("내 코스 전체 조회 테스트")
+    class GetMyCoursesTest {
+        // 헬퍼 메서드
+        private CourseInfoDto createCourseInfoDto() {
+            CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
+            return courseInfoDto;
+        }
+
+        /**
+         * [내 코스 전체 조회] 성공
+         * 1. Course가 존재하는 경우
+         */
+        @ParameterizedTest
+        @ValueSource(strings = {"latest", "oldest", "short", "long"})
+        @DisplayName("내 코스 전체 조회 성공 - Course가 존재")
+        void getMyCourses_success_courseExists(String sortBy) {
+            // given
+            Sort sort = switch (sortBy) {
+                case "oldest" -> Sort.by("created_at").ascending();
+                case "short" -> Sort.by("distance").ascending();
+                case "long" -> Sort.by("distance").descending();
+                default -> Sort.by("created_at").descending();
+            };
+
+            List<CourseInfoDto> courseInfoDtos = List.of(
+                    createCourseInfoDto(),
+                    createCourseInfoDto(),
+                    createCourseInfoDto()
+            );
+
+            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(courseInfoDtos);
+
+            // when
+            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+
+            // then
+            assertThat(result.courseCount()).isEqualTo(3);
+            assertThat(result.courses()).hasSize(3);
+
+            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+        }
+
+        /**
+         * [내 코스 전체 조회] 성공
+         * 2. Course가 존재하지 않는 경우
+         */
+        @Test
+        @DisplayName("내 코스 전체 조회 성공 - Course가 존재하지 않음")
+        void getMyCourses_success_noCourse() {
+            // given
+            // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
+            String sortBy = "latest";
+            Sort sort = Sort.by("created_at").descending();
+            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(Collections.emptyList());
+
+            // when
+            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+
+            // then
+            assertThat(result.courseCount()).isEqualTo(0);
+            assertThat(result.courses()).isEmpty();
+
+            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+        }
+
     @DisplayName("내 코스 삭제 테스트")
     class MyCourseDeleteTest {
 

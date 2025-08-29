@@ -9,16 +9,7 @@ import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORIT
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
-import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
-import com.server.running_handai.domain.course.dto.CourseSummaryDto;
-import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
-import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
-import com.server.running_handai.domain.course.dto.CourseDetailDto;
-import com.server.running_handai.domain.course.dto.CourseFilterRequestDto;
-import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.CourseInfoWithDetailsDto;
-import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
-import com.server.running_handai.domain.course.dto.TrackPointDto;
+import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.event.CourseCreatedEvent;
@@ -31,7 +22,9 @@ import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
+import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +38,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,6 +59,7 @@ public class CourseService {
     private final MemberRepository memberRepository;
     private final GeometryFactory geometryFactory;
     private final ReviewService reviewService;
+    private final FileService fileService;
     private final CourseDataService courseDataService;
     private final FileService fileService;
     private final KakaoMapService kakaoMapService;
@@ -236,6 +231,47 @@ public class CourseService {
         return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
     }
 
+    /**
+     * 내가 생성한 코스의 GPX 파일 다운로드를 위한 Presigned GET URL을 발급합니다.
+     * 해당 URL의 유효시간은 1시간입니다.
+     *
+     * @param courseId 다운로드하려는 코스 ID
+     * @param memberId 다운로드 요청한 회원 ID
+     * @return GPX 파일 다운로드용 Presigned GET URL이 포함된 DTO
+     */
+    public GpxPathDto downloadGpx(Long courseId, Long memberId) {
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 해당 Course를 만든 Member가 아닌 경우
+        if (!course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(ResponseCode.NOT_COURSE_CREATOR);
+        }
+
+        // Presigned GET URL 발급 (1시간)
+        String gpxPath = fileService.getPresignedGetUrl(course.getGpxPath(), 60);
+
+        return GpxPathDto.from(courseId, gpxPath);
+    }
+
+    /**
+     * 사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다.
+     *
+     * @param memberId 조회 요청한 회원 ID
+     * @param sortBy 정렬 조건 (latest, oldest, short, long)
+     * @return 정렬된 코스 목록이 포함된 DTO
+     */
+    public MyCourseDetailDto getMyCourses(Long memberId, String sortBy) {
+        Sort sort = switch (sortBy) {
+            case "oldest" -> Sort.by("created_at").ascending();
+            case "short" -> Sort.by("distance").ascending();
+            case "long" -> Sort.by("distance").descending();
+            default -> Sort.by("created_at").descending();
+        };
+
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
+        return MyCourseDetailDto.from(courseInfoDtos);
+    }
+  
     /**
      * 주어진 좌표가 부산 내에 있는지 판별합니다.
      *
