@@ -15,7 +15,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,6 +63,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
+import org.mockito.verification.VerificationMode;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -376,7 +380,7 @@ class CourseServiceTest {
         // Course 객체 생성 (빌더로 설정 가능한 필드 우선 설정)
         CourseImage courseImage = new CourseImage("img/thumb.jpg");
         Course course = Course.builder()
-                .name("courseName1")
+                .name("startPointName-endPointName")
                 .distance(15.3)
                 .duration(120)
                 .minElevation(30.4)
@@ -631,6 +635,7 @@ class CourseServiceTest {
         }
     }
 
+    @Nested
     @DisplayName("지역 판별 테스트")
     class RegionCheckTest {
         private final ObjectMapper objectMapper = new ObjectMapper();
@@ -858,6 +863,7 @@ class CourseServiceTest {
         }
     }
 
+    @Nested
     @DisplayName("내 코스 삭제 테스트")
     class MyCourseDeleteTest {
 
@@ -936,6 +942,184 @@ class CourseServiceTest {
             assertThat(exception.getResponseCode()).isEqualTo(NO_AUTHORITY_TO_DELETE_COURSE);
 
             verify(courseRepository, never()).delete(any(Course.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("내 코스 수정 테스트")
+    class MyCourseUpdateTest {
+        private Member member;
+
+        @BeforeEach
+        void setUp() {
+            member = Member.builder()
+                    .nickname("nickname1")
+                    .providerId("providerId1")
+                    .provider(Provider.GOOGLE)
+                    .email("email1")
+                    .role(Role.USER)
+                    .build();
+            ReflectionTestUtils.setField(member, "id", 1L);
+        }
+
+        private static final String COURSE_NAME_DELIMITER = "-";
+        private static final String ORIGINAL_START_POINT = "startPointName";
+        private static final String ORIGINAL_END_POINT = "endPointName";
+        private static final String ORIGINAL_COURSE_NAME = ORIGINAL_START_POINT + COURSE_NAME_DELIMITER + ORIGINAL_END_POINT;
+
+        private static Stream<Arguments> updateCourseSuccessCases() {
+            String newStartPoint = "기장군청";
+            String newEndPoint = "이곡마을";
+            String newCourseName = newStartPoint + COURSE_NAME_DELIMITER + newEndPoint;
+            String oldImageUrl = "img/thumb.jpg";
+            MockMultipartFile newImageFile = new MockMultipartFile("image", "new.jpg", "image/jpeg", "content".getBytes());
+
+            return Stream.of(
+                    Arguments.of(
+                            "이름과 썸네일 모두 수정 (기존 이미지 있음)",
+                            new CourseImage(oldImageUrl), // initialImage
+                            new CourseUpdateRequestDto(newStartPoint, newEndPoint, newImageFile), // request
+                            newCourseName, // expectedCourseName
+                            times(1),      // deleteVerification (기존 이미지가 있으므로 1번 호출)
+                            times(1)       // updateVerification (새 이미지가 있으므로 1번 호출)
+                    ),
+                    Arguments.of(
+                            "이름만 수정 (시작, 종료점 모두 변경)",
+                            new CourseImage(oldImageUrl), // initialImage
+                            new CourseUpdateRequestDto(newStartPoint, newEndPoint, null), // request (이미지 null)
+                            newCourseName, // expectedCourseName
+                            never(),       // deleteVerification (호출 안됨)
+                            never()        // updateVerification (호출 안됨)
+                    ),
+                    Arguments.of(
+                            "이름만 수정 (시작점만 변경)",
+                            new CourseImage(oldImageUrl),
+                            new CourseUpdateRequestDto(newStartPoint, null, null), // 종료점은 null
+                            newStartPoint + COURSE_NAME_DELIMITER + ORIGINAL_END_POINT, // 기대 이름 = 새 시작점 + 기존 종료점
+                            never(), // deleteVerification (호출 안됨)
+                            never() // updateVerification (호출 안됨)
+                    ),
+                    Arguments.of(
+                            "이름만 수정 (종료점만 변경)",
+                            new CourseImage(oldImageUrl),
+                            new CourseUpdateRequestDto(null, newEndPoint, null), // 시작점은 null
+                            ORIGINAL_START_POINT + COURSE_NAME_DELIMITER + newEndPoint, // 기대 이름 = 기존 시작점 + 새 종료점
+                            never(),
+                            never()
+                    ),
+                    Arguments.of(
+                            "썸네일만 수정 (기존 이미지 있음)",
+                            new CourseImage(oldImageUrl), // initialImage
+                            new CourseUpdateRequestDto(null, "  ", newImageFile), // request (이름은 null, blank)
+                            ORIGINAL_COURSE_NAME, // expectedCourseName (이름 변경 없음)
+                            times(1),      // deleteVerification (기존 이미지가 있으므로 1번 호출)
+                            times(1)       // updateVerification (새 이미지가 있으므로 1번 호출)
+                    ),
+                    Arguments.of(
+                            "썸네일만 수정 (기존 이미지 없음)",
+                            null, // initialImage (기존 이미지 없음)
+                            new CourseUpdateRequestDto(null, null, newImageFile), // request
+                            ORIGINAL_COURSE_NAME, // expectedCourseName (이름 변경 없음)
+                            never(),       // deleteVerification (기존 이미지가 없으므로 호출 안됨)
+                            times(1)       // updateVerification (새 이미지가 있으므로 1번 호출)
+                    )
+            );
+        }
+
+        @DisplayName("내 코스 수정 - 성공")
+        @ParameterizedTest(name = "{index}: {0}")
+        @MethodSource("updateCourseSuccessCases")
+        void updateCourse_success(
+                String testName,
+                CourseImage initialImage,
+                CourseUpdateRequestDto request,
+                String expectedCourseName,
+                VerificationMode deleteVerification,
+                VerificationMode updateVerification
+        ) {
+            // given
+            Long courseId = 10L;
+            Course course = createMockCourse(courseId);
+            course.setCreator(member);
+            course.updateCourseImage(initialImage);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+
+            // when
+            courseService.updateCourse(member.getId(), courseId, request);
+
+            // then
+            assertThat(course.getName()).isEqualTo(expectedCourseName);
+
+            // Mockito의 VerificationMode를 파라미터로 받아 동적으로 검증 로직을 수행
+            if (initialImage != null) {
+                verify(fileService, deleteVerification).deleteFile(initialImage.getImgUrl());
+            } else {
+                verify(fileService, deleteVerification).deleteFile(any());
+            }
+
+            verify(courseDataService, updateVerification).updateCourseImage(eq(courseId), any(MultipartFile.class));
+        }
+
+        @Test
+        @DisplayName("내 코스 수정 실패 - 존재하지 않는 코스")
+        void updateCourse_fail_courseNotFound() {
+            // given
+            Long memberId = 1L;
+            Long nonExistentCourseId = 999L;
+            CourseUpdateRequestDto request = new CourseUpdateRequestDto("A", "B", null);
+
+            given(courseRepository.findById(nonExistentCourseId)).willReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () ->
+                    courseService.updateCourse(memberId, nonExistentCourseId, request));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("내 코스 수정 실패 - 권한 없음")
+        void updateCourse_fail_noAuthority() {
+            // given
+            Long requesterId = 2L;
+            Long courseId = 10L;
+            Course course = createMockCourse(courseId);
+            course.setCreator(member); // 생성자와 요청자가 다름
+            CourseUpdateRequestDto request = new CourseUpdateRequestDto("C", "D", null);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () ->
+                    courseService.updateCourse(requesterId, courseId, request));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.NO_AUTHORITY_TO_UPDATE_COURSE);
+        }
+
+        @Test
+        @DisplayName("내 코스 수정 실패 - 코스명 중복")
+        void updateCourse_fail_duplicateName() {
+            // given
+            Long courseId = 10L;
+            Course course = createMockCourse(courseId);
+            course.setCreator(member);
+            String originalCourseName = course.getName();
+
+            String newStartPoint = "강남역";
+            String newEndPoint = "판교역";
+            String newCourseName = newStartPoint + COURSE_NAME_DELIMITER + newEndPoint;
+            CourseUpdateRequestDto request = new CourseUpdateRequestDto(newStartPoint, newEndPoint, null);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.existsByName(newCourseName)).willReturn(true);
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> courseService.updateCourse(member.getId(), courseId, request));
+
+            assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.DUPLICATE_COURSE_NAME);
+            assertThat(course.getName()).isEqualTo(originalCourseName);
         }
     }
 }
