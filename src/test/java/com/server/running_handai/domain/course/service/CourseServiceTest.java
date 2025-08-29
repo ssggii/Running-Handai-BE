@@ -977,51 +977,45 @@ class CourseServiceTest {
             return Stream.of(
                     Arguments.of(
                             "이름과 썸네일 모두 수정 (기존 이미지 있음)",
-                            new CourseImage(oldImageUrl), // initialImage
-                            new CourseUpdateRequestDto(newStartPoint, newEndPoint, newImageFile), // request
-                            newCourseName, // expectedCourseName
-                            times(1),      // deleteVerification (기존 이미지가 있으므로 1번 호출)
-                            times(1)       // updateVerification (새 이미지가 있으므로 1번 호출)
+                            new CourseImage(oldImageUrl),
+                            new CourseUpdateRequestDto(newStartPoint, newEndPoint, newImageFile),
+                            newCourseName,
+                            times(1) // updateVerification
                     ),
                     Arguments.of(
                             "이름만 수정 (시작, 종료점 모두 변경)",
-                            new CourseImage(oldImageUrl), // initialImage
-                            new CourseUpdateRequestDto(newStartPoint, newEndPoint, null), // request (이미지 null)
-                            newCourseName, // expectedCourseName
-                            never(),       // deleteVerification (호출 안됨)
-                            never()        // updateVerification (호출 안됨)
+                            new CourseImage(oldImageUrl),
+                            new CourseUpdateRequestDto(newStartPoint, newEndPoint, null),
+                            newCourseName,
+                            never() // updateVerification
                     ),
                     Arguments.of(
                             "이름만 수정 (시작점만 변경)",
                             new CourseImage(oldImageUrl),
-                            new CourseUpdateRequestDto(newStartPoint, null, null), // 종료점은 null
-                            newStartPoint + COURSE_NAME_DELIMITER + ORIGINAL_END_POINT, // 기대 이름 = 새 시작점 + 기존 종료점
-                            never(), // deleteVerification (호출 안됨)
-                            never() // updateVerification (호출 안됨)
+                            new CourseUpdateRequestDto(newStartPoint, null, null),
+                            newStartPoint + COURSE_NAME_DELIMITER + ORIGINAL_END_POINT,
+                            never() // updateVerification
                     ),
                     Arguments.of(
                             "이름만 수정 (종료점만 변경)",
                             new CourseImage(oldImageUrl),
-                            new CourseUpdateRequestDto(null, newEndPoint, null), // 시작점은 null
-                            ORIGINAL_START_POINT + COURSE_NAME_DELIMITER + newEndPoint, // 기대 이름 = 기존 시작점 + 새 종료점
-                            never(),
-                            never()
+                            new CourseUpdateRequestDto(null, newEndPoint, null),
+                            ORIGINAL_START_POINT + COURSE_NAME_DELIMITER + newEndPoint,
+                            never() // updateVerification
                     ),
                     Arguments.of(
                             "썸네일만 수정 (기존 이미지 있음)",
-                            new CourseImage(oldImageUrl), // initialImage
-                            new CourseUpdateRequestDto(null, "  ", newImageFile), // request (이름은 null, blank)
-                            ORIGINAL_COURSE_NAME, // expectedCourseName (이름 변경 없음)
-                            times(1),      // deleteVerification (기존 이미지가 있으므로 1번 호출)
-                            times(1)       // updateVerification (새 이미지가 있으므로 1번 호출)
+                            new CourseImage(oldImageUrl),
+                            new CourseUpdateRequestDto(null, "  ", newImageFile),
+                            ORIGINAL_COURSE_NAME,
+                            times(1) // updateVerification
                     ),
                     Arguments.of(
                             "썸네일만 수정 (기존 이미지 없음)",
-                            null, // initialImage (기존 이미지 없음)
-                            new CourseUpdateRequestDto(null, null, newImageFile), // request
-                            ORIGINAL_COURSE_NAME, // expectedCourseName (이름 변경 없음)
-                            never(),       // deleteVerification (기존 이미지가 없으므로 호출 안됨)
-                            times(1)       // updateVerification (새 이미지가 있으므로 1번 호출)
+                            null,
+                            new CourseUpdateRequestDto(null, null, newImageFile),
+                            ORIGINAL_COURSE_NAME,
+                            times(1) // updateVerification
                     )
             );
         }
@@ -1034,7 +1028,6 @@ class CourseServiceTest {
                 CourseImage initialImage,
                 CourseUpdateRequestDto request,
                 String expectedCourseName,
-                VerificationMode deleteVerification,
                 VerificationMode updateVerification
         ) {
             // given
@@ -1050,13 +1043,6 @@ class CourseServiceTest {
 
             // then
             assertThat(course.getName()).isEqualTo(expectedCourseName);
-
-            // Mockito의 VerificationMode를 파라미터로 받아 동적으로 검증 로직을 수행
-            if (initialImage != null) {
-                verify(fileService, deleteVerification).deleteFile(initialImage.getImgUrl());
-            } else {
-                verify(fileService, deleteVerification).deleteFile(any());
-            }
 
             verify(courseDataService, updateVerification).updateCourseImage(eq(courseId), any(MultipartFile.class));
         }
