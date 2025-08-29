@@ -629,6 +629,7 @@ class CourseServiceTest {
             verify(courseRepository).findById(COURSE_ID);
             verify(fileService, never()).getPresignedGetUrl(course.getGpxPath(), 60);
         }
+    }
 
     @DisplayName("지역 판별 테스트")
     class RegionCheckTest {
@@ -855,6 +856,7 @@ class CourseServiceTest {
 
             verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
         }
+    }
 
     @DisplayName("내 코스 삭제 테스트")
     class MyCourseDeleteTest {

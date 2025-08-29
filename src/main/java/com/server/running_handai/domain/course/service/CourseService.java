@@ -8,6 +8,8 @@ import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.entity.Course;
@@ -61,7 +63,6 @@ public class CourseService {
     private final ReviewService reviewService;
     private final FileService fileService;
     private final CourseDataService courseDataService;
-    private final FileService fileService;
     private final KakaoMapService kakaoMapService;
     private final ApplicationEventPublisher eventPublisher;
 
