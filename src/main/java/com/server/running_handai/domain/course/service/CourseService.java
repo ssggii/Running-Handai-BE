@@ -1,17 +1,22 @@
 package com.server.running_handai.domain.course.service;
 
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
+import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
+import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.*;
-import com.server.running_handai.domain.bookmark.dto.BookmarkCountDto;
-import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
+import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
+import com.server.running_handai.domain.member.entity.Member;
+import com.server.running_handai.domain.member.repository.MemberRepository;
 import com.server.running_handai.domain.review.dto.ReviewInfoDto;
 import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
@@ -34,6 +39,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,11 +54,16 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final GeometryFactory geometryFactory;
-    private final SpotRepository spotRepository;
     private final ReviewRepository reviewRepository;
+    private final SpotRepository spotRepository;
+    private final MemberRepository memberRepository;
+    private final GeometryFactory geometryFactory;
     private final ReviewService reviewService;
     private final FileService fileService;
+    private final CourseDataService courseDataService;
+    private final FileService fileService;
+    private final KakaoMapService kakaoMapService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${course.simplification.distance-tolerance}")
     private double distanceTolerance;
@@ -259,5 +270,87 @@ public class CourseService {
 
         List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
         return MyCourseDetailDto.from(courseInfoDtos);
+    }
+  
+    /**
+     * 주어진 좌표가 부산 내에 있는지 판별합니다.
+     *
+     * @param longitude 경도 (x)
+     * @param latitude  위도 (y)
+     * @return 부산 지역 내에 있으면 true, 아니면 false
+     */
+    public boolean isInsideBusan(double longitude, double latitude) {
+        JsonNode addressNode = kakaoMapService.getAddressFromCoordinate(longitude, latitude);
+
+        if (addressNode == null) {
+            log.warn("[지역 판별] 주소 정보를 찾을 수 없어 부산 외 지역으로 판별합니다: x={}, y={}", longitude, latitude);
+            return false;
+        }
+
+        String city = addressNode.path("address").path("region_1depth_name").asText();
+        log.info("[지역 판별] city={}", city);
+
+        return city.startsWith("부산");
+    }
+
+    /**
+     * 회원이 생성한 코스를 저장하고, 트랜잭션 커밋 후 이벤트를 발행합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param request 코스 생성에 필요한 데이터 DTO
+     * @return 저장된 코스의 ID
+     */
+    @Transactional
+    public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        checkCourseNameDuplicated(request);
+        Course newCourse = saveMemberCourse(memberId, request);
+        courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
+        publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
+        return newCourse.getId();
+    }
+
+    private void checkCourseNameDuplicated(CourseCreateRequestDto request) {
+        String courseName = request.startPointName().trim() + "-" + request.endPointName().trim();
+        if (courseRepository.existsByName(courseName)) {
+            throw new BusinessException(DUPLICATE_COURSE_NAME);
+        }
+    }
+
+    private Course saveMemberCourse(Long memberId, CourseCreateRequestDto request) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Course newCourse = courseDataService.createCourseToGpx(
+                new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
+        newCourse.setCreator(member);
+        return newCourse;
+    }
+
+    private void publishCourseCreatedEvent(Long courseId, boolean isInsideBusan) {
+        CourseCreatedEvent event = new CourseCreatedEvent(courseId, isInsideBusan);
+        log.info("코스 생성 이벤트 발행. courseId: {}, isInsideBusan: {}", courseId, isInsideBusan);
+        eventPublisher.publishEvent(event);
+    }
+
+    /**
+     * 회원이 생성한 코스를 삭제합니다.
+     * 코스에 저장된 즐길거리가 있는 경우 함께 삭제합니다.
+     *
+     * @param memberId 요청 회원의 ID
+     * @param courseId 삭제하려는 코스의 ID
+     */
+    @Transactional
+    public void deleteMemberCourse(Long memberId, Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
+
+        // 권한 검증 (요청자와 코스 생성자가 동일인인지 확인)
+        if (course.getCreator() == null || !course.getCreator().getId().equals(memberId)) {
+            throw new BusinessException(NO_AUTHORITY_TO_DELETE_COURSE);
+        }
+
+        fileService.deleteFile(course.getGpxPath()); // s3에서 gpx 파일 삭제
+        fileService.deleteFile(course.getCourseImage().getImgUrl()); // s3에서 썸네일 이미지 삭제
+
+        course.removeCreator();
+        courseRepository.delete(course);
     }
 }

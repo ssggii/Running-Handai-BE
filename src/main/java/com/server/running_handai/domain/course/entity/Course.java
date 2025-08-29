@@ -5,7 +5,6 @@ import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -164,6 +163,28 @@ public class Course extends BaseTimeEntity {
 
     public void removeTheme(Theme theme) {
         this.themes.remove(theme);
+    }
+
+    public void setCreator(Member creator) {
+        // 기존 Member와의 연관관계 제거
+        if (this.creator != null) {
+            this.creator.getCourses().remove(this);
+        }
+        // 새로운 Member와의 연관관계 설정
+        this.creator = creator;
+        // 새로운 Member의 코스 목록에 자신을 추가
+        if (creator != null) {
+            creator.getCourses().add(this);
+        }
+    }
+
+    public void removeCreator() {
+        if (this.creator != null) {
+            // 기존 creator의 courses 리스트에서 현재 Course 제거
+            this.creator.getCourses().remove(this);
+            // 현재 Course의 creator 필드를 null로 설정
+            this.creator = null;
+        }
     }
 
 }

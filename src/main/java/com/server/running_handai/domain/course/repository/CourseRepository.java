@@ -114,4 +114,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
             nativeQuery = true
     )
     List<CourseInfoDto> findMyCoursesBySort(@Param("memberId") Long memberId, Sort sort);
+
+    boolean existsByName(String name);
 }
