@@ -17,6 +17,7 @@ public enum ResponseCode {
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
     SUCCESS_EMPTY_BOOKMARKS(OK, "북마크한 코스가 없습니다."),
+    SUCCESS_COURSE_REMOVE(OK, "코스 삭제가 완료되었습니다."),
 
     /** 비즈니스 에러 코드 */
     // BAD_REQUEST (400)
@@ -32,6 +33,9 @@ public enum ResponseCode {
     INVALID_NICKNAME_LENGTH(BAD_REQUEST, "닉네임은 2글자부터 10글자까지 입력할 수 있습니다."),
     INVALID_NICKNAME_FORMAT(BAD_REQUEST, "닉네임은 영문, 한글, 숫자만 입력할 수 있습니다."),
     SAME_AS_CURRENT_NICKNAME(BAD_REQUEST, "현재 사용 중인 닉네임과 동일합니다."),
+    EMPTY_FILE(BAD_REQUEST, "파일이 누락되었습니다."),
+    INVALID_POINT_NAME(BAD_REQUEST, "포인트 이름이 누락되었습니다."),
+    DUPLICATE_COURSE_NAME(BAD_REQUEST, "이미 존재하는 코스 이름입니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),
@@ -41,6 +45,7 @@ public enum ResponseCode {
 
     // FORBIDDEN (403)
     ACCESS_DENIED(FORBIDDEN, "접근 권한이 없습니다."),
+    NO_AUTHORITY_TO_DELETE_COURSE(FORBIDDEN, "코스 삭제 권한이 없습니다."),
 
     // NOT_FOUND (404)
     COURSE_NOT_FOUND(NOT_FOUND, "찾을 수 없는 코스입니다."),

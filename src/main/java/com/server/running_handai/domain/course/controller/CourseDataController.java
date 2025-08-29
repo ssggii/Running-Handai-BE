@@ -1,6 +1,7 @@
 package com.server.running_handai.domain.course.controller;
 
 import com.server.running_handai.domain.course.dto.GpxCourseRequestDto;
+import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.service.CourseDataService;
 import com.server.running_handai.global.response.CommonResponse;
 import com.server.running_handai.global.response.ResponseCode;
