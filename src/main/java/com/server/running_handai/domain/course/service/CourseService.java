@@ -405,9 +405,6 @@ public class CourseService {
 
     private void updateThumbnailImage(Course course, MultipartFile newImageFile) {
         if (newImageFile != null && !newImageFile.isEmpty()) {
-            if (course.getCourseImage() != null) {
-                fileService.deleteFile(course.getCourseImage().getImgUrl());
-            }
             courseDataService.updateCourseImage(course.getId(), newImageFile);
         }
     }
