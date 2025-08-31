@@ -199,4 +199,23 @@ public class CourseController {
         courseService.deleteMemberCourse(memberId, courseId);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_REMOVE, null));
     }
+
+    @Operation(summary = "내 코스 수정", description = "회원의 코스를 수정합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 코스"),
+            @ApiResponse(responseCode = "403", description = "수정 권한 없음")
+    })
+    @PatchMapping(value = "/api/members/me/courses/{courseId}")
+    public ResponseEntity<CommonResponse<Void>> updateMemberCourse(
+            @Parameter(description = "수정하려는 코스 ID", required = true)
+            @PathVariable("courseId") Long courseId,
+            @Valid @ModelAttribute CourseUpdateRequestDto request,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        log.info("[내 코스 수정] memberId: {}, courseId: {}", memberId, courseId);
+        courseService.updateCourse(memberId, courseId, request);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_UPDATE, null));
+    }
 }
