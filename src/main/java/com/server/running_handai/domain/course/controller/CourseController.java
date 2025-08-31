@@ -117,8 +117,7 @@ public class CourseController {
     @Operation(summary = "내 코스 전체 조회", description = "사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다. 정렬 조건은 최신순, 오래된순, 짧은 거리순, 긴 거리순으로 총 4개입니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
-            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
-            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스) - COURSE_NOT_FOUND")
+            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS")
     })
     @GetMapping("/api/members/me/courses")
     public ResponseEntity<CommonResponse<MyAllCoursesDetailDto>> getMyAllCourses(
@@ -136,9 +135,9 @@ public class CourseController {
 
     @Operation(summary = "내 코스 상세 조회", description = "사용자가 생성한 코스를 조회합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "성공"),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 코스"),
-            @ApiResponse(responseCode = "403", description = "수정 권한 없음")
+            @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
+            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
+            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스) - COURSE_NOT_FOUND"),
     })
     @GetMapping(value = "/api/members/me/courses/{courseId}")
     public ResponseEntity<CommonResponse<MyCourseDetailDto>> getMyCourse(
