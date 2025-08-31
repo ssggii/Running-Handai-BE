@@ -1,9 +1,10 @@
 package com.server.running_handai.domain.member.service;
 
-import com.server.running_handai.domain.bookmark.dto.BookmarkInfoDto;
-import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
+import com.server.running_handai.domain.course.dto.CourseInfoDto;
+import com.server.running_handai.domain.course.dto.MyCourseDetailDto;
+import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
@@ -33,10 +34,12 @@ public class MemberService {
     public static final int NICKNAME_MIN_LENGTH = 2;
     private static final String NICKNAME_PATTERN = "^[ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9]{2,10}$";
     private static final int BOOKMARK_PREVIEW_MAX_COUNT = 5;
+    private static final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
 
     private final MemberRepository memberRepository;
     private final JwtProvider jwtProvider;
     private final BookmarkService bookmarkService;
+    private final CourseService courseService;
 
     /**
      * OAuth2 사용자 정보를 기반으로 회원을 생성하거나 기존 회원을 조회합니다.
@@ -254,8 +257,11 @@ public class MemberService {
                 .limit(BOOKMARK_PREVIEW_MAX_COUNT)
                 .toList();
 
-        // TODO 내 코스 조회
+        // 내 코스 조회
+        // TODO 내 코스 조회의 코스 dto 수정해야함 (생성일 추가, 사용자와의 거리 삭제)
+        List<CourseInfoDto> myCourses = courseService.getMyCourses(memberId, "latest").courses()
+                .stream().limit(MY_COURSE_PREVIEW_MAX_COUNT).toList();
 
-        return MemberInfoDto.from(member, bookmarkedCourses);
+        return MemberInfoDto.from(member, bookmarkedCourses, myCourses);
     }
 }
