@@ -3,7 +3,6 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.NOT_COURSE_CREATOR;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
@@ -555,8 +554,7 @@ class CourseServiceTest {
     }
 
     @Nested
-    @DisplayName("GPX 다운로드 테스트"
-)
+    @DisplayName("GPX 다운로드 테스트")
     class CourseGpxDownloadTest {
         // 헬퍼 메서드
         private Member createMockMember(Long memberId) {
@@ -583,7 +581,7 @@ class CourseServiceTest {
             Course course = createMockCourse(COURSE_ID, member);
             String presignedUrl = "https://presigned-url.com/course-1.gpx";
 
-            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+            given(courseRepository.findByIdAndCreatorId(COURSE_ID, MEMBER_ID)).willReturn(Optional.of(course));
             given(fileService.getPresignedGetUrl(course.getGpxPath(), 60)).willReturn(presignedUrl);
 
             // when
@@ -593,7 +591,7 @@ class CourseServiceTest {
             assertThat(result.courseId()).isEqualTo(course.getId());
             assertThat(result.gpxPath()).isEqualTo(presignedUrl);
 
-            verify(courseRepository).findById(COURSE_ID);
+            verify(courseRepository).findByIdAndCreatorId(COURSE_ID, MEMBER_ID);
             verify(fileService).getPresignedGetUrl(course.getGpxPath(), 60);
         }
 
@@ -605,33 +603,11 @@ class CourseServiceTest {
         @DisplayName("GPX 파일 다운로드 실패 - Course가 없음")
         void gpxDownload_fail_courseNotFound() {
             // given
-            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.empty());
+            given(courseRepository.findByIdAndCreatorId(COURSE_ID, MEMBER_ID)).willReturn(Optional.empty());
 
             // when, then
             BusinessException exception = assertThrows(BusinessException.class, () -> courseService.downloadGpx(COURSE_ID, MEMBER_ID));
             assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
-        }
-
-        /**
-         * [GPX 다운로드] 실패
-         * 2. 요청한 사용자가 만든 Course가 아닐 경우
-         */
-        @Test
-        @DisplayName("GPX 파일 다운로드 실패 - 요청한 사용자가 만든 Course가 아님")
-        void gpxDownload_fail_notCourseCreator() {
-            // given
-            Long otherMemberId = 999L;
-            Member otherMember = createMockMember(otherMemberId);
-            Course course = createMockCourse(COURSE_ID, otherMember);
-
-            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
-
-            // when, then
-            BusinessException exception = assertThrows(BusinessException.class, () -> courseService.downloadGpx(COURSE_ID, MEMBER_ID));
-            assertThat(exception.getResponseCode()).isEqualTo(NOT_COURSE_CREATOR);
-
-            verify(courseRepository).findById(COURSE_ID);
-            verify(fileService, never()).getPresignedGetUrl(course.getGpxPath(), 60);
         }
     }
 
@@ -798,7 +774,7 @@ class CourseServiceTest {
 
     @Nested
     @DisplayName("내 코스 전체 조회 테스트")
-    class GetMyCoursesTest {
+    class GetMyAllCoursesTest {
         // 헬퍼 메서드
         private CourseInfoDto createCourseInfoDto() {
             CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
@@ -812,7 +788,7 @@ class CourseServiceTest {
         @ParameterizedTest
         @ValueSource(strings = {"latest", "oldest", "short", "long"})
         @DisplayName("내 코스 전체 조회 성공 - Course가 존재")
-        void getMyCourses_success_courseExists(String sortBy) {
+        void getMyAllCourses_success_courseExists(String sortBy) {
             // given
             Sort sort = switch (sortBy) {
                 case "oldest" -> Sort.by("created_at").ascending();
@@ -830,7 +806,7 @@ class CourseServiceTest {
             given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(courseInfoDtos);
 
             // when
-            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, sortBy);
 
             // then
             assertThat(result.courseCount()).isEqualTo(3);
@@ -845,7 +821,7 @@ class CourseServiceTest {
          */
         @Test
         @DisplayName("내 코스 전체 조회 성공 - Course가 존재하지 않음")
-        void getMyCourses_success_noCourse() {
+        void getMyAllCourses_success_noCourse() {
             // given
             // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
             String sortBy = "latest";
@@ -853,13 +829,93 @@ class CourseServiceTest {
             given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(Collections.emptyList());
 
             // when
-            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, sortBy);
 
             // then
             assertThat(result.courseCount()).isEqualTo(0);
             assertThat(result.courses()).isEmpty();
 
             verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+        }
+    }
+
+    @Nested
+    @DisplayName("내 코스 상세 조회 테스트")
+    class GetMyCourseTest {
+        // 헬퍼 메서드
+        private Member createMockMember(Long memberId) {
+            Member member = Member.builder().build();
+            ReflectionTestUtils.setField(member, "id", memberId);
+            return member;
+        }
+
+        private Course createMockCourse(Long courseId, Member member) {
+            Course course = Course.builder()
+                    .name("시작점-도착점")
+                    .distance(30.3)
+                    .duration(200)
+                    .maxElevation(130.2)
+                    .minElevation(0.0)
+                    .build();
+
+            ReflectionTestUtils.setField(course, "id", courseId);
+            ReflectionTestUtils.setField(course, "creator", member);
+            return course;
+        }
+
+        private TrackPoint createMockTrackPoint(Long trackPointId, Course course) {
+            TrackPoint trackPoint = TrackPoint.builder()
+                    .lat(23.4)
+                    .lon(25.6)
+                    .ele(130.2)
+                    .build();
+
+            ReflectionTestUtils.setField(trackPoint, "id", trackPointId);
+            ReflectionTestUtils.setField(trackPoint, "course", course);
+            return trackPoint;
+        }
+
+        /**
+         * [내 코스 상세 조회] 성공
+         */
+        @Test
+        @DisplayName("내 코스 상세 조회 성공")
+        void getMyCourse_success() {
+            // given
+            Member member = createMockMember(MEMBER_ID);
+            Course course = createMockCourse(COURSE_ID, member);
+            List<TrackPoint> trackPoints = List.of(
+                    createMockTrackPoint(1L, course),
+                    createMockTrackPoint(2L, course),
+                    createMockTrackPoint(3L, course)
+            );
+            ReflectionTestUtils.setField(course, "trackPoints", trackPoints);
+
+            given(courseRepository.findByIdAndCreatorIdWithTrackPoints(COURSE_ID, MEMBER_ID)).willReturn(Optional.of(course));
+
+            // when
+            MyCourseDetailDto result = courseService.getMyCourse(course.getId(), member.getId());
+
+            // then
+            assertThat(result.courseId()).isEqualTo(course.getId());
+            assertThat(result.trackPoints()).hasSize(3);
+
+            verify(courseRepository).findByIdAndCreatorIdWithTrackPoints(COURSE_ID, MEMBER_ID);
+        }
+
+        /**
+         * [내 코스 상세 조회] 실패
+         * 1. 요청한 Course가 없는 경우
+         */
+        @Test
+        @DisplayName("내 코스 상세 조회 실패 - Course가 없음")
+        void getMyCourse_fail_courseNotFound() {
+            // given
+            given(courseRepository.findByIdAndCreatorIdWithTrackPoints(COURSE_ID, MEMBER_ID)).willReturn(Optional.empty());
+
+            // when, then
+            BusinessException exception = assertThrows(BusinessException.class, () -> courseService.getMyCourse(COURSE_ID, MEMBER_ID));
+            assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
         }
     }
 
