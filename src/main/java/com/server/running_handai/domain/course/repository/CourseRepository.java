@@ -126,6 +126,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      * 사용자가 생성한 코스를 트랙 포인트와 함께 조회
      */
     @Query("SELECT c FROM Course c " +
-            "LEFT JOIN FETCH c.trackPoints WHERE c.id = :courseId AND c.creator.id = :memberId")
+            "LEFT JOIN FETCH c.trackPoints tp WHERE c.id = :courseId AND c.creator.id = :memberId " +
+            "ORDER BY tp.sequence ASC")
     Optional<Course> findByIdAndCreatorIdWithTrackPoints(@Param("courseId") Long courseId, @Param("memberId") Long memberId);
 }
