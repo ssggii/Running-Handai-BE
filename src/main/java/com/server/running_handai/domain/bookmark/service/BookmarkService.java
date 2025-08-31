@@ -26,7 +26,7 @@ public class BookmarkService {
     private final CourseRepository courseRepository;
 
     @Transactional
-    public void registerBookmark(Long memberId, Long courseId) {
+    public void createBookmark(Long memberId, Long courseId) {
         // 회원과 코스 조회
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
@@ -65,7 +65,7 @@ public class BookmarkService {
      * @param memberId 요청한 회원의 ID
      * @return 북마크한 코스 정보 DTO
      */
-    public List<BookmarkedCourseInfoDto> getBookmarkedCoursesByMemberAndArea(Long memberId, Area area) {
+    public List<BookmarkedCourseInfoDto> findBookmarkedCourses(Long memberId, Area area) {
         List<BookmarkedCourseInfoDto> bookmarkedCourseInfoDtos;
         if (area == null) { // 지역 전체인 경우
             bookmarkedCourseInfoDtos = bookmarkRepository.findBookmarkedCoursesByMemberId(memberId);
