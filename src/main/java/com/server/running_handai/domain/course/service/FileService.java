@@ -245,7 +245,7 @@ public class FileService {
         String extension = (dotIndex == -1) ? "" : originalFileName.substring(dotIndex).toLowerCase();
 
         // 영문, 숫자, 하이픈, 언더스코어만 허용
-        String newFileName = name.replaceAll(FILENAME_PATTERN, "");
+        String newFileName = name.replaceAll(FILENAME_PATTERN, "").trim();
 
         // 원본 파일명에 허용된 문자가 없어 빈 파일명일 경우 기본값 사용
         if (newFileName.isBlank()) {
