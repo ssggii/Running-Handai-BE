@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.member.entity;
 
+import com.server.running_handai.domain.bookmark.entity.Bookmark;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.review.entity.Review;
 import com.server.running_handai.global.entity.BaseTimeEntity;
@@ -55,6 +56,10 @@ public class Member extends BaseTimeEntity {
     // Course와 일대다 관계
     @OneToMany(mappedBy = "creator", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Course> courses = new ArrayList<>();
+
+    // Bookmark와 일대다 관계
+    @OneToMany(mappedBy = "member", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Bookmark> bookmarks = new ArrayList<>();
 
     @Builder
     public Member(String providerId, String email, String nickname, Provider provider, Role role) {

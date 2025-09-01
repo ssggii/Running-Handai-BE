@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.entity;
 
+import com.server.running_handai.domain.bookmark.entity.Bookmark;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.domain.review.entity.Review;
@@ -90,6 +91,9 @@ public class Course extends BaseTimeEntity {
     @JoinColumn(name = "member_id")
     @OnDelete(action = OnDeleteAction.SET_NULL)
     private Member creator;
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Bookmark> bookmarks = new ArrayList<>();
 
     @Builder
     public Course(String externalId, String name, double distance, int duration,
