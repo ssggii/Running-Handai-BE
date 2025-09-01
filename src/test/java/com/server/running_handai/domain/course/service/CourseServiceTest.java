@@ -62,7 +62,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.mockito.verification.VerificationMode;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
@@ -827,16 +827,22 @@ class CourseServiceTest {
                     createCourseInfoDto()
             );
 
-            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(courseInfoDtos);
+            Pageable pageable = PageRequest.of(0, 10, sort);
+            Page<CourseInfoDto> coursePage = new PageImpl<>(courseInfoDtos, pageable, 3);
+
+            given(courseRepository.findMyCoursesWithPaging(MEMBER_ID, pageable)).willReturn(coursePage);
 
             // when
-            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable);
 
             // then
-            assertThat(result.courseCount()).isEqualTo(3);
-            assertThat(result.courses()).hasSize(3);
+            assertThat(result.getContent()).hasSize(3);
+            assertThat(result.getTotalElements()).isEqualTo(3);
+            assertThat(result.getTotalPages()).isEqualTo(1);
+            assertThat(result.getNumber()).isEqualTo(0);
+            assertThat(result.getSize()).isEqualTo(10);
 
-            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+            verify(courseRepository).findMyCoursesWithPaging(MEMBER_ID, pageable);
         }
 
         /**
@@ -850,16 +856,22 @@ class CourseServiceTest {
             // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
             String sortBy = "latest";
             Sort sort = Sort.by("created_at").descending();
-            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(Collections.emptyList());
+            Pageable pageable = PageRequest.of(0, 10, sort);
+            Page<CourseInfoDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+            given(courseRepository.findMyCoursesWithPaging(MEMBER_ID, pageable)).willReturn(emptyPage);
 
             // when
-            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, sortBy);
+            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable);
 
             // then
-            assertThat(result.courseCount()).isEqualTo(0);
-            assertThat(result.courses()).isEmpty();
+            assertThat(result.getContent()).isEmpty();
+            assertThat(result.getTotalElements()).isEqualTo(0);
+            assertThat(result.getTotalPages()).isEqualTo(0);
+            assertThat(result.getNumber()).isEqualTo(0);
+            assertThat(result.getSize()).isEqualTo(10);
 
-            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+            verify(courseRepository).findMyCoursesWithPaging(MEMBER_ID, pageable);
         }
     }
 

@@ -41,6 +41,8 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -258,22 +260,15 @@ public class CourseService {
     }
 
     /**
-     * 사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다.
+     * 사용자가 생성한 코스 목록을 페이징, 정렬 조건에 따라 조회합니다.
      *
      * @param memberId 조회 요청한 회원 ID
-     * @param sortBy 정렬 조건 (latest, oldest, short, long)
+     * @param pageable 페이징 객체
      * @return 정렬된 코스 목록이 포함된 DTO
      */
-    public MyCourseDetailDto getMyCourses(Long memberId, String sortBy) {
-        Sort sort = switch (sortBy) {
-            case "oldest" -> Sort.by("created_at").ascending();
-            case "short" -> Sort.by("distance").ascending();
-            case "long" -> Sort.by("distance").descending();
-            default -> Sort.by("created_at").descending();
-        };
-
-        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
-        return MyCourseDetailDto.from(courseInfoDtos);
+    public Page<CourseInfoDto> getMyCourses(Long memberId, Pageable pageable) {
+        Page<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPaging(memberId, pageable);
+        return courseInfoDtos;
     }
 
     /**

@@ -5,6 +5,8 @@ import com.server.running_handai.domain.course.entity.Course;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -95,7 +97,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
 
     /**
-     * Member가 생성한 Course 목록을 정렬 조건에 따라 조회
+     * Member가 생성한 Course 목록을 페이징, 정렬 조건에 따라 조회
      */
     @Query(
             value = "SELECT " +
@@ -113,7 +115,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "WHERE c.member_id = :memberId ",
             nativeQuery = true
     )
-    List<CourseInfoDto> findMyCoursesBySort(@Param("memberId") Long memberId, Sort sort);
+    Page<CourseInfoDto> findMyCoursesWithPaging(@Param("memberId") Long memberId, Pageable pageable);
 
     boolean existsByName(String name);
 }
