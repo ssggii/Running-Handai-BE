@@ -97,7 +97,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
 
     /**
-     * Member가 생성한 Course 목록을 페이징, 정렬 조건에 따라 조회
+     * Member가 생성한 Course 목록을 페이징, 정렬 조건, 검색 키워드에 따라 조회
      */
     @Query(
             value = "SELECT " +
@@ -112,10 +112,11 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "    course c " +
                     "LEFT JOIN " +
                     "    course_image ci ON c.course_id = ci.course_id " +
-                    "WHERE c.member_id = :memberId ",
+                    "WHERE c.member_id = :memberId " +
+                    "AND (:keyword IS NULL OR c.name LIKE CONCAT('%', :keyword, '%'))",
             nativeQuery = true
     )
-    Page<CourseInfoDto> findMyCoursesWithPaging(@Param("memberId") Long memberId, Pageable pageable);
+    Page<CourseInfoDto> findMyCoursesWithPagingAndKeyword(@Param("memberId") Long memberId, Pageable pageable,String keyword);
 
     boolean existsByName(String name);
 }

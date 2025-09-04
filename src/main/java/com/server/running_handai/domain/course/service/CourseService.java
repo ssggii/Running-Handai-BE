@@ -260,15 +260,15 @@ public class CourseService {
     }
 
     /**
-     * 사용자가 생성한 코스 목록을 페이징, 정렬 조건에 따라 조회합니다.
+     * 사용자가 생성한 코스 목록을 페이징, 정렬 조건, 검색 키워드에 따라 조회합니다.
      *
      * @param memberId 조회 요청한 회원 ID
-     * @param pageable 페이징 객체
+     * @param pageable 정렬 조건을 포함한 페이징 객체
+     * @param keyword 검색 키워드 (코스 이름)
      * @return 정렬된 코스 목록이 포함된 DTO
      */
-    public Page<CourseInfoDto> getMyCourses(Long memberId, Pageable pageable) {
-        Page<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPaging(memberId, pageable);
-        return courseInfoDtos;
+    public Page<CourseInfoDto> getMyCourses(Long memberId, Pageable pageable, String keyword) {
+        return courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword);
     }
 
     /**

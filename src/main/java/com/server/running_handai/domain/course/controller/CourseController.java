@@ -123,13 +123,15 @@ public class CourseController {
     })
     @GetMapping("/api/members/me/courses")
     public ResponseEntity<CommonResponse<Page<CourseInfoDto>>> getMyCourses(
-            @Parameter(description = "페이지 번호") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "한 페이지에 조회할 개수") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "페이지 번호", required = true) @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "한 페이지에 조회할 개수", required = true) @RequestParam(defaultValue = "10") int size,
             @Parameter(
                     description = "정렬 조건",
+                    required = true,
                     schema = @Schema(allowableValues = {"latest", "oldest", "short", "long"})
             )
             @RequestParam(defaultValue = "latest") String sortBy,
+            @Parameter(description = "검색 키워드",  required = false) @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
@@ -145,7 +147,7 @@ public class CourseController {
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<CourseInfoDto> myCourseDetail = courseService.getMyCourses(memberId, pageable);
+        Page<CourseInfoDto> myCourseDetail = courseService.getMyCourses(memberId, pageable, keyword);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetail));
     }
 

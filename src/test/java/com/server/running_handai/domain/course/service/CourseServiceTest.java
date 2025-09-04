@@ -555,8 +555,7 @@ class CourseServiceTest {
     }
 
     @Nested
-    @DisplayName("GPX 다운로드 테스트"
-)
+    @DisplayName("GPX 다운로드 테스트")
     class CourseGpxDownloadTest {
         // 헬퍼 메서드
         private Member createMockMember(Long memberId) {
@@ -827,13 +826,14 @@ class CourseServiceTest {
                     createCourseInfoDto()
             );
 
+            String keyword = null;
             Pageable pageable = PageRequest.of(0, 10, sort);
             Page<CourseInfoDto> coursePage = new PageImpl<>(courseInfoDtos, pageable, 3);
 
-            given(courseRepository.findMyCoursesWithPaging(MEMBER_ID, pageable)).willReturn(coursePage);
+            given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(coursePage);
 
             // when
-            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable);
+            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
 
             // then
             assertThat(result.getContent()).hasSize(3);
@@ -842,7 +842,7 @@ class CourseServiceTest {
             assertThat(result.getNumber()).isEqualTo(0);
             assertThat(result.getSize()).isEqualTo(10);
 
-            verify(courseRepository).findMyCoursesWithPaging(MEMBER_ID, pageable);
+            verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
         }
 
         /**
@@ -854,15 +854,15 @@ class CourseServiceTest {
         void getMyCourses_success_noCourse() {
             // given
             // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
-            String sortBy = "latest";
+            String keyword = null;
             Sort sort = Sort.by("created_at").descending();
             Pageable pageable = PageRequest.of(0, 10, sort);
             Page<CourseInfoDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
 
-            given(courseRepository.findMyCoursesWithPaging(MEMBER_ID, pageable)).willReturn(emptyPage);
+            given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(emptyPage);
 
             // when
-            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable);
+            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
 
             // then
             assertThat(result.getContent()).isEmpty();
@@ -871,7 +871,7 @@ class CourseServiceTest {
             assertThat(result.getNumber()).isEqualTo(0);
             assertThat(result.getSize()).isEqualTo(10);
 
-            verify(courseRepository).findMyCoursesWithPaging(MEMBER_ID, pageable);
+            verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
         }
     }
 
