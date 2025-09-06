@@ -45,7 +45,7 @@ public class BookmarkController {
     ) {
         Long memberId = customOAuth2User.getMember().getId();
         log.info("[북마크 등록] 시작: memberId={}, courseId={}", memberId, courseId);
-        bookmarkService.registerBookmark(memberId, courseId);
+        bookmarkService.createBookmark(memberId, courseId);
         log.info("[북마크 등록] 성공: memberId={}, courseId={}", memberId, courseId);
         return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_BOOKMARK_CREATE, null));
     }
@@ -84,7 +84,7 @@ public class BookmarkController {
     ) {
         Long memberId = customOAuth2User.getMember().getId();
         log.info("[북마크한 코스 조회] memberId={}, area={}", memberId, (area != null) ? area.name() : null);
-        List<BookmarkedCourseInfoDto> responseData = bookmarkService.getBookmarkedCoursesByMemberAndArea(memberId, area);
+        List<BookmarkedCourseInfoDto> responseData = bookmarkService.findBookmarkedCourses(memberId, area);
         if (responseData.isEmpty()) {
             return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_EMPTY_BOOKMARKS, responseData));
         }
