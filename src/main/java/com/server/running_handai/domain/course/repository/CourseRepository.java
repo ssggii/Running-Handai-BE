@@ -34,7 +34,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "LEFT JOIN " +
                     "    course_image ci ON c.course_id = ci.course_id " +
                     "WHERE " +
-                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 10000 " +
+                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 5000 " +
                     "ORDER BY " +
                     "    distanceFromUser ASC",
             nativeQuery = true
