@@ -1,6 +1,7 @@
 package com.server.running_handai.domain.course.service;
 
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
+import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NOT_COURSE_CREATOR;
@@ -389,6 +390,7 @@ class CourseServiceTest {
                 .gpxPath("gpx/test.gpx")
                 .build();
         course.updateCourseImage(courseImage);
+        course.updateSpotStatus(COMPLETED);
 
         // 연관관계 필드(컬렉션)를 위한 더미 데이터 생성
         List<RoadCondition> roadConditions = createDummyRoadConditions();
@@ -482,13 +484,13 @@ class CourseServiceTest {
         }
 
         @ParameterizedTest
-        @DisplayName("코스 요약 조회 성공")
+        @DisplayName("코스 요약 조회 성공 - 즐길거리 초기화 완료")
         @MethodSource("memberAndGuestCases")
-        void getCourseSummary_success(Long memberId, boolean isMyReview) {
+        void getCourseSummary_success_whenInitCompleted(Long memberId, boolean isMyReview) {
             // given
             Long courseId = 1L;
-
             Course course = createMockCourse(courseId);
+
             Review review1 = createMockReview(1L, 4.0, "review1");
             Review review2 = createMockReview(2L, 5.0, "review2");
             List<Review> reviews = List.of(review1, review2);
@@ -527,6 +529,7 @@ class CourseServiceTest {
             assertThat(result.reviewCount()).isEqualTo(3L);
             assertThat(result.reviews().getFirst().reviewId()).isEqualTo(review1.getId());
             assertThat(result.reviews().getLast().reviewId()).isEqualTo(review2.getId());
+            assertThat(result.spotStatus()).isEqualTo("COMPLETED");
             assertThat(result.spots().size()).isEqualTo(3);
             assertThat(result.spots().get(0).spotId()).isEqualTo(spot1.getId());
             assertThat(result.spots().get(1).spotId()).isEqualTo(spot2.getId());
@@ -538,6 +541,52 @@ class CourseServiceTest {
             verify(reviewService).calculateAverageStars(courseId);
             verify(reviewService).convertToReviewInfoDtos(reviews, memberId);
             verify(spotRepository).findRandom3ByCourseId(courseId);
+        }
+
+        @ParameterizedTest
+        @DisplayName("코스 요약 조회 성공 - 즐길거리 초기화 미완료")
+        @MethodSource("memberAndGuestCases")
+        void getCourseSummary_success_whenInitNotCompleted(Long memberId, boolean isMyReview) {
+            // given
+            Long courseId = 1L;
+            Course course = createMockCourse(courseId);
+            course.updateSpotStatus(IN_PROGRESS);
+
+            Review review1 = createMockReview(1L, 4.0, "review1");
+            Review review2 = createMockReview(2L, 5.0, "review2");
+            List<Review> reviews = List.of(review1, review2);
+
+            List<ReviewInfoDto> reviewInfoDtos = List.of(
+                    ReviewInfoDto.from(review1, isMyReview),
+                    ReviewInfoDto.from(review2, isMyReview)
+            );
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(reviewRepository.findRecent2ByCourseId(courseId)).willReturn(reviews);
+            given(reviewRepository.countByCourseId(courseId)).willReturn(3L);
+            given(reviewService.calculateAverageStars(courseId)).willReturn(4.2);
+            given(reviewService.convertToReviewInfoDtos(reviews, memberId)).willReturn(reviewInfoDtos);
+
+            // when
+            CourseSummaryDto result = courseService.getCourseSummary(courseId, memberId);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.distance()).isEqualTo((int) course.getDistance());
+            assertThat(result.duration()).isEqualTo(course.getDuration());
+            assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+            assertThat(result.starAverage()).isEqualTo(4.2);
+            assertThat(result.reviewCount()).isEqualTo(3L);
+            assertThat(result.reviews().getFirst().reviewId()).isEqualTo(review1.getId());
+            assertThat(result.reviews().getLast().reviewId()).isEqualTo(review2.getId());
+            assertThat(result.spots()).isEmpty(); // 빈 리스트인지 확인
+            assertThat(result.spotStatus()).isEqualTo("IN_PROGRESS"); // 즐길거리 초기화 상태값 확인
+
+            verify(courseRepository).findById(courseId);
+            verify(reviewRepository).findRecent2ByCourseId(courseId);
+            verify(reviewRepository).countByCourseId(courseId);
+            verify(reviewService).calculateAverageStars(courseId);
+            verify(reviewService).convertToReviewInfoDtos(reviews, memberId);
         }
 
         @Test
@@ -555,8 +604,7 @@ class CourseServiceTest {
     }
 
     @Nested
-    @DisplayName("GPX 다운로드 테스트"
-)
+    @DisplayName("GPX 다운로드 테스트")
     class CourseGpxDownloadTest {
         // 헬퍼 메서드
         private Member createMockMember(Long memberId) {
