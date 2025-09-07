@@ -267,8 +267,9 @@ public class CourseService {
      * @param keyword 검색 키워드 (코스 이름)
      * @return 정렬된 코스 목록이 포함된 DTO
      */
-    public Page<CourseInfoDto> getMyCourses(Long memberId, Pageable pageable, String keyword) {
-        return courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword);
+    public MyCourseDetailDto getMyCourses(Long memberId, Pageable pageable, String keyword) {
+        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword).getContent();
+        return MyCourseDetailDto.from(courseInfoDtos);
     }
 
     /**

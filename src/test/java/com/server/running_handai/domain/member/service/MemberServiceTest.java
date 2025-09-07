@@ -10,6 +10,7 @@ import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.repository.MemberRepository;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.List;
@@ -24,6 +25,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -240,6 +244,7 @@ class MemberServiceTest {
     @Nested
     @DisplayName("내 정보 조회 테스트")
     class GetMemberInfoTest {
+        private final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
 
         @ParameterizedTest(name = "북마크 {0}개, 내 코스 {1}개일 때")
         @DisplayName("내 정보 조회 - 성공")
@@ -260,15 +265,19 @@ class MemberServiceTest {
                     .toList();
 
             // 내 코스 데이터 생성
-            List<CourseInfoDto> mockMyCourses = IntStream.range(0, myCourseCount)
+            int coursesToCreate = Math.min(myCourseCount, MY_COURSE_PREVIEW_MAX_COUNT);
+            List<CourseInfoDto> mockMyCourses = IntStream.range(0, coursesToCreate)
                     .mapToObj(i -> mock(CourseInfoDto.class))
                     .toList();
             MyCourseDetailDto myCourseDetailDto = MyCourseDetailDto.from(mockMyCourses);
 
+            Sort sort = SortBy.findBySort("LATEST");
+            Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, sort);
+
             // Mock 객체 행동 정의
             when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
             when(bookmarkService.findBookmarkedCourses(memberId, null)).thenReturn(mockBookmarks);
-            when(courseService.getMyCourses(memberId, "latest")).thenReturn(myCourseDetailDto);
+            when(courseService.getMyCourses(memberId, pageable, null)).thenReturn(myCourseDetailDto);
 
             // when
             MemberInfoDto result = memberService.getMemberInfo(memberId);
@@ -287,7 +296,7 @@ class MemberServiceTest {
             // 서비스 호출 여부 검증
             verify(memberRepository).findById(memberId);
             verify(bookmarkService).findBookmarkedCourses(memberId, null);
-            verify(courseService).getMyCourses(memberId, "latest");
+            verify(courseService).getMyCourses(memberId, pageable, null);
         }
 
         @Test
@@ -305,7 +314,7 @@ class MemberServiceTest {
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.MEMBER_NOT_FOUND);
 
             verify(bookmarkService, never()).findBookmarkedCourses(any(), any());
-            verify(courseService, never()).getMyCourses(any(), any());
+            verify(courseService, never()).getMyCourses(any(), any(), any());
         }
 
     }

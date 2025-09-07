@@ -829,14 +829,11 @@ class CourseServiceTest {
             given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(coursePage);
 
             // when
-            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
+            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
 
             // then
-            assertThat(result.getContent()).hasSize(3);
-            assertThat(result.getTotalElements()).isEqualTo(3);
-            assertThat(result.getTotalPages()).isEqualTo(1);
-            assertThat(result.getNumber()).isEqualTo(0);
-            assertThat(result.getSize()).isEqualTo(10);
+            assertThat(result.courseCount()).isEqualTo(3);
+            assertThat(result.courses()).hasSize(3);
 
             verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
         }
@@ -858,14 +855,11 @@ class CourseServiceTest {
             given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(emptyPage);
 
             // when
-            Page<CourseInfoDto> result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
+            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
 
             // then
-            assertThat(result.getContent()).isEmpty();
-            assertThat(result.getTotalElements()).isEqualTo(0);
-            assertThat(result.getTotalPages()).isEqualTo(0);
-            assertThat(result.getNumber()).isEqualTo(0);
-            assertThat(result.getSize()).isEqualTo(10);
+            assertThat(result.courseCount()).isEqualTo(0);
+            assertThat(result.courses()).hasSize(0);
 
             verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
         }

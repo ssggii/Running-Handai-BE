@@ -123,7 +123,7 @@ public class CourseController {
             @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS")
     })
     @GetMapping("/api/members/me/courses")
-    public ResponseEntity<CommonResponse<Page<CourseInfoDto>>> getMyCourses(
+    public ResponseEntity<CommonResponse<MyCourseDetailDto>> getMyCourses(
             @Parameter(description = "페이지 번호", required = true) @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "한 페이지에 조회할 개수", required = true) @RequestParam(defaultValue = "10") int size,
             @Parameter(
@@ -143,8 +143,8 @@ public class CourseController {
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<CourseInfoDto> myCourseDetail = courseService.getMyCourses(memberId, pageable, keyword);
-        return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetail));
+        MyCourseDetailDto myCourseDetailDto = courseService.getMyCourses(memberId, pageable, keyword);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetailDto));
     }
 
     @Operation(summary = "지역 판별", description = "특정 위치 좌표가 부산 내 지역인지 판별합니다.")

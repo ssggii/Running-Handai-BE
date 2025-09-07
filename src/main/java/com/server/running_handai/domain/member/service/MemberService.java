@@ -3,11 +3,11 @@ package com.server.running_handai.domain.member.service;
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.MyCourseDetailDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
 import com.server.running_handai.global.response.ResponseCode;
@@ -18,6 +18,9 @@ import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -259,8 +262,12 @@ public class MemberService {
 
         // 내 코스 조회
         // TODO 내 코스 조회의 코스 dto 수정해야함 (생성일 추가, 사용자와의 거리 삭제)
-        List<CourseInfoDto> myCourses = courseService.getMyCourses(memberId, "latest").courses()
-                .stream().limit(MY_COURSE_PREVIEW_MAX_COUNT).toList();
+        Sort sort = SortBy.findBySort("LATEST");
+        Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, sort);
+        List<CourseInfoDto> myCourses = courseService.getMyCourses(memberId, pageable, null)
+                .courses()
+                .stream()
+                .toList();
 
         return MemberInfoDto.from(member, bookmarkedCourses, myCourses);
     }
