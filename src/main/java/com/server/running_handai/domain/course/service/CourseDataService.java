@@ -19,7 +19,6 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
-import com.server.running_handai.domain.course.service.KakaoMapService.AddressInfo;
 import com.server.running_handai.global.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
@@ -402,9 +401,9 @@ public class CourseDataService {
     @Transactional
     public void updateRoadConditions(Long courseId) {
         Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        List<SequenceTrackPointDto> trackPointDtoList = trackPointRepository.findByCourseIdOrderBySequenceAsc(courseId)
+        List<TrackPointDto> trackPointDtoList = trackPointRepository.findByCourseIdOrderBySequenceAsc(courseId)
                 .stream()
-                .map(SequenceTrackPointDto::sequenceTrackPointDto)
+                .map(TrackPointDto::from)
                 .toList();
 
         // 프롬프트 변수 준비
@@ -527,8 +526,8 @@ public class CourseDataService {
         log.info("[GPX 코스 생성] Area 분류 완료: {}", area);
 
         // 7. level, road condition을 위한 OpenAI API 호출 (응답은 "|"로 구분된 6개 설명으로 이루어짐)
-        List<SequenceTrackPointDto> trackPointDtoList = trackPoints.stream()
-                .map(SequenceTrackPointDto::sequenceTrackPointDto)
+        List<TrackPointDto> trackPointDtoList = trackPoints.stream()
+                .map(TrackPointDto::from)
                 .toList();
 
         Map<String, Object> variables = new HashMap<>();
@@ -814,24 +813,24 @@ public class CourseDataService {
      * 토큰을 초과하지 않을 때까지 RDP 알고리즘을 적용합니다.
      *
      * @param promptTemplate 프롬프트 템플릿
-     * @param trackPointDtoList 트랙포인트 Dto
+     * @param trackPointDtos 트랙 포인트 DTO 리스트
      * @param variables 프롬프트 변수
      * @return newVariables 새로운 프롬프트 변수
      */
-    private Map<String, Object> simplifyTrackPointsWhileTokenLimit(Resource promptTemplate, List<SequenceTrackPointDto> trackPointDtoList, Map<String, Object> variables) {
+    private Map<String, Object> simplifyTrackPointsWhileTokenLimit(Resource promptTemplate, List<TrackPointDto> trackPointDtos, Map<String, Object> variables) {
         double tolerance = distanceTolerance;
-        List<SequenceTrackPointDto> newTrackPointDtoList = trackPointDtoList;
+        List<TrackPointDto> simplifedTrackPointDtos = trackPointDtos;
 
         while (true) {
-            newTrackPointDtoList = TrackPointSimplificationUtil.simplifyTrackPoints(newTrackPointDtoList, tolerance, geometryFactory);
+            simplifedTrackPointDtos = TrackPointSimplificationUtil.simplifyTrackPointDtos(simplifedTrackPointDtos, tolerance, geometryFactory);
 
             // 단순화된 트랙 포인트로 프롬프트 변수 업데이트
             Map<String, Object> newVariables = new HashMap<>(variables);
-            newVariables.put("trackPoints", convertTrackPointToJson(newTrackPointDtoList));
+            newVariables.put("trackPoints", convertTrackPointToJson(simplifedTrackPointDtos));
 
             int requestToken = openAiService.calculateRequestToken(promptTemplate, newVariables);
             if (requestToken <= inputMaxToken) {
-                log.info("[RDP 알고리즘 적용] 적용 완료: tolearance={} trackPoint={} requestToken={}", tolerance, newTrackPointDtoList.size(), requestToken);
+                log.info("[RDP 알고리즘 적용] 적용 완료: tolearance={} trackPoint={} requestToken={}", tolerance, simplifedTrackPointDtos.size(), requestToken);
                 return newVariables;
             }
 
@@ -846,7 +845,7 @@ public class CourseDataService {
      * @param trackPointDtoList 트랙 포인트 Dto
      * @return JSON
      */
-    private String convertTrackPointToJson(List<SequenceTrackPointDto> trackPointDtoList) {
+    private String convertTrackPointToJson(List<TrackPointDto> trackPointDtoList) {
         try {
             return objectMapper.writeValueAsString(trackPointDtoList).replace("\"", "\\\"");
         } catch (JsonProcessingException e){

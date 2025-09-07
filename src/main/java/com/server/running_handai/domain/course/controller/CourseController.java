@@ -100,7 +100,6 @@ public class CourseController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
             @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
-            @ApiResponse(responseCode = "403", description = "실패 (해당 사용자가 만든 코스가 아님) - NOT_COURSE_CREATOR"),
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스) - COURSE_NOT_FOUND")
     })
     @GetMapping("/api/members/me/courses/{courseId}/gpx")
@@ -121,7 +120,7 @@ public class CourseController {
             @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS")
     })
     @GetMapping("/api/members/me/courses")
-    public ResponseEntity<CommonResponse<MyCourseDetailDto>> getMyCourses(
+    public ResponseEntity<CommonResponse<MyAllCoursesDetailDto>> getMyAllCourses(
             @Parameter(
                     description = "정렬 조건",
                     schema = @Schema(allowableValues = {"latest", "oldest", "short", "long"})
@@ -130,8 +129,26 @@ public class CourseController {
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
-        MyCourseDetailDto myCourseDetail = courseService.getMyCourses(memberId, sortBy);
-        return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetail));
+        MyAllCoursesDetailDto myAllCoursesDetailDto = courseService.getMyAllCourses(memberId, sortBy);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, myAllCoursesDetailDto));
+    }
+
+    @Operation(summary = "내 코스 상세 조회", description = "사용자가 생성한 코스를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
+            @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS"),
+            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스) - COURSE_NOT_FOUND"),
+    })
+    @GetMapping(value = "/api/members/me/courses/{courseId}")
+    public ResponseEntity<CommonResponse<MyCourseDetailDto>> getMyCourse(
+            @Parameter(description = "조회하려는 코스 ID", required = true)
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User
+    ) {
+        Long memberId = customOAuth2User.getMember().getId();
+        log.info("[내 코스 상세 조회] memberId: {}, courseId: {}", memberId, courseId);
+        MyCourseDetailDto myCourseDetailDto = courseService.getMyCourse(memberId, courseId);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetailDto));
     }
 
     @Operation(summary = "지역 판별", description = "특정 위치 좌표가 부산 내 지역인지 판별합니다.")
@@ -201,5 +218,4 @@ public class CourseController {
         courseService.updateCourse(memberId, courseId, request);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_UPDATE, null));
     }
-
 }
