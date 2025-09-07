@@ -264,7 +264,7 @@ public class MemberService {
         // TODO 내 코스 조회의 코스 dto 수정해야함 (생성일 추가, 사용자와의 거리 삭제)
         Sort sort = SortBy.findBySort("LATEST");
         Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, sort);
-        List<CourseInfoDto> myCourses = courseService.getMyCourses(memberId, pageable, null)
+        List<CourseInfoDto> myCourses = courseService.getMyAllCourses(memberId, pageable, null)
                 .courses()
                 .stream()
                 .toList();

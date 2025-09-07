@@ -3,7 +3,7 @@ package com.server.running_handai.domain.member.service;
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
-import com.server.running_handai.domain.course.dto.MyCourseDetailDto;
+import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
@@ -269,7 +269,7 @@ class MemberServiceTest {
             List<CourseInfoDto> mockMyCourses = IntStream.range(0, coursesToCreate)
                     .mapToObj(i -> mock(CourseInfoDto.class))
                     .toList();
-            MyCourseDetailDto myCourseDetailDto = MyCourseDetailDto.from(mockMyCourses);
+            MyAllCoursesDetailDto myAllCoursesDetailDto = MyAllCoursesDetailDto.from(mockMyCourses);
 
             Sort sort = SortBy.findBySort("LATEST");
             Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, sort);
@@ -277,7 +277,7 @@ class MemberServiceTest {
             // Mock 객체 행동 정의
             when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
             when(bookmarkService.findBookmarkedCourses(memberId, null)).thenReturn(mockBookmarks);
-            when(courseService.getMyCourses(memberId, pageable, null)).thenReturn(myCourseDetailDto);
+            when(courseService.getMyAllCourses(memberId, pageable, null)).thenReturn(myAllCoursesDetailDto);
 
             // when
             MemberInfoDto result = memberService.getMemberInfo(memberId);
@@ -296,7 +296,7 @@ class MemberServiceTest {
             // 서비스 호출 여부 검증
             verify(memberRepository).findById(memberId);
             verify(bookmarkService).findBookmarkedCourses(memberId, null);
-            verify(courseService).getMyCourses(memberId, pageable, null);
+            verify(courseService).getMyAllCourses(memberId, pageable, null);
         }
 
         @Test
@@ -314,7 +314,7 @@ class MemberServiceTest {
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.MEMBER_NOT_FOUND);
 
             verify(bookmarkService, never()).findBookmarkedCourses(any(), any());
-            verify(courseService, never()).getMyCourses(any(), any(), any());
+            verify(courseService, never()).getMyAllCourses(any(), any(), any());
         }
 
     }

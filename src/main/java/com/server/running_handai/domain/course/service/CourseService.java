@@ -41,9 +41,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -267,9 +265,9 @@ public class CourseService {
      * @param keyword 검색 키워드 (코스 이름)
      * @return 정렬된 코스 목록이 포함된 DTO
      */
-    public MyCourseDetailDto getMyCourses(Long memberId, Pageable pageable, String keyword) {
+    public MyAllCoursesDetailDto getMyAllCourses(Long memberId, Pageable pageable, String keyword) {
         List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword).getContent();
-        return MyCourseDetailDto.from(courseInfoDtos);
+        return MyAllCoursesDetailDto.from(courseInfoDtos);
     }
 
     /**

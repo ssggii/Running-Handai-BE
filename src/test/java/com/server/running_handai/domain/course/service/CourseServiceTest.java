@@ -829,7 +829,7 @@ class CourseServiceTest {
             given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(coursePage);
 
             // when
-            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
+            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, pageable, keyword);
 
             // then
             assertThat(result.courseCount()).isEqualTo(3);
@@ -855,7 +855,7 @@ class CourseServiceTest {
             given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(emptyPage);
 
             // when
-            MyCourseDetailDto result = courseService.getMyCourses(MEMBER_ID, pageable, keyword);
+            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, pageable, keyword);
 
             // then
             assertThat(result.courseCount()).isEqualTo(0);
