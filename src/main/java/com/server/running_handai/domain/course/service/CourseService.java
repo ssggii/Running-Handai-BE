@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.course.service;
 
+import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
@@ -211,7 +212,7 @@ public class CourseService {
 
     /**
      * 상세-전체 탭을 위한 코스 요약 정보를 조회합니다.
-     * 코스 요약 정보는 기본적인 코스 정보(전체 길이, 소요 시간, 최대 고도)와 즐길거리 및 리뷰를 포함합니다.
+     * 코스 요약 정보는 기본적인 코스 정보, 리뷰, 즐길거리 상태를 포함합니다.
      *
      * @param courseId 조회하려는 코스의 ID
      * @param memberId 조회 요청한 회원 ID (비회원은 null)
@@ -229,9 +230,13 @@ public class CourseService {
         int reviewCount = (int) reviewRepository.countByCourseId(courseId); // 리뷰 전체 개수
         double starAverage = reviewService.calculateAverageStars(courseId); // 리뷰 전체 평점
 
-        // 즐길거리 조회
-        List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
+        // 즐길거리 초기화 완료가 안되었다면 상태값과 빈 리스트 반환
+        if (course.getSpotStatus() != COMPLETED) {
+            return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, Collections.emptyList());
+        }
 
+        // 즐길거리 초기화 완료 시 상태값과 즐길거리 리스트 반환
+        List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
         return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
     }
 

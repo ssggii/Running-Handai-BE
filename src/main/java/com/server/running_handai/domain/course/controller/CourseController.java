@@ -1,9 +1,11 @@
 package com.server.running_handai.domain.course.controller;
 
+import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.global.response.ResponseCode.*;
 
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.service.CourseService;
+import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -28,11 +29,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -81,7 +79,8 @@ public class CourseController {
 
     @Operation(summary = "추천코스 요약 조회", description = "코스의 요약 정보를 조회합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "200", description = "성공 (즐길거리 초기화 완료)"),
+            @ApiResponse(responseCode = "202", description = "성공 (즐길거리 초기화 진행 중)"),
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)")
     })
     @GetMapping("/api/courses/{courseId}/summary")
@@ -93,6 +92,14 @@ public class CourseController {
         Long memberId = (customOAuth2User != null) ? customOAuth2User.getMember().getId() : null;
         log.info("[코스 요약 조회] courseId: {}, memberId: {}", courseId, memberId);
         CourseSummaryDto courseSummary = courseService.getCourseSummary(courseId, memberId);
+        String status = courseSummary.spotStatus();
+
+        // 즐길거리 초기화 진행 중일 때 202 accepted 반환
+        if (status.equals(IN_PROGRESS.name())) {
+            return ResponseEntity.accepted()
+                    .body(CommonResponse.success(SUCCESS_SPOT_INIT_IN_PROGRESS, courseSummary));
+        }
+
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseSummary));
     }
 
