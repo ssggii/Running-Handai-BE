@@ -134,6 +134,12 @@ class CourseServiceTest {
         );
     }
 
+    private Member createMockMember(Long memberId) {
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", memberId);
+        return member;
+    }
+
     @ParameterizedTest
     @MethodSource("filterOptionsProvider")
     @DisplayName("코스 전체 조회 성공 - NEARBY, AREA, THEME 필터링 (회원)")
@@ -557,12 +563,6 @@ class CourseServiceTest {
     @DisplayName("GPX 다운로드 테스트")
     class CourseGpxDownloadTest {
         // 헬퍼 메서드
-        private Member createMockMember(Long memberId) {
-            Member member = Member.builder().build();
-            ReflectionTestUtils.setField(member, "id", memberId);
-            return member;
-        }
-
         private Course createMockCourse(Long courseId, Member member) {
             Course course = Course.builder().gpxPath("https://s3-bucket.com/course-1.gpx").build();
             ReflectionTestUtils.setField(course, "id", courseId);
@@ -843,12 +843,6 @@ class CourseServiceTest {
     @DisplayName("내 코스 상세 조회 테스트")
     class GetMyCourseTest {
         // 헬퍼 메서드
-        private Member createMockMember(Long memberId) {
-            Member member = Member.builder().build();
-            ReflectionTestUtils.setField(member, "id", memberId);
-            return member;
-        }
-
         private Course createMockCourse(Long courseId, Member member) {
             Course course = Course.builder()
                     .name("시작점-도착점")
