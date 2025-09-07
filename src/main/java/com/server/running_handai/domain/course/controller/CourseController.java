@@ -4,6 +4,7 @@ import static com.server.running_handai.global.response.ResponseCode.*;
 
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.service.CourseService;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -137,12 +138,7 @@ public class CourseController {
         Long memberId = customOAuth2User.getMember().getId();
 
         // Sort 객체 생성
-        Sort sort = switch (sortBy) {
-            case "oldest" -> Sort.by("created_at").ascending();
-            case "short" -> Sort.by("distance").ascending();
-            case "long" -> Sort.by("distance").descending();
-            default -> Sort.by("created_at").descending();
-        };
+        Sort sort = SortBy.findBySort(sortBy.toUpperCase());
 
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size, sort);

@@ -40,6 +40,7 @@ import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.entity.Spot;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.time.LocalDateTime;
@@ -813,12 +814,7 @@ class CourseServiceTest {
         @DisplayName("내 코스 전체 조회 성공 - Course가 존재")
         void getMyCourses_success_courseExists(String sortBy) {
             // given
-            Sort sort = switch (sortBy) {
-                case "oldest" -> Sort.by("created_at").ascending();
-                case "short" -> Sort.by("distance").ascending();
-                case "long" -> Sort.by("distance").descending();
-                default -> Sort.by("created_at").descending();
-            };
+            Sort sort = SortBy.findBySort(sortBy);
 
             List<CourseInfoDto> courseInfoDtos = List.of(
                     createCourseInfoDto(),
@@ -855,7 +851,7 @@ class CourseServiceTest {
             // given
             // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
             String keyword = null;
-            Sort sort = Sort.by("created_at").descending();
+            Sort sort = SortBy.findBySort("LATEST");
             Pageable pageable = PageRequest.of(0, 10, sort);
             Page<CourseInfoDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
 
