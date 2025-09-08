@@ -97,10 +97,6 @@ public class Spot extends BaseTimeEntity {
             this.lon = source.getLon();
             isUpdated = true;
         }
-        if (this.lon != source.getLon()) {
-            this.lon = source.getLon();
-            isUpdated = true;
-        }
 
         return isUpdated;
     }
