@@ -28,12 +28,9 @@ import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -237,7 +234,7 @@ public class CourseService {
     }
 
     /**
-     * 내가 생성한 코스의 GPX 파일 다운로드를 위한 Presigned GET URL을 발급합니다.
+     * 사용자가 생성한 코스의 GPX 파일 다운로드를 위한 Presigned GET URL을 발급합니다.
      * 해당 URL의 유효시간은 1시간입니다.
      *
      * @param courseId 다운로드하려는 코스 ID
@@ -245,12 +242,8 @@ public class CourseService {
      * @return GPX 파일 다운로드용 Presigned GET URL이 포함된 DTO
      */
     public GpxPathDto downloadGpx(Long courseId, Long memberId) {
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-
-        // 해당 Course를 만든 Member가 아닌 경우
-        if (!course.getCreator().getId().equals(memberId)) {
-            throw new BusinessException(ResponseCode.NOT_COURSE_CREATOR);
-        }
+        Course course = courseRepository.findByIdAndCreatorId(courseId, memberId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
 
         // Presigned GET URL 발급 (1시간)
         String gpxPath = fileService.getPresignedGetUrl(course.getGpxPath(), 60);
@@ -274,6 +267,23 @@ public class CourseService {
         return MyAllCoursesDetailDto.from(courseInfoDtos);
     }
 
+    /**
+     * 사용자가 생성한 코스를 조회합니다.
+     *
+     * @param memberId 조회 요청한 회원 ID
+     * @param courseId 조회 요청한 코스 ID
+     * @return 코스 정보가 포함된 DTO
+     */
+    public MyCourseDetailDto getMyCourse(Long memberId, Long courseId) {
+        Course course = courseRepository.findByIdAndCreatorIdWithTrackPoints(courseId, memberId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
+
+        List<TrackPointDto> trackPointDtos = course.getTrackPoints().stream()
+                .map(TrackPointDto::from)
+                .toList();
+
+        return MyCourseDetailDto.from(course, trackPointDtos);
+    }
     /**
      * 주어진 좌표가 부산 내에 있는지 판별합니다.
      *
