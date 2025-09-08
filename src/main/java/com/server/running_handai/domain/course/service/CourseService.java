@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -266,7 +267,10 @@ public class CourseService {
      * @return 정렬된 코스 목록이 포함된 DTO
      */
     public MyAllCoursesDetailDto getMyAllCourses(Long memberId, Pageable pageable, String keyword) {
-        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword).getContent();
+        List<MyCourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword)
+                .getContent().stream()
+                .map(MyCourseInfoDto::from)
+                .toList();
         return MyAllCoursesDetailDto.from(courseInfoDtos);
     }
 

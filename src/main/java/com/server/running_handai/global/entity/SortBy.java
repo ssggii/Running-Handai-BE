@@ -9,10 +9,10 @@ import java.util.Arrays;
 @Getter
 @RequiredArgsConstructor
 public enum SortBy {
-    OLDEST("오래된순", Sort.by("created_at").ascending()),
+    OLDEST("오래된순", Sort.by("createdAt").ascending()),
     SHORT("거리짧은순", Sort.by("distance").ascending()),
     LONG("거리긴순", Sort.by("distance").descending()),
-    LATEST("최신순", Sort.by("created_at").descending());
+    LATEST("최신순", Sort.by("createdAt").descending());
 
     private final String description;
     private final Sort sort;

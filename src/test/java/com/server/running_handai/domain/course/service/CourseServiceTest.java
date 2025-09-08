@@ -800,9 +800,18 @@ class CourseServiceTest {
     @DisplayName("내 코스 전체 조회 테스트")
     class GetMyCoursesTest {
         // 헬퍼 메서드
-        private CourseInfoDto createCourseInfoDto() {
-            CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
-            return courseInfoDto;
+        private Course createMockCourse(long courseId) {
+            Course course = Course.builder()
+                    .name("startPointName-endPointName")
+                    .distance(15.3)
+                    .duration(120)
+                    .maxElevation(150.5)
+                    .level(CourseLevel.MEDIUM)
+                    .build();
+
+            ReflectionTestUtils.setField(course, "id", courseId);
+            ReflectionTestUtils.setField(course, "createdAt", LocalDateTime.now());
+            return course;
         }
 
         /**
@@ -816,15 +825,15 @@ class CourseServiceTest {
             // given
             Sort sort = SortBy.findBySort(sortBy);
 
-            List<CourseInfoDto> courseInfoDtos = List.of(
-                    createCourseInfoDto(),
-                    createCourseInfoDto(),
-                    createCourseInfoDto()
+            List<Course> courseInfos = List.of(
+                    createMockCourse(1L),
+                    createMockCourse(2L),
+                    createMockCourse(3L)
             );
 
             String keyword = null;
             Pageable pageable = PageRequest.of(0, 10, sort);
-            Page<CourseInfoDto> coursePage = new PageImpl<>(courseInfoDtos, pageable, 3);
+            Page<Course> coursePage = new PageImpl<>(courseInfos, pageable, 3);
 
             given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(coursePage);
 
@@ -850,7 +859,7 @@ class CourseServiceTest {
             String keyword = null;
             Sort sort = SortBy.findBySort("LATEST");
             Pageable pageable = PageRequest.of(0, 10, sort);
-            Page<CourseInfoDto> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+            Page<Course> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
 
             given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(emptyPage);
 

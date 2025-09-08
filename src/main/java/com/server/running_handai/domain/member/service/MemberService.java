@@ -22,7 +22,6 @@ import com.server.running_handai.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -264,7 +263,6 @@ public class MemberService {
                         .toList());
 
         // 내 코스 조회
-        // TODO 내 코스 조회의 코스 dto 수정해야함 (생성일 추가, 사용자와의 거리 삭제)
         Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
         MyAllCoursesDetailDto myCourses = courseService.getMyAllCourses(memberId, pageable, null);
 

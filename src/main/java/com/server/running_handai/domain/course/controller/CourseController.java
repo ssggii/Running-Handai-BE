@@ -131,7 +131,7 @@ public class CourseController {
                     schema = @Schema(allowableValues = {"latest", "oldest", "short", "long"})
             )
             @RequestParam(defaultValue = "latest") String sortBy,
-            @Parameter(description = "검색 키워드",  required = false) @RequestParam(required = false) String keyword,
+            @Parameter(description = "검색 키워드") @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();

@@ -4,6 +4,7 @@ import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
+import com.server.running_handai.domain.course.dto.MyCourseInfoDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
@@ -27,7 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -265,8 +265,8 @@ class MemberServiceTest {
                     .toList();
 
             // 내 코스 데이터 생성
-            List<CourseInfoDto> mockMyCourses = IntStream.range(0, myCourseCount)
-                    .mapToObj(i -> mock(CourseInfoDto.class))
+            List<MyCourseInfoDto> mockMyCourses = IntStream.range(0, myCourseCount)
+                    .mapToObj(i -> mock(MyCourseInfoDto.class))
                     .toList();
             MyAllCoursesDetailDto myAllCoursesDetailDto = MyAllCoursesDetailDto.from(mockMyCourses);
             Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
