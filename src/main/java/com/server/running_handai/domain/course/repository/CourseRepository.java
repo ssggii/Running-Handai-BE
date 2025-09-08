@@ -18,7 +18,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByExternalIdIsNotNull();
 
     /**
-     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 10km 이내에 있는 Course 목록 조회
+     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 5km 이내에 있는 Course 목록 조회
      */
     @Query(
             value = "SELECT " +
