@@ -28,6 +28,8 @@ public class AppConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         // OpenAI API 관련에서 발생하는 알 수 없는 필드가 있다는 예외를 무시하기 위함
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        // 빈 문자열을 null 객체로 허용해 JSON 파싱 오류 방지
+        objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
         return objectMapper;
     }
 
