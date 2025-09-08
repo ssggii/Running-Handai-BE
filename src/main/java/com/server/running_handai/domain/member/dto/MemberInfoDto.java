@@ -1,25 +1,20 @@
 package com.server.running_handai.domain.member.dto;
 
-import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
-import com.server.running_handai.domain.course.dto.CourseInfoDto;
+import com.server.running_handai.domain.bookmark.dto.MyBookmarkDetailDto;
+import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
 import com.server.running_handai.domain.member.entity.Member;
-import java.util.List;
 
 public record MemberInfoDto(
         String nickname,
         String email,
-        int BookmarkTotalCount,
-        List<MyBookmarkInfoDto> bookmarkedCourses,
-        int MyCourseTotalCount,
-        List<CourseInfoDto> myCourses
-        ) {
-    public static MemberInfoDto from(Member member, List<MyBookmarkInfoDto> bookmarkedCourses, List<CourseInfoDto> myCourses) {
+        MyBookmarkDetailDto bookmarkedCourses,
+        MyAllCoursesDetailDto myCourses
+) {
+    public static MemberInfoDto from(Member member, MyBookmarkDetailDto bookmarkedCourses, MyAllCoursesDetailDto myCourses) {
         return new MemberInfoDto(
                 member.getNickname(),
                 member.getEmail(),
-                bookmarkedCourses.size(),
                 bookmarkedCourses,
-                myCourses.size(),
                 myCourses
         );
     }

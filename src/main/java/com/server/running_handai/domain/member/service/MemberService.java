@@ -1,8 +1,10 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.bookmark.dto.MyBookmarkDetailDto;
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
+import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
@@ -255,19 +257,16 @@ public class MemberService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
 
         // 북마크한 코스 조회
-        List<MyBookmarkInfoDto> bookmarkedCourses = bookmarkService.findBookmarkedCourses(memberId, null).stream()
-                .map(MyBookmarkInfoDto::from)
-                .limit(BOOKMARK_PREVIEW_MAX_COUNT)
-                .toList();
+        MyBookmarkDetailDto bookmarkedCourses = MyBookmarkDetailDto.from(
+                bookmarkService.findBookmarkedCourses(memberId, null).stream()
+                        .map(MyBookmarkInfoDto::from)
+                        .limit(BOOKMARK_PREVIEW_MAX_COUNT)
+                        .toList());
 
         // 내 코스 조회
         // TODO 내 코스 조회의 코스 dto 수정해야함 (생성일 추가, 사용자와의 거리 삭제)
-        Sort sort = SortBy.findBySort("LATEST");
-        Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, sort);
-        List<CourseInfoDto> myCourses = courseService.getMyAllCourses(memberId, pageable, null)
-                .courses()
-                .stream()
-                .toList();
+        Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
+        MyAllCoursesDetailDto myCourses = courseService.getMyAllCourses(memberId, pageable, null);
 
         return MemberInfoDto.from(member, bookmarkedCourses, myCourses);
     }

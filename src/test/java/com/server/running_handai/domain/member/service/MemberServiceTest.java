@@ -249,34 +249,30 @@ class MemberServiceTest {
         @ParameterizedTest(name = "북마크 {0}개, 내 코스 {1}개일 때")
         @DisplayName("내 정보 조회 - 성공")
         @CsvSource({
-                "10, 5, 5, 3", // Case 1: 북마크 10개, 내 코스 5개
-                "0, 5, 0, 3",  // Case 2: 북마크 0개, 내 코스 5개
+                "10, 3, 5, 3", // Case 1: 북마크 10개, 내 코스 3개
+                "0, 3, 0, 3",  // Case 2: 북마크 0개, 내 코스 3개
                 "10, 0, 5, 0", // Case 3: 북마크 10개, 내 코스 0개
                 "0, 0, 0, 0"   // Case 4: 둘 다 없는 경우
         })
-        void getMemberInfo_success_scenarios(int bookmarkCount, int myCourseCount, int expectedBookmarkSize, int expectedMyCourseSize) {
+        void getMemberInfo_success_scenarios(int bookmarkCount, int myCourseCount, int expectedBookmarkCount, int expectedMyCourseCount) {
             // given
             Long memberId = 1L;
             Member member = createMockMember(memberId);
 
             // 북마크한 코스 데이터 생성
-            List<BookmarkedCourseInfoDto> mockBookmarks = IntStream.range(0, bookmarkCount)
+            List<BookmarkedCourseInfoDto> mockBookmarkedCourses = IntStream.range(0, bookmarkCount)
                     .mapToObj(i -> mock(BookmarkedCourseInfoDto.class))
                     .toList();
 
             // 내 코스 데이터 생성
-            int coursesToCreate = Math.min(myCourseCount, MY_COURSE_PREVIEW_MAX_COUNT);
-            List<CourseInfoDto> mockMyCourses = IntStream.range(0, coursesToCreate)
+            List<CourseInfoDto> mockMyCourses = IntStream.range(0, myCourseCount)
                     .mapToObj(i -> mock(CourseInfoDto.class))
                     .toList();
             MyAllCoursesDetailDto myAllCoursesDetailDto = MyAllCoursesDetailDto.from(mockMyCourses);
+            Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
 
-            Sort sort = SortBy.findBySort("LATEST");
-            Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, sort);
-
-            // Mock 객체 행동 정의
             when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-            when(bookmarkService.findBookmarkedCourses(memberId, null)).thenReturn(mockBookmarks);
+            when(bookmarkService.findBookmarkedCourses(memberId, null)).thenReturn(mockBookmarkedCourses);
             when(courseService.getMyAllCourses(memberId, pageable, null)).thenReturn(myAllCoursesDetailDto);
 
             // when
@@ -287,13 +283,10 @@ class MemberServiceTest {
             assertThat(result.nickname()).isEqualTo(member.getNickname());
             assertThat(result.email()).isEqualTo(member.getEmail());
 
-            // limit 및 개수 검증 (예상 결과 파라미터 사용)
-            assertThat(result.bookmarkedCourses().size()).isEqualTo(expectedBookmarkSize);
-            assertThat(result.myCourses().size()).isEqualTo(expectedMyCourseSize);
-            assertThat(result.BookmarkTotalCount()).isEqualTo(expectedBookmarkSize);
-            assertThat(result.MyCourseTotalCount()).isEqualTo(expectedMyCourseSize);
+            // limit 개수 검증
+            assertThat(result.bookmarkedCourses().courseCount()).isEqualTo(expectedBookmarkCount);
+            assertThat(result.myCourses().courseCount()).isEqualTo(expectedMyCourseCount);
 
-            // 서비스 호출 여부 검증
             verify(memberRepository).findById(memberId);
             verify(bookmarkService).findBookmarkedCourses(memberId, null);
             verify(courseService).getMyAllCourses(memberId, pageable, null);
