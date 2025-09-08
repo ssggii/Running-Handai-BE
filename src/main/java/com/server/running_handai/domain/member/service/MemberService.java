@@ -1,8 +1,15 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.bookmark.dto.MyBookmarkDetailDto;
+import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
+import com.server.running_handai.domain.bookmark.service.BookmarkService;
+import com.server.running_handai.domain.course.dto.CourseInfoDto;
+import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
+import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateResponseDto;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.jwt.JwtProvider;
 import com.server.running_handai.global.oauth.userInfo.OAuth2UserInfo;
 import com.server.running_handai.global.response.ResponseCode;
@@ -13,6 +20,8 @@ import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,12 +33,17 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class MemberService {
-    private final MemberRepository memberRepository;
-    private final JwtProvider jwtProvider;
 
     public static final int NICKNAME_MAX_LENGTH = 10;
     public static final int NICKNAME_MIN_LENGTH = 2;
     private static final String NICKNAME_PATTERN = "^[ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9]{2,10}$";
+    private static final int BOOKMARK_PREVIEW_MAX_COUNT = 5;
+    private static final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
+
+    private final MemberRepository memberRepository;
+    private final JwtProvider jwtProvider;
+    private final BookmarkService bookmarkService;
+    private final CourseService courseService;
 
     /**
      * OAuth2 사용자 정보를 기반으로 회원을 생성하거나 기존 회원을 조회합니다.
@@ -231,13 +245,27 @@ public class MemberService {
 
     /**
      * 회원 정보를 조회합니다.
+     * 회원의 닉네임, 이메일, 회원이 북마크한 코스, 생성한 코스 정보를 반환합니다.
      *
      * @param memberId 요청 회원의 ID
      * @return 조회한 회원 정보를 담은 DTO
      */
     public MemberInfoDto getMemberInfo(Long memberId) {
+        // 회원 조회
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
-        return MemberInfoDto.from(member);
+
+        // 북마크한 코스 조회
+        MyBookmarkDetailDto bookmarkedCourses = MyBookmarkDetailDto.from(
+                bookmarkService.findBookmarkedCourses(memberId, null).stream()
+                        .map(MyBookmarkInfoDto::from)
+                        .limit(BOOKMARK_PREVIEW_MAX_COUNT)
+                        .toList());
+
+        // 내 코스 조회
+        Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
+        MyAllCoursesDetailDto myCourses = courseService.getMyAllCourses(memberId, pageable, null);
+
+        return MemberInfoDto.from(member, bookmarkedCourses, myCourses);
     }
 }

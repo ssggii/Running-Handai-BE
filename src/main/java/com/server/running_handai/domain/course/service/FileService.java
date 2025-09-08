@@ -207,6 +207,7 @@ public class FileService {
             case "jpg", "jpeg" -> "image/jpeg";
             case "gpx" -> "application/gpx+xml";
             case "webp" -> "image/webp";
+            case "bmp" -> "image/bmp";
             default -> {
                 log.warn("[S3 파일 업로드] 감지하지 못한 content-type: extension={}", extension);
                 yield "application/octet-stream";
@@ -223,7 +224,7 @@ public class FileService {
         String lowerName = fileName.toLowerCase();
 
         boolean isSupported = lowerName.endsWith(".png") || lowerName.endsWith(".jpg") ||
-                lowerName.endsWith(".jpeg") || (lowerName.endsWith(".gpx") || lowerName.endsWith(".webp"));
+                lowerName.endsWith(".jpeg") || (lowerName.endsWith(".gpx") || lowerName.endsWith(".webp") || lowerName.endsWith(".bmp"));
 
         if (!isSupported) {
             throw new BusinessException(ResponseCode.UNSUPPORTED_FILE_TYPE);
@@ -244,7 +245,7 @@ public class FileService {
         String extension = (dotIndex == -1) ? "" : originalFileName.substring(dotIndex).toLowerCase();
 
         // 영문, 숫자, 하이픈, 언더스코어만 허용
-        String newFileName = name.replaceAll(FILENAME_PATTERN, "");
+        String newFileName = name.replaceAll(FILENAME_PATTERN, "").trim();
 
         // 원본 파일명에 허용된 문자가 없어 빈 파일명일 경우 기본값 사용
         if (newFileName.isBlank()) {

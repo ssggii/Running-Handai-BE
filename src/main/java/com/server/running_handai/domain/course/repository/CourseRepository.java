@@ -5,7 +5,8 @@ import com.server.running_handai.domain.course.entity.Course;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,7 +19,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByExternalIdIsNotNull();
 
     /**
-     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 10km 이내에 있는 Course 목록 조회
+     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 5km 이내에 있는 Course 목록 조회
      */
     @Query(
             value = "SELECT " +
@@ -34,7 +35,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "LEFT JOIN " +
                     "    course_image ci ON c.course_id = ci.course_id " +
                     "WHERE " +
-                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 10000 " +
+                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 5000 " +
                     "ORDER BY " +
                     "    distanceFromUser ASC",
             nativeQuery = true
@@ -95,25 +96,23 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Optional<Course> findCourseWithDetailsById(@Param("courseId") Long courseId);
 
     /**
-     * Member가 생성한 Course 목록을 정렬 조건에 따라 조회
+     * Member가 생성한 Course 목록을 페이징, 정렬 조건, 검색 키워드에 따라 조회
      */
-    @Query(
-            value = "SELECT " +
-                    "    c.course_id AS id, " +
-                    "    c.name, " +
-                    "    ci.img_url AS thumbnailUrl, " +
-                    "    c.distance, " +
-                    "    c.duration, " +
-                    "    c.max_ele AS maxElevation, " +
-                    "    0.0 AS distanceFromUser " +
-                    "FROM " +
-                    "    course c " +
-                    "LEFT JOIN " +
-                    "    course_image ci ON c.course_id = ci.course_id " +
-                    "WHERE c.member_id = :memberId ",
-            nativeQuery = true
-    )
-    List<CourseInfoDto> findMyCoursesBySort(@Param("memberId") Long memberId, Sort sort);
+    @Query("SELECT c FROM Course c WHERE c.creator.id = :memberId AND (:keyword IS NULL OR c.name LIKE CONCAT('%', :keyword, '%'))")
+    Page<Course> findMyCoursesWithPagingAndKeyword(@Param("memberId") Long memberId, Pageable pageable, String keyword);
 
     boolean existsByName(String name);
+
+    /**
+     * 사용자가 생성한 코스 조회
+     */
+    Optional<Course> findByIdAndCreatorId(Long courseId, Long memberId);
+
+    /**
+     * 사용자가 생성한 코스를 트랙 포인트와 함께 조회
+     */
+    @Query("SELECT c FROM Course c " +
+            "LEFT JOIN FETCH c.trackPoints tp WHERE c.id = :courseId AND c.creator.id = :memberId " +
+            "ORDER BY tp.sequence ASC")
+    Optional<Course> findByIdAndCreatorIdWithTrackPoints(@Param("courseId") Long courseId, @Param("memberId") Long memberId);
 }
