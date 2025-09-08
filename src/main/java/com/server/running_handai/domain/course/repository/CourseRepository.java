@@ -18,7 +18,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByExternalIdIsNotNull();
 
     /**
-     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 10km 이내에 있는 Course 목록 조회
+     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 5km 이내에 있는 Course 목록 조회
      */
     @Query(
             value = "SELECT " +
@@ -34,7 +34,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "LEFT JOIN " +
                     "    course_image ci ON c.course_id = ci.course_id " +
                     "WHERE " +
-                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 10000 " +
+                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 5000 " +
                     "ORDER BY " +
                     "    distanceFromUser ASC",
             nativeQuery = true
