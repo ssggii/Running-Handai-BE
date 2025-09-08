@@ -31,6 +31,7 @@ import com.server.running_handai.global.response.exception.BusinessException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -38,7 +39,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -251,21 +252,18 @@ public class CourseService {
     }
 
     /**
-     * 사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다.
+     * 사용자가 생성한 코스 목록을 페이징, 정렬 조건, 검색 키워드에 따라 조회합니다.
      *
      * @param memberId 조회 요청한 회원 ID
-     * @param sortBy 정렬 조건 (latest, oldest, short, long)
+     * @param pageable 정렬 조건을 포함한 페이징 객체
+     * @param keyword 검색 키워드 (코스 이름)
      * @return 정렬된 코스 목록이 포함된 DTO
      */
-    public MyAllCoursesDetailDto getMyAllCourses(Long memberId, String sortBy) {
-        Sort sort = switch (sortBy) {
-            case "oldest" -> Sort.by("created_at").ascending();
-            case "short" -> Sort.by("distance").ascending();
-            case "long" -> Sort.by("distance").descending();
-            default -> Sort.by("created_at").descending();
-        };
-
-        List<CourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesBySort(memberId, sort);
+    public MyAllCoursesDetailDto getMyAllCourses(Long memberId, Pageable pageable, String keyword) {
+        List<MyCourseInfoDto> courseInfoDtos = courseRepository.findMyCoursesWithPagingAndKeyword(memberId, pageable, keyword)
+                .getContent().stream()
+                .map(MyCourseInfoDto::from)
+                .toList();
         return MyAllCoursesDetailDto.from(courseInfoDtos);
     }
 

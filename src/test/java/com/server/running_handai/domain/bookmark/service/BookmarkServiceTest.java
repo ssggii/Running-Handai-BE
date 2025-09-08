@@ -14,18 +14,15 @@ import com.server.running_handai.domain.bookmark.entity.Bookmark;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.domain.course.entity.Course;
-import com.server.running_handai.domain.course.entity.CourseLevel;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.repository.MemberRepository;
-import io.swagger.v3.oas.annotations.Parameter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,17 +30,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.io.ParseException;
-import org.locationtech.jts.io.WKTReader;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
@@ -72,7 +62,7 @@ class BookmarkServiceTest {
 
     @Test
     @DisplayName("북마크 등록 성공")
-    void registerBookmark_success() {
+    void createBookmark_success() {
         // given
         Long memberId = 1L;
         Long courseId = 1L;
@@ -82,7 +72,7 @@ class BookmarkServiceTest {
         given(bookmarkRepository.existsByCourseIdAndMemberId(courseId, memberId)).willReturn(false);
 
         // when
-        bookmarkService.registerBookmark(memberId, courseId);
+        bookmarkService.createBookmark(memberId, courseId);
 
         // then
         verify(bookmarkRepository, times(1)).save(any(Bookmark.class));
@@ -90,7 +80,7 @@ class BookmarkServiceTest {
 
     @Test
     @DisplayName("북마크 등록 실패 - 이미 북마크한 코스")
-    void registerBookmark_fail_alreadyBookmarked() {
+    void createBookmark_fail_alreadyBookmarked() {
         // given
         Long memberId = 1L;
         Long courseId = 1L;
@@ -101,7 +91,7 @@ class BookmarkServiceTest {
 
         // when
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> bookmarkService.registerBookmark(memberId, courseId));
+                () -> bookmarkService.createBookmark(memberId, courseId));
 
         // then
         assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.ALREADY_BOOKMARKED);
@@ -109,7 +99,7 @@ class BookmarkServiceTest {
 
     @Test
     @DisplayName("북마크 등록 실패 - 존재하지 않는 회원")
-    void registerBookmark_fail_memberNotFound() {
+    void createBookmark_fail_memberNotFound() {
         // given
         Long memberId = 1L;
         Long courseId = 1L;
@@ -118,7 +108,7 @@ class BookmarkServiceTest {
 
         // when, then
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> bookmarkService.registerBookmark(memberId, courseId));
+                () -> bookmarkService.createBookmark(memberId, courseId));
 
         // then
         assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.MEMBER_NOT_FOUND);
@@ -126,7 +116,7 @@ class BookmarkServiceTest {
 
     @Test
     @DisplayName("북마크 등록 실패 - 존재하지 않는 코스")
-    void registerBookmark_fail_courseNotFound() {
+    void createBookmark_fail_courseNotFound() {
         // given
         Long memberId = 1L;
         Long courseId = 1L;
@@ -136,7 +126,7 @@ class BookmarkServiceTest {
 
         // when, then
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> bookmarkService.registerBookmark(memberId, courseId));
+                () -> bookmarkService.createBookmark(memberId, courseId));
 
         // then
         assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.COURSE_NOT_FOUND);
@@ -243,7 +233,7 @@ class BookmarkServiceTest {
 
             // when
             List<BookmarkedCourseInfoDto> actualDtos =
-                    bookmarkService.getBookmarkedCoursesByMemberAndArea(memberId, area);
+                    bookmarkService.findBookmarkedCourses(memberId, area);
 
             // then
             assertThat(actualDtos.size()).isEqualTo(expectedDtos.size());
@@ -273,7 +263,7 @@ class BookmarkServiceTest {
 
             // when
             List<BookmarkedCourseInfoDto> result =
-                    bookmarkService.getBookmarkedCoursesByMemberAndArea(memberId, area);
+                    bookmarkService.findBookmarkedCourses(memberId, area);
 
             // then
             assertThat(result).isEmpty();

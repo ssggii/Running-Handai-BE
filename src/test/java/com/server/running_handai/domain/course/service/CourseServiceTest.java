@@ -39,6 +39,7 @@ import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.entity.Spot;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 import java.time.LocalDateTime;
@@ -61,7 +62,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.mockito.verification.VerificationMode;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
@@ -776,9 +777,18 @@ class CourseServiceTest {
     @DisplayName("내 코스 전체 조회 테스트")
     class GetMyAllCoursesTest {
         // 헬퍼 메서드
-        private CourseInfoDto createCourseInfoDto() {
-            CourseInfoDto courseInfoDto = Mockito.mock(CourseInfoDto.class);
-            return courseInfoDto;
+        private Course createMockCourse(long courseId) {
+            Course course = Course.builder()
+                    .name("startPointName-endPointName")
+                    .distance(15.3)
+                    .duration(120)
+                    .maxElevation(150.5)
+                    .level(CourseLevel.MEDIUM)
+                    .build();
+
+            ReflectionTestUtils.setField(course, "id", courseId);
+            ReflectionTestUtils.setField(course, "createdAt", LocalDateTime.now());
+            return course;
         }
 
         /**
@@ -790,29 +800,28 @@ class CourseServiceTest {
         @DisplayName("내 코스 전체 조회 성공 - Course가 존재")
         void getMyAllCourses_success_courseExists(String sortBy) {
             // given
-            Sort sort = switch (sortBy) {
-                case "oldest" -> Sort.by("created_at").ascending();
-                case "short" -> Sort.by("distance").ascending();
-                case "long" -> Sort.by("distance").descending();
-                default -> Sort.by("created_at").descending();
-            };
+            Sort sort = SortBy.findBySort(sortBy);
 
-            List<CourseInfoDto> courseInfoDtos = List.of(
-                    createCourseInfoDto(),
-                    createCourseInfoDto(),
-                    createCourseInfoDto()
+            List<Course> courseInfos = List.of(
+                    createMockCourse(1L),
+                    createMockCourse(2L),
+                    createMockCourse(3L)
             );
 
-            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(courseInfoDtos);
+            String keyword = null;
+            Pageable pageable = PageRequest.of(0, 10, sort);
+            Page<Course> coursePage = new PageImpl<>(courseInfos, pageable, 3);
+
+            given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(coursePage);
 
             // when
-            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, sortBy);
+            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, pageable, keyword);
 
             // then
             assertThat(result.courseCount()).isEqualTo(3);
             assertThat(result.courses()).hasSize(3);
 
-            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+            verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
         }
 
         /**
@@ -824,18 +833,21 @@ class CourseServiceTest {
         void getMyAllCourses_success_noCourse() {
             // given
             // Course가 존재하지 않으면 빈 리스트로 응답해야 함 (정렬 조건은 기본값으로 설정)
-            String sortBy = "latest";
-            Sort sort = Sort.by("created_at").descending();
-            given(courseRepository.findMyCoursesBySort(MEMBER_ID, sort)).willReturn(Collections.emptyList());
+            String keyword = null;
+            Sort sort = SortBy.findBySort("LATEST");
+            Pageable pageable = PageRequest.of(0, 10, sort);
+            Page<Course> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+            given(courseRepository.findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword)).willReturn(emptyPage);
 
             // when
-            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, sortBy);
+            MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, pageable, keyword);
 
             // then
             assertThat(result.courseCount()).isEqualTo(0);
-            assertThat(result.courses()).isEmpty();
+            assertThat(result.courses()).hasSize(0);
 
-            verify(courseRepository).findMyCoursesBySort(MEMBER_ID, sort);
+            verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
         }
     }
 

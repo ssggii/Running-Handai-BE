@@ -4,6 +4,7 @@ import static com.server.running_handai.global.response.ResponseCode.*;
 
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.service.CourseService;
+import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,12 +14,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+
 import java.util.List;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,11 +32,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -114,22 +115,33 @@ public class CourseController {
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, gpxPath));
     }
 
-    @Operation(summary = "내 코스 전체 조회", description = "사용자가 생성한 코스 목록을 정렬 조건에 따라 조회합니다. 정렬 조건은 최신순, 오래된순, 짧은 거리순, 긴 거리순으로 총 4개입니다.")
+    @Operation(summary = "내 코스 전체 조회", description = "사용자가 생성한 코스 목록을 페이징, 정렬 조건에 따라 조회합니다. 정렬 조건은 최신순, 오래된순, 짧은 거리순, 긴 거리순으로 총 4개입니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
             @ApiResponse(responseCode = "401", description = "토큰 인증 필요 - UNAUTHORIZED_ACCESS")
     })
     @GetMapping("/api/members/me/courses")
     public ResponseEntity<CommonResponse<MyAllCoursesDetailDto>> getMyAllCourses(
+            @Parameter(description = "페이지 번호", required = true) @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "한 페이지에 조회할 개수", required = true) @RequestParam(defaultValue = "10") int size,
             @Parameter(
                     description = "정렬 조건",
+                    required = true,
                     schema = @Schema(allowableValues = {"latest", "oldest", "short", "long"})
             )
             @RequestParam(defaultValue = "latest") String sortBy,
+            @Parameter(description = "검색 키워드") @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
-        MyAllCoursesDetailDto myAllCoursesDetailDto = courseService.getMyAllCourses(memberId, sortBy);
+
+        // Sort 객체 생성
+        Sort sort = SortBy.findBySort(sortBy.toUpperCase());
+
+        // Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        MyAllCoursesDetailDto myAllCoursesDetailDto = courseService.getMyAllCourses(memberId, pageable, keyword);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, myAllCoursesDetailDto));
     }
 
@@ -218,4 +230,5 @@ public class CourseController {
         courseService.updateCourse(memberId, courseId, request);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_UPDATE, null));
     }
+
 }
