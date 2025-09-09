@@ -2,9 +2,11 @@ package com.server.running_handai.domain.member.service;
 
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkDetailDto;
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
+import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
+import com.server.running_handai.domain.course.dto.MyCourseInfoDto;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
@@ -41,6 +43,7 @@ public class MemberService {
     private static final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
 
     private final MemberRepository memberRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final JwtProvider jwtProvider;
     private final BookmarkService bookmarkService;
     private final CourseService courseService;
@@ -255,17 +258,20 @@ public class MemberService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
 
-        // 북마크한 코스 조회
-        MyBookmarkDetailDto bookmarkedCourses = MyBookmarkDetailDto.from(
-                bookmarkService.findBookmarkedCourses(memberId, null).stream()
-                        .map(MyBookmarkInfoDto::from)
-                        .limit(BOOKMARK_PREVIEW_MAX_COUNT)
-                        .toList());
+        // 북마크한 코스 랜덤 조회
+        List<MyBookmarkInfoDto> bookmarkedCourses = bookmarkService.findBookmarkedCourses(memberId, null).stream()
+                .map(MyBookmarkInfoDto::from)
+                .limit(BOOKMARK_PREVIEW_MAX_COUNT)
+                .toList();
+        int bookmarkCount = bookmarkRepository.countByMemberId(memberId);
+        MyBookmarkDetailDto bookmarkInfo = MyBookmarkDetailDto.from(bookmarkCount, bookmarkedCourses);
 
         // 내 코스 조회
+        int myCourseCount = member.getCourses().size();
         Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
-        MyAllCoursesDetailDto myCourses = courseService.getMyAllCourses(memberId, pageable, null);
+        List<MyCourseInfoDto> myCourses = courseService.getMyAllCourses(memberId, pageable, null).courses();
+        MyAllCoursesDetailDto myCourseInfo = MyAllCoursesDetailDto.from(myCourseCount, myCourses);
 
-        return MemberInfoDto.from(member, bookmarkedCourses, myCourses);
+        return MemberInfoDto.from(member, bookmarkInfo, myCourseInfo);
     }
 }

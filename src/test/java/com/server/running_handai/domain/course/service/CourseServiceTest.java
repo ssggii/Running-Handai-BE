@@ -867,7 +867,7 @@ class CourseServiceTest {
             MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, pageable, keyword);
 
             // then
-            assertThat(result.courseCount()).isEqualTo(3);
+            assertThat(result.myCourseCount()).isEqualTo(3);
             assertThat(result.courses()).hasSize(3);
 
             verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);
@@ -893,7 +893,7 @@ class CourseServiceTest {
             MyAllCoursesDetailDto result = courseService.getMyAllCourses(MEMBER_ID, pageable, keyword);
 
             // then
-            assertThat(result.courseCount()).isEqualTo(0);
+            assertThat(result.myCourseCount()).isEqualTo(0);
             assertThat(result.courses()).hasSize(0);
 
             verify(courseRepository).findMyCoursesWithPagingAndKeyword(MEMBER_ID, pageable, keyword);

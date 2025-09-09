@@ -24,6 +24,9 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     // 코스 ID로 북마크 수 조회
     int countByCourseId(Long courseId);
 
+    // 회원 ID로 북마크 수 조회
+    int countByMemberId(Long memberId);
+
     // 코스 ID별 북마크 수 조회
     @Query("SELECT new com.server.running_handai.domain.bookmark.dto.BookmarkCountDto(b.course.id, COUNT(b)) "
             + "FROM Bookmark b "
@@ -72,4 +75,5 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
             + "ORDER BY b.createdAt DESC "
     )
     List<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberIdAndArea(Long memberId, Area area);
+
 }
