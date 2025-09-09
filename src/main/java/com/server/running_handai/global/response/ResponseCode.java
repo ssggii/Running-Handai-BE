@@ -13,6 +13,7 @@ public enum ResponseCode {
     SUCCESS(OK, "요청을 성공했습니다."),
     SUCCESS_EMPTY_COURSE_INFO(OK, "코스 조회 결과가 없습니다."),
     SUCCESS_COURSE_SYNC_ACCEPTED(ACCEPTED, "코스 데이터 동기화 작업이 시작되었습니다. 서버 로그를 통해 진행 상황을 확인하세요."),
+    SUCCESS_SPOT_INIT_IN_PROGRESS(ACCEPTED, "즐길거리 초기화 작업이 진행 중입니다."),
     SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
@@ -82,7 +83,8 @@ public enum ResponseCode {
     FILE_DELETE_FAILED(INTERNAL_SERVER_ERROR, "파일 삭제를 실패했습니다."),
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
     PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
-    UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다.");
+    UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다."),
+    SPOT_INITIALIZATION_FAILED(INTERNAL_SERVER_ERROR, "즐길거리 초기화에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

@@ -1,5 +1,7 @@
 package com.server.running_handai.domain.course.entity;
 
+import static com.server.running_handai.domain.course.entity.SpotStatus.*;
+
 import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.spot.entity.CourseSpot;
 import com.server.running_handai.domain.review.entity.Review;
@@ -59,6 +61,10 @@ public class Course extends BaseTimeEntity {
 
     @Column(name = "min_ele", nullable = false)
     private Double minElevation; // 최소 고도
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SpotStatus spotStatus = NOT_STARTED; // 코스 생성 시 기본값 NOT_STARTED
 
     @ElementCollection(fetch = FetchType.LAZY)
     @Column(name = "theme")
@@ -189,6 +195,10 @@ public class Course extends BaseTimeEntity {
 
     public void updateName(String name) {
         this.name = name;
+    }
+
+    public void updateSpotStatus(SpotStatus spotStatus) {
+        this.spotStatus = spotStatus;
     }
 
 }
