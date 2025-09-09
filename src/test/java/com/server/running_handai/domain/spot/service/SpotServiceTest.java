@@ -1,6 +1,9 @@
 package com.server.running_handai.domain.spot.service;
 
 import com.server.running_handai.domain.course.entity.Course;
+import com.server.running_handai.domain.course.entity.CourseImage;
+import com.server.running_handai.domain.course.entity.CourseLevel;
+import com.server.running_handai.domain.course.entity.SpotStatus;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.spot.dto.SpotDetailDto;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
@@ -23,11 +26,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static com.server.running_handai.domain.course.entity.SpotStatus.COMPLETED;
+import static com.server.running_handai.domain.course.entity.SpotStatus.IN_PROGRESS;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.when;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
@@ -43,35 +51,52 @@ class SpotServiceTest {
 
     private static final Long COURSE_ID = 1L;
 
+    private Course createMockCourse(Long courseId, SpotStatus status) {
+        Course course = Course.builder()
+                .name("startPointName-endPointName")
+                .distance(15.3)
+                .duration(120)
+                .minElevation(30.4)
+                .maxElevation(150.5)
+                .level(CourseLevel.MEDIUM)
+                .gpxPath("gpx/test.gpx")
+                .build();
+        course.updateSpotStatus(status);
+        ReflectionTestUtils.setField(course, "id", courseId);
+        return course;
+    }
+
+    private Spot createMockSpot(Long spotId, String name, String description, SpotImage spotImage) {
+        Spot spot = Spot.builder().name(name).description(description).build();
+        ReflectionTestUtils.setField(spot, "id", spotId);
+        ReflectionTestUtils.setField(spot, "spotImage", spotImage);
+        return spot;
+    }
+
+    private SpotImage createMockSpotImage(String imageUrl) {
+        return SpotImage.builder().imgUrl(imageUrl).build();
+    }
+
     @Nested
     @DisplayName("즐길거리 전체 조회 테스트")
     class GetAllSpotTest {
-        private SpotImage createMockSpotImage(String imageUrl) {
-            return SpotImage.builder().imgUrl(imageUrl).build();
-        }
-
-        private Spot createMockSpot(Long spotId, String name, String description, SpotImage spotImage) {
-            Spot spot = Spot.builder().name(name).description(description).build();
-            ReflectionTestUtils.setField(spot, "id", spotId);
-            ReflectionTestUtils.setField(spot, "spotImage", spotImage);
-            return spot;
-        }
 
         /**
          * [즐길거리 전체 조회] 성공
          * 1. Course에 해당되는 Spot이 존재하는 경우
          */
         @Test
-        @DisplayName("즐길거리 전체 조회 - Spot이 존재")
+        @DisplayName("즐길거리 전체 조회 - Spot이 존재, 초기화 완료")
         void getSpotDetails_success_spotExists() {
             // given
+            Course course = createMockCourse(COURSE_ID, COMPLETED);
             // 2개의 Spot 중 1개만 SpotImage가 있다고 가정
             SpotImage spotImage = createMockSpotImage("http://mock-image-url");
             Spot spot1 = createMockSpot(101L, "Spot1", "Description1", spotImage);
             Spot spot2 = createMockSpot(102L, "Spot2", "Description2", null);
             List<Spot> spots = List.of(spot1, spot2);
 
-            given(courseRepository.existsById(COURSE_ID)).willReturn(true);
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
             given(spotRepository.findByCourseIdWithSpotImage(COURSE_ID)).willReturn(spots);
 
             // when
@@ -80,6 +105,7 @@ class SpotServiceTest {
             // then
             assertThat(result.courseId()).isEqualTo(COURSE_ID);
             assertThat(result.spotCount()).isEqualTo(spots.size());
+            assertThat(result.spotStatus()).isEqualTo(COMPLETED.name());
             assertThat(result.spots()).hasSize(2);
 
             SpotInfoDto spotInfo1 = result.spots().get(0);
@@ -94,7 +120,7 @@ class SpotServiceTest {
             assertThat(spotInfo2.description()).isEqualTo(spot2.getDescription());
             assertThat(spotInfo2.imageUrl()).isNull();
 
-            verify(courseRepository).existsById(COURSE_ID);
+            verify(courseRepository).findById(COURSE_ID);
             verify(spotRepository).findByCourseIdWithSpotImage(COURSE_ID);
         }
 
@@ -103,11 +129,12 @@ class SpotServiceTest {
          * 2. Course에 해당되는 Spot이 존재하지 않는 경우
          */
         @Test
-        @DisplayName("즐길거리 전체 조회 - Spot이 존재하지 않음")
+        @DisplayName("즐길거리 전체 조회 - Spot이 존재하지 않음, 초기화 완료")
         void getSpotDetails_success_noSpot() {
             // given
+            Course course = createMockCourse(COURSE_ID, COMPLETED);
             // Spot이 존재하지 않으면 빈 리스트로 응답해야 함
-            given(courseRepository.existsById(COURSE_ID)).willReturn(true);
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
             given(spotRepository.findByCourseIdWithSpotImage(COURSE_ID)).willReturn(Collections.emptyList());
 
             // when
@@ -116,10 +143,34 @@ class SpotServiceTest {
             // then
             assertThat(result.courseId()).isEqualTo(COURSE_ID);
             assertThat(result.spotCount()).isEqualTo(0);
+            assertThat(result.spotStatus()).isEqualTo(COMPLETED.name());
             assertThat(result.spots()).isEmpty();
 
-            verify(courseRepository).existsById(COURSE_ID);
+            verify(courseRepository).findById(COURSE_ID);
             verify(spotRepository).findByCourseIdWithSpotImage(COURSE_ID);
+        }
+
+        /**
+         * [즐길거리 전체 조회] 성공
+         * 3. 코스의 즐길거리 초기화가 미완료된 상태
+         */
+        @Test
+        @DisplayName("즐길거리 전체 조회 - Spot 초기화 미완료")
+        void getSpotDetails_success_spotInitNotCompleted() {
+            // given
+            Course course = createMockCourse(COURSE_ID, IN_PROGRESS); // 즐길거리 초기화 진행 중인 상태
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+
+            // when
+            SpotDetailDto result = spotService.getSpotDetails(COURSE_ID);
+
+            // then
+            assertThat(result.courseId()).isEqualTo(COURSE_ID);
+            assertThat(result.spotCount()).isEqualTo(0);
+            assertThat(result.spotStatus()).isEqualTo(IN_PROGRESS.name());
+            assertThat(result.spots()).isEmpty();
+
+            verify(courseRepository).findById(COURSE_ID);
         }
 
         /**
@@ -130,10 +181,11 @@ class SpotServiceTest {
         @DisplayName("즐길거리 전체 조회 - 존재하지 않는 코스")
         void getSpotDetails_fail_courseNotFound() {
             // given
-            given(courseRepository.existsById(COURSE_ID)).willReturn(false);
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.empty());
 
             // when, then
-            BusinessException exception = assertThrows(BusinessException.class, () -> spotService.getSpotDetails(COURSE_ID));
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> spotService.getSpotDetails(COURSE_ID));
             assertThat(exception.getResponseCode()).isEqualTo(COURSE_NOT_FOUND);
         }
     }
