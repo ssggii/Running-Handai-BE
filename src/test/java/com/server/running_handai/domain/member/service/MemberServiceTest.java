@@ -1,10 +1,11 @@
 package com.server.running_handai.domain.member.service;
 
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
+import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
-import com.server.running_handai.domain.course.dto.CourseInfoDto;
 import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
 import com.server.running_handai.domain.course.dto.MyCourseInfoDto;
+import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.domain.member.dto.MemberInfoDto;
 import com.server.running_handai.domain.member.dto.MemberUpdateRequestDto;
@@ -14,6 +15,7 @@ import com.server.running_handai.domain.member.repository.MemberRepository;
 import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +37,8 @@ import java.util.Optional;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -52,6 +56,9 @@ class MemberServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
+
+    @Mock
+    private BookmarkRepository bookmarkRepository;
 
     @Mock
     private BookmarkService bookmarkService;
@@ -244,35 +251,46 @@ class MemberServiceTest {
     @Nested
     @DisplayName("내 정보 조회 테스트")
     class GetMemberInfoTest {
-        private final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
+        private static final int BOOKMARK_PREVIEW_MAX_COUNT = 5;
+        private static final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
 
         @ParameterizedTest(name = "북마크 {0}개, 내 코스 {1}개일 때")
         @DisplayName("내 정보 조회 - 성공")
         @CsvSource({
-                "10, 3, 5, 3", // Case 1: 북마크 10개, 내 코스 3개
-                "0, 3, 0, 3",  // Case 2: 북마크 0개, 내 코스 3개
-                "10, 0, 5, 0", // Case 3: 북마크 10개, 내 코스 0개
-                "0, 0, 0, 0"   // Case 4: 둘 다 없는 경우
+                "10, 5", // Case 1: 둘 다 최대 개수보다 많을 때
+                "3, 2",  // Case 2: 둘 다 최대 개수보다 적을 때
+                "10, 0", // Case 3: 내 코스가 없을 때
+                "0, 5",  // Case 4: 북마크가 없을 때
+                "0, 0"   // Case 5: 둘 다 없을 때
         })
-        void getMemberInfo_success_scenarios(int bookmarkCount, int myCourseCount, int expectedBookmarkCount, int expectedMyCourseCount) {
+        void getMemberInfo_success(int bookmarkCount, int myCourseCount) {
             // given
             Long memberId = 1L;
-            Member member = createMockMember(memberId);
+            Member member = mock(Member.class);
+            when(member.getNickname()).thenReturn("testUser");
+            when(member.getEmail()).thenReturn("test@example.com");
 
-            // 북마크한 코스 데이터 생성
+            // 북마크한 코스 데이터
             List<BookmarkedCourseInfoDto> mockBookmarkedCourses = IntStream.range(0, bookmarkCount)
                     .mapToObj(i -> mock(BookmarkedCourseInfoDto.class))
                     .toList();
 
-            // 내 코스 데이터 생성
-            List<MyCourseInfoDto> mockMyCourses = IntStream.range(0, myCourseCount)
+            // 내 코스 데이터
+            List<MyCourseInfoDto> allMyCourses = IntStream.range(0, myCourseCount)
                     .mapToObj(i -> mock(MyCourseInfoDto.class))
                     .toList();
-            MyAllCoursesDetailDto myAllCoursesDetailDto = MyAllCoursesDetailDto.from(mockMyCourses);
+
+            List<MyCourseInfoDto> pagedMyCourses = allMyCourses.stream()
+                    .limit(MY_COURSE_PREVIEW_MAX_COUNT)
+                    .toList();
+
+            MyAllCoursesDetailDto myAllCoursesDetailDto = MyAllCoursesDetailDto.from(myCourseCount, pagedMyCourses);
             Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
 
             when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-            when(bookmarkService.findBookmarkedCourses(memberId, null)).thenReturn(mockBookmarkedCourses);
+            when(member.getCourses()).thenReturn(Collections.nCopies(myCourseCount, mock(Course.class)));
+            when(bookmarkService.findBookmarkedCourses(eq(memberId), isNull())).thenReturn(mockBookmarkedCourses);
+            when(bookmarkRepository.countByMemberId(memberId)).thenReturn(bookmarkCount);
             when(courseService.getMyAllCourses(memberId, pageable, null)).thenReturn(myAllCoursesDetailDto);
 
             // when
@@ -280,15 +298,22 @@ class MemberServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.nickname()).isEqualTo(member.getNickname());
-            assertThat(result.email()).isEqualTo(member.getEmail());
+            assertThat(result.nickname()).isEqualTo("testUser");
+            assertThat(result.email()).isEqualTo("test@example.com");
 
-            // limit 개수 검증
-            assertThat(result.bookmarkedCourses().courseCount()).isEqualTo(expectedBookmarkCount);
-            assertThat(result.myCourses().courseCount()).isEqualTo(expectedMyCourseCount);
+            // 전체 개수 검증
+            assertThat(result.bookmarkInfo().bookmarkCount()).isEqualTo(bookmarkCount);
+            assertThat(result.myCourseInfo().myCourseCount()).isEqualTo(myCourseCount);
+
+            // limit 검증
+            int expectedBookmarkPreviewSize = Math.min(bookmarkCount, BOOKMARK_PREVIEW_MAX_COUNT);
+            int expectedMyCoursePreviewSize = pagedMyCourses.size();
+            assertThat(result.bookmarkInfo().courses().size()).isEqualTo(expectedBookmarkPreviewSize);
+            assertThat(result.myCourseInfo().courses().size()).isEqualTo(expectedMyCoursePreviewSize);
 
             verify(memberRepository).findById(memberId);
-            verify(bookmarkService).findBookmarkedCourses(memberId, null);
+            verify(bookmarkService).findBookmarkedCourses(eq(memberId), isNull());
+            verify(bookmarkRepository).countByMemberId(memberId);
             verify(courseService).getMyAllCourses(memberId, pageable, null);
         }
 

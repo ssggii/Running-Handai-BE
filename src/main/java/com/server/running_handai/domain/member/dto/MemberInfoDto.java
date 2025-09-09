@@ -7,15 +7,15 @@ import com.server.running_handai.domain.member.entity.Member;
 public record MemberInfoDto(
         String nickname,
         String email,
-        MyBookmarkDetailDto bookmarkedCourses,
-        MyAllCoursesDetailDto myCourses
+        MyBookmarkDetailDto bookmarkInfo,
+        MyAllCoursesDetailDto myCourseInfo
 ) {
-    public static MemberInfoDto from(Member member, MyBookmarkDetailDto bookmarkedCourses, MyAllCoursesDetailDto myCourses) {
+    public static MemberInfoDto from(Member member, MyBookmarkDetailDto bookmarkInfo, MyAllCoursesDetailDto myCourseInfo) {
         return new MemberInfoDto(
                 member.getNickname(),
                 member.getEmail(),
-                bookmarkedCourses,
-                myCourses
+                bookmarkInfo,
+                myCourseInfo
         );
     }
 }
