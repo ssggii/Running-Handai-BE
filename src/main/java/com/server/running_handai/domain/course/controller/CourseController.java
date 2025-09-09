@@ -81,7 +81,11 @@ public class CourseController {
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseDetails));
     }
 
-    @Operation(summary = "추천코스 요약 조회", description = "코스의 요약 정보를 조회합니다.")
+    @Operation(summary = "추천코스 요약 조회", description = "코스의 요약 정보를 조회합니다."
+            + "<br> 즐길거리는 초기화 상태(spotStatus)에 따라 다르게 반환합니다.<br>"
+            + "<br> 초기화 완료(COMPLETED) - 즐길거리 리스트 반환 (조회 결과 없을 수 있음)"
+            + "<br> 진행 중(IN_PROGRESS), 초기화 실패(FAILED), 해당없음(NOT_APPLICABLE) - 빈 리스트"
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공 (즐길거리 초기화 완료)"),
             @ApiResponse(responseCode = "202", description = "성공 (즐길거리 초기화 진행 중)"),

@@ -31,7 +31,11 @@ public class SpotController {
 
     private final SpotService spotService;
 
-    @Operation(summary = "즐길거리 전체 조회", description = "특정 코스의 즐길거리 전체 정보를 조회합니다.")
+    @Operation(summary = "즐길거리 전체 조회", description = "특정 코스의 즐길거리 전체 정보를 조회합니다."
+            + "<br> 즐길거리는 초기화 상태(spotStatus)에 따라 다르게 반환합니다.<br>"
+            + "<br> 초기화 완료(COMPLETED) - 즐길거리 리스트 반환 (조회 결과 없을 수 있음)"
+            + "<br> 진행 중(IN_PROGRESS), 초기화 실패(FAILED), 해당없음(NOT_APPLICABLE) - 빈 리스트"
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)"),
@@ -54,20 +58,4 @@ public class SpotController {
 
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, spotDetailDto));
     }
-
-    @Operation(summary = "즐길거리 추가 조회", description = "코스 요약 조회 시 누락된 즐길거리 데이터를 폴링합니다.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "성공"),
-            @ApiResponse(responseCode = "404", description = "실패 (존재하지 않는 코스)")
-    })
-    @GetMapping("/{courseId}/spots/polling")
-    public ResponseEntity<CommonResponse<SpotDetailDto>> getCourseDefaultSpots(
-            @Parameter(description = "조회하려는 코스 ID", required = true)
-            @PathVariable("courseId") Long courseId
-    ) {
-        log.info("[즐길거리 추가 조회] courseId: {}", courseId);
-        SpotDetailDto spotsWithStatus = spotService.getSpotsByStatus(courseId);
-        return ResponseEntity.ok(CommonResponse.success(SUCCESS, spotsWithStatus));
-    }
-
 }

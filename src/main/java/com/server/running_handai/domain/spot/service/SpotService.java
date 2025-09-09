@@ -1,9 +1,10 @@
 package com.server.running_handai.domain.spot.service;
 
 import static com.server.running_handai.domain.course.entity.SpotStatus.COMPLETED;
+import static com.server.running_handai.domain.course.entity.SpotStatus.FAILED;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.SPOT_INITIALIZATION_FAILED;
 
+import com.server.running_handai.domain.course.dto.CourseSummaryDto;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.spot.dto.SpotDetailDto;
@@ -37,34 +38,21 @@ public class SpotService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
-        // 즐길거리 초기화 완료가 안되었다면 빈 리스트 반환
-        if (course.getSpotStatus() != COMPLETED) {
-            return SpotDetailDto.from(course, Collections.emptyList());
+        // 즐길거리 초기화 완료 시, 즐길거리 조회 결과 반환
+        if (course.getSpotStatus() == COMPLETED) {
+            List<Spot> spots = spotRepository.findByCourseIdWithSpotImage(courseId);
+            List<SpotInfoDto> spotInfoDtos = spots.stream()
+                    .map(SpotInfoDto::from)
+                    .toList();
+            return SpotDetailDto.from(course, spotInfoDtos);
         }
 
-        // 초기화 완료된 경우에만 즐길거리 조회
-        List<Spot> spots = spotRepository.findByCourseIdWithSpotImage(courseId);
-        List<SpotInfoDto> spotInfoDtos = spots.stream()
-                .map(SpotInfoDto::from)
-                .toList();
+        // 즐길거리 초기화 실패한 경우, 로그만 남기고 빈 리스트 반환
+        if (course.getSpotStatus() == FAILED) {
+            log.warn("[즐길거리 전체 조회] 즐길거리 초기화에 실패한 코스입니다. courseId: {}", courseId);
+        }
 
-        return SpotDetailDto.from(course, spotInfoDtos);
-    }
-
-    /**
-     * 코스의 즐길거리 초기화 완료 시 즐길거리 데이터를 반환하고, 그 외에 경우 빈 리스트를 반환합니다.
-     *
-     * @param courseId 조회하려는 코스의 ID
-     * @return 즐길거리 조회용 DTO 리스트 (초기화 상태 포함)
-     * @throws BusinessException 즐길거리 초기화 실패
-     */
-    public SpotDetailDto getSpotsByStatus(Long courseId) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
-        
-        List<SpotInfoDto> spots = (course.getSpotStatus() == COMPLETED) ?
-                spotRepository.findRandom3ByCourseId(courseId) : Collections.emptyList();
-
-        return SpotDetailDto.from(course, spots);
+        // 그 외의 경우, 상태값과 함께 빈 리스트 반환
+        return SpotDetailDto.from(course, Collections.emptyList());
     }
 }

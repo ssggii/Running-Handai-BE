@@ -228,14 +228,19 @@ public class CourseService {
         int reviewCount = (int) reviewRepository.countByCourseId(courseId); // 리뷰 전체 개수
         double starAverage = reviewService.calculateAverageStars(courseId); // 리뷰 전체 평점
 
-        // 즐길거리 초기화 완료가 안되었다면 상태값과 빈 리스트 반환
-        if (course.getSpotStatus() != COMPLETED) {
-            return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, Collections.emptyList());
+        // 즐길거리 초기화 완료 시, 즐길거리 조회 결과 반환
+        if (course.getSpotStatus() == COMPLETED) {
+            List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
+            return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
         }
 
-        // 즐길거리 초기화 완료 시 상태값과 즐길거리 리스트 반환
-        List<SpotInfoDto> spotInfoDtos = spotRepository.findRandom3ByCourseId(course.getId());
-        return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, spotInfoDtos);
+        // 즐길거리 초기화 실패한 경우, 로그만 남기고 빈 리스트 반환
+        if (course.getSpotStatus() == FAILED) {
+            log.warn("[코스 요약 조회] 즐길거리 초기화에 실패한 코스입니다. courseId: {}", courseId);
+        }
+
+        // 그 외의 경우, 상태값과 빈 리스트 반환
+        return CourseSummaryDto.from(course, reviewCount, starAverage, reviewInfoDtos, Collections.emptyList());
     }
 
     /**
