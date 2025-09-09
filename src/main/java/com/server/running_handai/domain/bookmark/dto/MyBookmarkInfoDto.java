@@ -1,11 +1,19 @@
 package com.server.running_handai.domain.bookmark.dto;
 
 public record MyBookmarkInfoDto(
-        String courseThumbnailUrl,
+        long bookmarkId,
+        long courseId,
+        String thumbnailUrl,
         int bookmarkCount,
         boolean isBookmarked
 ) {
-    public static MyBookmarkInfoDto from(String courseThumbnailUrl, int bookmarkCount, boolean isBookmarked) {
-        return new MyBookmarkInfoDto(courseThumbnailUrl, bookmarkCount, isBookmarked);
+    public static MyBookmarkInfoDto from(BookmarkedCourseInfoDto courseInfoDto) {
+        return new MyBookmarkInfoDto(
+                courseInfoDto.getBookmarkId(),
+                courseInfoDto.getCourseId(),
+                courseInfoDto.getThumbnailUrl(),
+                courseInfoDto.getBookmarkCount(),
+                courseInfoDto.getIsBookmarked()
+        );
     }
 }
