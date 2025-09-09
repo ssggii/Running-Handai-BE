@@ -178,3 +178,7 @@ ALTER TABLE course DROP COLUMN tour_point;
 
 -- course 테이블의 distance 컬럼 타입 변경
 ALTER TABLE course MODIFY COLUMN distance DOUBLE NOT NULL;
+
+-- course 테이블에 spot_status 컬럼 추가 및 코스별 초기화 상태 변경
+ALTER TABLE course ADD COLUMN spot_status ENUM('COMPLETED', 'FAILED', 'IN_PROGRESS', 'NOT_APPLICABLE', 'NOT_STARTED') NOT NULL DEFAULT 'COMPLETED';
+UPDATE course c SET c.spot_status = 'NOT_APPLICABLE' WHERE c.course_id = 85 -- 예시 (부산 외 코스)
