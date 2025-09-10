@@ -22,16 +22,16 @@ public interface BookmarkedCourseInfoDto {
     double getRawDistance();
 
     default int getDistance() {
-        return (int) getRawDistance();
+        return (int) Math.round(getRawDistance());
     }
 
     int getDuration();
 
     @JsonIgnore
-    double getRawMaxElevation(); // JPA 전용
+    double getRawMaxElevation();
 
     default int getMaxElevation() { // 클라이언트 전용
-        return (int) getRawMaxElevation();
+        return (int) Math.round(getRawMaxElevation());
     }
 
     boolean getIsBookmarked();
