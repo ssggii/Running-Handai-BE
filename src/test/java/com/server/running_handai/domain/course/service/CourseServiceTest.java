@@ -178,9 +178,9 @@ class CourseServiceTest {
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
         assertThat(details.courseName()).isEqualTo(course.getName());
-        assertThat(details.distance()).isEqualTo((int) course.getDistance());
+        assertThat(details.distance()).isEqualTo((int) Math.round(course.getDistance()));
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+        assertThat(details.maxElevation()).isEqualTo((int) Math.round(course.getMaxElevation()));
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -233,9 +233,9 @@ class CourseServiceTest {
 
         assertThat(details.courseId()).isEqualTo(COURSE_ID);
         assertThat(details.courseName()).isEqualTo(course.getName());
-        assertThat(details.distance()).isEqualTo((int) course.getDistance());
+        assertThat(details.distance()).isEqualTo((int) Math.round(course.getDistance()));
         assertThat(details.duration()).isEqualTo(course.getDuration());
-        assertThat(details.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+        assertThat(details.maxElevation()).isEqualTo((int) Math.round(course.getMaxElevation()));
         assertThat(details.thumbnailUrl()).isEqualTo("thumbnailUrl");
         assertThat(details.distanceFromUser()).isEqualTo(1.5);
         assertThat(details.trackPoints().size()).isLessThanOrEqualTo(trackPoints.size());
@@ -314,10 +314,10 @@ class CourseServiceTest {
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
         assertThat(result.courseName()).isEqualTo(course.getName());
-        assertThat(result.distance()).isEqualTo((int) course.getDistance());
+        assertThat(result.distance()).isEqualTo((int) Math.round(course.getDistance()));
         assertThat(result.duration()).isEqualTo(course.getDuration());
-        assertThat(result.minElevation()).isEqualTo((int) course.getMinElevation().doubleValue());
-        assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+        assertThat(result.minElevation()).isEqualTo((int) Math.round(course.getMinElevation()));
+        assertThat(result.maxElevation()).isEqualTo((int) Math.round(course.getMaxElevation()));
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -351,10 +351,10 @@ class CourseServiceTest {
         assertNotNull(result);
         assertThat(result.courseId()).isEqualTo(COURSE_ID);
         assertThat(result.courseName()).isEqualTo(course.getName());
-        assertThat(result.distance()).isEqualTo((int) course.getDistance());
+        assertThat(result.distance()).isEqualTo((int) Math.round(course.getDistance()));
         assertThat(result.duration()).isEqualTo(course.getDuration());
-        assertThat(result.minElevation()).isEqualTo((int)course.getMinElevation().doubleValue());
-        assertThat(result.maxElevation()).isEqualTo((int)course.getMaxElevation().doubleValue());
+        assertThat(result.minElevation()).isEqualTo((int) Math.round(course.getMinElevation()));
+        assertThat(result.maxElevation()).isEqualTo((int) Math.round(course.getMaxElevation()));
         assertThat(result.trackPoints()).isNotEmpty();
         assertThat(result.trackPoints().size()).isLessThanOrEqualTo(course.getTrackPoints().size());
         assertThat(result.bookmarks()).isEqualTo(5);
@@ -528,9 +528,9 @@ class CourseServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.distance()).isEqualTo((int) course.getDistance());
+            assertThat(result.distance()).isEqualTo((int) Math.round(course.getDistance()));
             assertThat(result.duration()).isEqualTo(course.getDuration());
-            assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+            assertThat(result.maxElevation()).isEqualTo((int) Math.round(course.getMaxElevation()));
             assertThat(result.starAverage()).isEqualTo(4.2);
             assertThat(result.reviewCount()).isEqualTo(3L);
             assertThat(result.reviews().getFirst().reviewId()).isEqualTo(review1.getId());
@@ -578,9 +578,9 @@ class CourseServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.distance()).isEqualTo((int) course.getDistance());
+            assertThat(result.distance()).isEqualTo((int) Math.round(course.getDistance()));
             assertThat(result.duration()).isEqualTo(course.getDuration());
-            assertThat(result.maxElevation()).isEqualTo((int) course.getMaxElevation().doubleValue());
+            assertThat(result.maxElevation()).isEqualTo((int) Math.round(course.getMaxElevation()));
             assertThat(result.starAverage()).isEqualTo(4.2);
             assertThat(result.reviewCount()).isEqualTo(3L);
             assertThat(result.reviews().getFirst().reviewId()).isEqualTo(review1.getId());
