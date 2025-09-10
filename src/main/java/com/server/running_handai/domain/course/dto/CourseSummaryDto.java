@@ -19,9 +19,9 @@ public record CourseSummaryDto(
     public static CourseSummaryDto from(Course course, int reviewCount, double starAverage,
                                         List<ReviewInfoDto> reviewInfoDtos, List<SpotInfoDto> spotInfoDtos) {
         return new CourseSummaryDto(
-                (int) course.getDistance(),
+                (int) Math.round(course.getDistance()),
                 course.getDuration(),
-                (int) course.getMaxElevation().doubleValue(),
+                (int) Math.round(course.getMaxElevation()),
                 reviewCount,
                 starAverage,
                 reviewInfoDtos,

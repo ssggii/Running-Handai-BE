@@ -25,10 +25,10 @@ public record CourseDetailDto(
         return new CourseDetailDto(
                 course.getId(),
                 course.getName(),
-                (int) course.getDistance(),
+                (int) Math.round(course.getDistance()),
                 course.getDuration(),
-                (int) course.getMinElevation().doubleValue(),
-                (int) course.getMaxElevation().doubleValue(),
+                (int) Math.round(course.getMinElevation()),
+                (int) Math.round(course.getMaxElevation()),
                 course.getLevel().getDescription(),
                 bookmarkInfoDto.totalCount(),
                 bookmarkInfoDto.isBookmarked(),
