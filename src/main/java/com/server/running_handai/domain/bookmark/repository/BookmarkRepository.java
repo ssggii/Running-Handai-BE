@@ -9,6 +9,8 @@ import com.server.running_handai.domain.member.entity.Member;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,8 +41,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     @Query("SELECT b.course.id FROM Bookmark b WHERE b.course.id IN :courseIds AND b.member.id = :memberId")
     Set<Long> findBookmarkedCourseIdsByMember(@Param("courseIds") List<Long> courseIds, @Param("memberId") Long memberId);
 
-    // 사용자가 북마크한 모든 코스 조회
-    @Query("SELECT "
+    // 사용자가 북마크한 모든 코스 조회 (페이징 적용)
+    @Query(value = "SELECT "
             + "b.id AS bookmarkId, "
             + "c.id AS courseId, "
             + "ci.imgUrl AS thumbnailUrl, "
@@ -53,12 +55,12 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
             + "LEFT JOIN b.course c "
             + "LEFT JOIN c.courseImage ci "
             + "WHERE b.member.id = :memberId "
-            + "ORDER BY b.createdAt DESC "
-    )
-    List<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberId(Long memberId);
+            + "ORDER BY b.createdAt DESC",
+            countQuery = "SELECT count(b) FROM Bookmark b WHERE b.member.id = :memberId")
+    Page<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberId(@Param("memberId") Long memberId, Pageable pageable);
 
-    // 사용자가 북마크한 코스 중에서 특정 지역의 코스만 조회
-    @Query("SELECT "
+    // 사용자가 북마크한 코스 중에서 특정 지역의 코스만 조회 (페이징 적용)
+    @Query(value = "SELECT "
             + "b.id AS bookmarkId, "
             + "c.id AS courseId, "
             + "ci.imgUrl AS thumbnailUrl, "
@@ -66,14 +68,14 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
             + "c.duration AS duration, "
             + "c.maxElevation AS rawMaxElevation, "
             + "true AS isBookmarked, "
-            + "(SELECT count(b2.id) FROM Bookmark b2 WHERE b2.course.id = c.id) AS bookmarkCount " // 총 북마크 수 계산
+            + "(SELECT count(b2.id) FROM Bookmark b2 WHERE b2.course.id = c.id) AS bookmarkCount "
             + "FROM Bookmark b "
             + "LEFT JOIN b.course c "
             + "LEFT JOIN c.courseImage ci "
             + "WHERE b.member.id = :memberId "
             + "AND c.area = :area "
-            + "ORDER BY b.createdAt DESC "
-    )
-    List<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberIdAndArea(Long memberId, Area area);
+            + "ORDER BY b.createdAt DESC",
+            countQuery = "SELECT count(b) FROM Bookmark b JOIN b.course c WHERE b.member.id = :memberId AND c.area = :area")
+    Page<BookmarkedCourseInfoDto> findBookmarkedCoursesByMemberIdAndArea(@Param("memberId") Long memberId, @Param("area") Area area, Pageable pageable);
 
 }
