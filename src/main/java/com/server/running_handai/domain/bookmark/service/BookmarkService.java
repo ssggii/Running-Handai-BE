@@ -1,5 +1,6 @@
 package com.server.running_handai.domain.bookmark.service;
 
+import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseDetailDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.entity.Bookmark;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
@@ -13,6 +14,8 @@ import com.server.running_handai.domain.member.repository.MemberRepository;
 import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,23 +63,20 @@ public class BookmarkService {
     }
 
     /**
-     * 회원이 북마크한 코스를 조회합니다.
+     * 회원이 북마크한 코스를 페이징 처리하여 조회합니다.
      *
      * @param memberId 요청한 회원의 ID
-     * @return 북마크한 코스 정보 DTO
+     * @param area     지역 필터 (전체 조회 시 null)
+     * @param pageable 페이징 정보 (page, size)
+     * @return 페이징 정보가 포함된 북마크 코스 DTO
      */
-    public List<BookmarkedCourseInfoDto> findBookmarkedCourses(Long memberId, Area area) {
-        List<BookmarkedCourseInfoDto> bookmarkedCourseInfoDtos;
+    public BookmarkedCourseDetailDto findBookmarkedCourses(Long memberId, Area area, Pageable pageable) {
+        Page<BookmarkedCourseInfoDto> bookmarkedCoursesPage;
         if (area == null) { // 지역 전체인 경우
-            bookmarkedCourseInfoDtos = bookmarkRepository.findBookmarkedCoursesByMemberId(memberId);
+            bookmarkedCoursesPage = bookmarkRepository.findBookmarkedCoursesByMemberId(memberId, pageable);
         } else { // 특정 지역 필터링한 경우
-            bookmarkedCourseInfoDtos = bookmarkRepository.findBookmarkedCoursesByMemberIdAndArea(memberId, area);
+            bookmarkedCoursesPage = bookmarkRepository.findBookmarkedCoursesByMemberIdAndArea(memberId, area, pageable);
         }
-
-        if (bookmarkedCourseInfoDtos.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return bookmarkedCourseInfoDtos;
+        return BookmarkedCourseDetailDto.from(bookmarkedCoursesPage);
     }
 }

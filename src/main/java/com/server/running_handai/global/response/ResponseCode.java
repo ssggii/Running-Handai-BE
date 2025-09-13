@@ -17,7 +17,6 @@ public enum ResponseCode {
     SUCCESS_BOOKMARK_CREATE(OK, "북마크 등록 완료했습니다."),
     SUCCESS_BOOKMARK_DELETE(OK, "북마크 해제 완료했습니다."),
     SUCCESS_EMPTY_REVIEWS(OK, "리뷰 조회 결과가 없습니다."),
-    SUCCESS_EMPTY_BOOKMARKS(OK, "북마크한 코스가 없습니다."),
     SUCCESS_COURSE_REMOVE(OK, "코스 삭제가 완료되었습니다."),
     SUCCESS_COURSE_UPDATE(OK, "코스 수정이 완료되었습니다."),
 

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseDetailDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.entity.Bookmark;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
@@ -33,6 +34,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
@@ -208,6 +213,8 @@ class BookmarkServiceTest {
     @DisplayName("북마크한 코스 조회 테스트")
     class GetBookmarkedCourseTest {
 
+        private Pageable pageable = PageRequest.of(0, 10);
+
         private static Stream<Arguments> provideAreaArguments() {
             return Stream.of(
                     Arguments.of((Object) null),
@@ -217,63 +224,36 @@ class BookmarkServiceTest {
 
         @ParameterizedTest
         @MethodSource("provideAreaArguments")
-        @DisplayName("북마크한 코스 조회 성공 - 결과 있음")
+        @DisplayName("북마크한 코스 조회 성공")
         void getBookmarkedCourse_success_hasContent(Area area) {
             // given
             Long memberId = 1L;
             BookmarkedCourseInfoDto dto1 = mock(BookmarkedCourseInfoDto.class);
             BookmarkedCourseInfoDto dto2 = mock(BookmarkedCourseInfoDto.class);
-            List<BookmarkedCourseInfoDto> expectedDtos = List.of(dto1, dto2);
+            List<BookmarkedCourseInfoDto> content = List.of(dto1, dto2);
+            Page<BookmarkedCourseInfoDto> expectedPage = new PageImpl<>(content, pageable, content.size());
 
             if (area == null) {
-                given(bookmarkRepository.findBookmarkedCoursesByMemberId(memberId)).willReturn(expectedDtos);
+                given(bookmarkRepository.findBookmarkedCoursesByMemberId(memberId, pageable)).willReturn(expectedPage);
             } else {
-                given(bookmarkRepository.findBookmarkedCoursesByMemberIdAndArea(memberId, area)).willReturn(expectedDtos);
+                given(bookmarkRepository.findBookmarkedCoursesByMemberIdAndArea(memberId, area, pageable)).willReturn(expectedPage);
             }
 
             // when
-            List<BookmarkedCourseInfoDto> actualDtos =
-                    bookmarkService.findBookmarkedCourses(memberId, area);
+            BookmarkedCourseDetailDto actualResponseDto = bookmarkService.findBookmarkedCourses(memberId, area, pageable);
 
             // then
-            assertThat(actualDtos.size()).isEqualTo(expectedDtos.size());
-            assertThat(actualDtos).isEqualTo(expectedDtos);
+            assertThat(actualResponseDto.courses()).hasSize(2);
+            assertThat(actualResponseDto.courses()).isEqualTo(content);
+            assertThat(actualResponseDto.isLastPage()).isTrue();
+            assertThat(actualResponseDto.totalElements()).isEqualTo(2);
 
             if (area == null) {
-                verify(bookmarkRepository).findBookmarkedCoursesByMemberId(memberId);
-                verify(bookmarkRepository, never()).findBookmarkedCoursesByMemberIdAndArea(any(), any());
+                verify(bookmarkRepository).findBookmarkedCoursesByMemberId(memberId, pageable);
+                verify(bookmarkRepository, never()).findBookmarkedCoursesByMemberIdAndArea(any(), any(), any());
             } else {
-                verify(bookmarkRepository, never()).findBookmarkedCoursesByMemberId(any());
-                verify(bookmarkRepository).findBookmarkedCoursesByMemberIdAndArea(memberId, area);
-            }
-        }
-
-        @ParameterizedTest
-        @MethodSource("provideAreaArguments")
-        @DisplayName("북마크한 코스 조회 성공 - 결과 없음")
-        void getBookmarkedCourse_success_noContent(Area area) {
-            // given
-            Long memberId = 1L;
-
-            if (area == null) {
-                given(bookmarkRepository.findBookmarkedCoursesByMemberId(memberId)).willReturn(Collections.emptyList());
-            } else {
-                given(bookmarkRepository.findBookmarkedCoursesByMemberIdAndArea(memberId, area)).willReturn(Collections.emptyList());
-            }
-
-            // when
-            List<BookmarkedCourseInfoDto> result =
-                    bookmarkService.findBookmarkedCourses(memberId, area);
-
-            // then
-            assertThat(result).isEmpty();
-
-            if (area == null) {
-                verify(bookmarkRepository).findBookmarkedCoursesByMemberId(memberId);
-                verify(bookmarkRepository, never()).findBookmarkedCoursesByMemberIdAndArea(any(), any());
-            } else {
-                verify(bookmarkRepository, never()).findBookmarkedCoursesByMemberId(any());
-                verify(bookmarkRepository).findBookmarkedCoursesByMemberIdAndArea(memberId, area);
+                verify(bookmarkRepository, never()).findBookmarkedCoursesByMemberId(any(), any());
+                verify(bookmarkRepository).findBookmarkedCoursesByMemberIdAndArea(memberId, area, pageable);
             }
         }
     }

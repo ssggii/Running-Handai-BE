@@ -1,5 +1,8 @@
 package com.server.running_handai.domain.bookmark.controller;
 
+import static com.server.running_handai.global.response.ResponseCode.*;
+
+import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseDetailDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.entity.Area;
@@ -14,6 +17,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -47,7 +52,7 @@ public class BookmarkController {
         log.info("[북마크 등록] 시작: memberId={}, courseId={}", memberId, courseId);
         bookmarkService.createBookmark(memberId, courseId);
         log.info("[북마크 등록] 성공: memberId={}, courseId={}", memberId, courseId);
-        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_BOOKMARK_CREATE, null));
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS_BOOKMARK_CREATE, null));
     }
 
     @Operation(summary = "북마크 해제", description = "특정 코스를 북마크 해제합니다.")
@@ -66,7 +71,7 @@ public class BookmarkController {
         log.info("[북마크 해제] 시작: memberId={}, courseId={}", memberId, courseId);
         bookmarkService.deleteBookmark(memberId, courseId);
         log.info("[북마크 해제] 성공: memberId={}, courseId={}", memberId, courseId);
-        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_BOOKMARK_DELETE, null));
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS_BOOKMARK_DELETE, null));
     }
 
     @Operation(summary = "북마크한 코스 조회", description = "회원이 북마크한 코스를 조회합니다. 코스의 지역으로 조건 검색이 가능합니다.")
@@ -78,16 +83,15 @@ public class BookmarkController {
     })
     @GetMapping("/api/members/me/courses/bookmarks")
     public ResponseEntity<CommonResponse<?>> getBookmarkedCourses(
-            @Parameter(description = "지역 조건 (전체 보기인 경우 null)")
-            @RequestParam(required = false) Area area,
+            @Parameter(description = "페이지 번호", required = true) @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "한 페이지에 조회할 개수", required = true) @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "지역 조건 (전체 보기인 경우 null)") @RequestParam(required = false) Area area,
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User
     ) {
         Long memberId = customOAuth2User.getMember().getId();
-        log.info("[북마크한 코스 조회] memberId={}, area={}", memberId, (area != null) ? area.name() : null);
-        List<BookmarkedCourseInfoDto> responseData = bookmarkService.findBookmarkedCourses(memberId, area);
-        if (responseData.isEmpty()) {
-            return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS_EMPTY_BOOKMARKS, responseData));
-        }
-        return ResponseEntity.ok(CommonResponse.success(ResponseCode.SUCCESS, responseData));
+        log.info("[북마크한 코스 조회] memberId={}, area={}", memberId, area);
+        BookmarkedCourseDetailDto bookmarkedCourseDetailDto =
+                bookmarkService.findBookmarkedCourses(memberId, area, PageRequest.of(page, size));
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, bookmarkedCourseDetailDto));
     }
 }

@@ -1,6 +1,8 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseDetailDto;
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
+import com.server.running_handai.domain.bookmark.dto.MyBookmarkDetailDto;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.dto.MyAllCoursesDetailDto;
@@ -28,6 +30,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
@@ -253,6 +257,7 @@ class MemberServiceTest {
     class GetMemberInfoTest {
         private static final int BOOKMARK_PREVIEW_MAX_COUNT = 5;
         private static final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
+        private Pageable pageable = PageRequest.of(0, 10);
 
         @ParameterizedTest(name = "북마크 {0}개, 내 코스 {1}개일 때")
         @DisplayName("내 정보 조회 - 성공")
@@ -269,29 +274,28 @@ class MemberServiceTest {
             Member member = mock(Member.class);
             when(member.getNickname()).thenReturn("testUser");
             when(member.getEmail()).thenReturn("test@example.com");
+            when(member.getCourses()).thenReturn(Collections.nCopies(myCourseCount, mock(Course.class)));
+            when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-            // 북마크한 코스 데이터
-            List<BookmarkedCourseInfoDto> mockBookmarkedCourses = IntStream.range(0, bookmarkCount)
+            Pageable bookmarkPageable = PageRequest.of(0, BOOKMARK_PREVIEW_MAX_COUNT);
+            Pageable myCoursePageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
+
+            // 북마크 정보 Mocking
+            List<BookmarkedCourseInfoDto> previewBookmarks = IntStream.range(0, Math.min(bookmarkCount, BOOKMARK_PREVIEW_MAX_COUNT))
                     .mapToObj(i -> mock(BookmarkedCourseInfoDto.class))
                     .toList();
+            Page<BookmarkedCourseInfoDto> bookmarkPage = new PageImpl<>(previewBookmarks, bookmarkPageable, bookmarkCount);
+            BookmarkedCourseDetailDto mockBookmarkInfo = BookmarkedCourseDetailDto.from(bookmarkPage);
+            when(bookmarkService.findBookmarkedCourses(eq(memberId), isNull(), eq(bookmarkPageable)))
+                    .thenReturn(mockBookmarkInfo);
 
-            // 내 코스 데이터
-            List<MyCourseInfoDto> allMyCourses = IntStream.range(0, myCourseCount)
+            // 내 코스 정보 Mocking
+            List<MyCourseInfoDto> previewMyCourses = IntStream.range(0, Math.min(myCourseCount, MY_COURSE_PREVIEW_MAX_COUNT))
                     .mapToObj(i -> mock(MyCourseInfoDto.class))
                     .toList();
-
-            List<MyCourseInfoDto> pagedMyCourses = allMyCourses.stream()
-                    .limit(MY_COURSE_PREVIEW_MAX_COUNT)
-                    .toList();
-
-            MyAllCoursesDetailDto myAllCoursesDetailDto = MyAllCoursesDetailDto.from(myCourseCount, pagedMyCourses);
-            Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
-
-            when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-            when(member.getCourses()).thenReturn(Collections.nCopies(myCourseCount, mock(Course.class)));
-            when(bookmarkService.findBookmarkedCourses(eq(memberId), isNull())).thenReturn(mockBookmarkedCourses);
-            when(bookmarkRepository.countByMemberId(memberId)).thenReturn(bookmarkCount);
-            when(courseService.getMyAllCourses(memberId, pageable, null)).thenReturn(myAllCoursesDetailDto);
+            MyAllCoursesDetailDto mockMyCourseInfo = MyAllCoursesDetailDto.from(myCourseCount, previewMyCourses);
+            when(courseService.getMyAllCourses(eq(memberId), eq(myCoursePageable), isNull()))
+                    .thenReturn(mockMyCourseInfo);
 
             // when
             MemberInfoDto result = memberService.getMemberInfo(memberId);
@@ -305,16 +309,14 @@ class MemberServiceTest {
             assertThat(result.bookmarkInfo().bookmarkCount()).isEqualTo(bookmarkCount);
             assertThat(result.myCourseInfo().myCourseCount()).isEqualTo(myCourseCount);
 
-            // limit 검증
-            int expectedBookmarkPreviewSize = Math.min(bookmarkCount, BOOKMARK_PREVIEW_MAX_COUNT);
-            int expectedMyCoursePreviewSize = pagedMyCourses.size();
-            assertThat(result.bookmarkInfo().courses().size()).isEqualTo(expectedBookmarkPreviewSize);
-            assertThat(result.myCourseInfo().courses().size()).isEqualTo(expectedMyCoursePreviewSize);
+            // 미리보기 개수 검증
+            assertThat(result.bookmarkInfo().courses().size()).isEqualTo(previewBookmarks.size());
+            assertThat(result.myCourseInfo().courses().size()).isEqualTo(previewMyCourses.size());
 
             verify(memberRepository).findById(memberId);
-            verify(bookmarkService).findBookmarkedCourses(eq(memberId), isNull());
-            verify(bookmarkRepository).countByMemberId(memberId);
-            verify(courseService).getMyAllCourses(memberId, pageable, null);
+            verify(bookmarkService).findBookmarkedCourses(eq(memberId), isNull(), eq(bookmarkPageable));
+            verify(courseService).getMyAllCourses(eq(memberId), eq(myCoursePageable), isNull());
+
         }
 
         @Test
@@ -331,7 +333,7 @@ class MemberServiceTest {
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.MEMBER_NOT_FOUND);
 
-            verify(bookmarkService, never()).findBookmarkedCourses(any(), any());
+            verify(bookmarkService, never()).findBookmarkedCourses(any(), any(), any());
             verify(courseService, never()).getMyAllCourses(any(), any(), any());
         }
 

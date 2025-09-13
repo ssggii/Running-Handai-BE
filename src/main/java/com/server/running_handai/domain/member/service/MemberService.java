@@ -1,5 +1,7 @@
 package com.server.running_handai.domain.member.service;
 
+import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseDetailDto;
+import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkDetailDto;
 import com.server.running_handai.domain.bookmark.dto.MyBookmarkInfoDto;
 import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
@@ -22,6 +24,7 @@ import com.server.running_handai.domain.member.entity.Member;
 import com.server.running_handai.domain.member.entity.Role;
 import com.server.running_handai.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -258,18 +261,18 @@ public class MemberService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.MEMBER_NOT_FOUND));
 
-        // 북마크한 코스 랜덤 조회
-        List<MyBookmarkInfoDto> bookmarkedCourses = bookmarkService.findBookmarkedCourses(memberId, null).stream()
-                .map(MyBookmarkInfoDto::from)
-                .limit(BOOKMARK_PREVIEW_MAX_COUNT)
-                .toList();
-        int bookmarkCount = bookmarkRepository.countByMemberId(memberId);
+        // 북마크한 코스 조회
+        BookmarkedCourseDetailDto bookmarkedCoursePage = bookmarkService.findBookmarkedCourses(memberId, null,
+                PageRequest.of(0, BOOKMARK_PREVIEW_MAX_COUNT));
+        int bookmarkCount = (int) bookmarkedCoursePage.totalElements();
+        List<MyBookmarkInfoDto> bookmarkedCourses = bookmarkedCoursePage.courses()
+                .stream().map(MyBookmarkInfoDto::from).toList();
         MyBookmarkDetailDto bookmarkInfo = MyBookmarkDetailDto.from(bookmarkCount, bookmarkedCourses);
 
         // 내 코스 조회
         int myCourseCount = member.getCourses().size();
-        Pageable pageable = PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST"));
-        List<MyCourseInfoDto> myCourses = courseService.getMyAllCourses(memberId, pageable, null).courses();
+        List<MyCourseInfoDto> myCourses = courseService.getMyAllCourses(memberId,
+                PageRequest.of(0, MY_COURSE_PREVIEW_MAX_COUNT, SortBy.findBySort("LATEST")), null).courses();
         MyAllCoursesDetailDto myCourseInfo = MyAllCoursesDetailDto.from(myCourseCount, myCourses);
 
         return MemberInfoDto.from(member, bookmarkInfo, myCourseInfo);
