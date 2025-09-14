@@ -83,7 +83,8 @@ public enum ResponseCode {
     GPX_FILE_PARSE_FAILED(INTERNAL_SERVER_ERROR, "GPX 파일 파싱을 실패했습니다"),
     PRESIGEND_URL_FAILED(INTERNAL_SERVER_ERROR, "Presigned Url 발급을 실패했습니다."),
     UNSUPPORTED_FILE_TYPE(INTERNAL_SERVER_ERROR, "지원하지 않는 파일 Content Type입니다."),
-    SPOT_INITIALIZATION_FAILED(INTERNAL_SERVER_ERROR, "즐길거리 초기화에 실패했습니다.");
+    SPOT_INITIALIZATION_FAILED(INTERNAL_SERVER_ERROR, "즐길거리 초기화에 실패했습니다."),
+    FAIL_TO_FETCH_IMAGE(BAD_REQUEST, "이미지 다운로드에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

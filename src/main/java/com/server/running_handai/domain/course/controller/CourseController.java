@@ -2,6 +2,7 @@ package com.server.running_handai.domain.course.controller;
 
 import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.global.response.ResponseCode.*;
+import static org.springframework.http.HttpStatus.*;
 
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.service.CourseService;
@@ -9,6 +10,7 @@ import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
+import com.server.running_handai.global.response.exception.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,6 +26,10 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,6 +41,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 @Slf4j
 @RestController
@@ -43,6 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CourseController {
 
     private final CourseService courseService;
+    private final RestTemplate restTemplate;
 
     @Operation(summary = "추천코스 전체 조회", description = "추천코스를 다양한 필터 옵션으로 조회합니다.")
     @ApiResponses({
@@ -243,6 +251,31 @@ public class CourseController {
         log.info("[내 코스 수정] memberId: {}, courseId: {}", memberId, courseId);
         courseService.updateCourse(memberId, courseId, request);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS_COURSE_UPDATE, null));
+    }
+
+    @Operation(summary = "외부 이미지 프록시", description = "URL로 전달된 외부 이미지를 서버를 통해 대신 요청하여 반환합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "이미지 다운로드 실패")
+    })
+    @GetMapping("/api/proxy/images")
+    public ResponseEntity<byte[]> imageProxy(@RequestParam String url) {
+        try {
+            // 카카오 지도 이미지 다운로드
+            ResponseEntity<byte[]> kakaoResponse = restTemplate.getForEntity(url, byte[].class);
+
+            // 이미지 바이트 생성
+            byte[] imageBytes = kakaoResponse.getBody();
+
+            // 응답 헤더 생성
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.setContentType(kakaoResponse.getHeaders().getContentType());
+
+            return new ResponseEntity<>(imageBytes, responseHeaders, OK);
+        }catch (Exception e) {
+            log.error("이미지 다운로드에 실패했습니다. url={}", url, e);
+            throw new BusinessException(FAIL_TO_FETCH_IMAGE);
+        }
     }
 
 }
