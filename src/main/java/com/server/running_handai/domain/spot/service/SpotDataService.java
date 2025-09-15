@@ -133,17 +133,15 @@ public class SpotDataService {
 
         // 3. showflag별로 분류
         // 표출(1)일 경우 업데이트하고, 비표출(0)일 경우 DB에서 삭제
-        Set<String> toDelete = modifiedItems.stream()
+        Map<Boolean, Set<String>> partitioned = modifiedItems.stream()
                 .filter(item -> existingExternalIds.contains(item.getSpotExternalId()))
-                .filter(item -> "0".equals(item.getSpotShowflag()))
-                .map(SpotSyncApiResponseDto.Item::getSpotExternalId)
-                .collect(Collectors.toSet());
+                .collect(Collectors.partitioningBy(
+                        item -> "1".equals(item.getSpotShowflag()), // true이면 toUpdate, false이면 toDelete
+                        Collectors.mapping(SpotSyncApiResponseDto.Item::getSpotExternalId, Collectors.toSet())
+                ));
 
-        Set<String> toUpdate = modifiedItems.stream()
-                .filter(item -> existingExternalIds.contains(item.getSpotExternalId()))
-                .filter(item -> "1".equals(item.getSpotShowflag()))
-                .map(SpotSyncApiResponseDto.Item::getSpotExternalId)
-                .collect(Collectors.toSet());
+        Set<String> toUpdate = partitioned.get(true);
+        Set<String> toDelete = partitioned.get(false);
 
         // 4. DB 삭제 혹은 업데이트
         List<Spot> updatedSpots = new ArrayList<>();
@@ -173,59 +171,65 @@ public class SpotDataService {
         // 2. 위치기반 관광정보 조회 API를 호출하여 코스별 새로운 External Id 수집
         Map<Long, Set<String>> fetchExternalIds = fetchSpotsByLocationAllCourseInParallel();
 
-        // 3. 각 코스별로 수정된 Spot의 External Id만 필터링
-        Map<Long, Set<String>> modifiedExternalIds = new HashMap<>();
-        fetchExternalIds.forEach((courseId, externalIds) -> {
+        // 3. 전체 코스를 기준으로 DB와 위치기반 관광정보 조회 API 데이터를 비교하여 변경사항 동기화
+        fetchExternalIds.forEach((courseId, newExternalIds) -> {
             Set<String> oldExternalIds = storedExternalIds.getOrDefault(courseId, Collections.emptySet());
-            Set<String> newExternalIds = new HashSet<>(externalIds);
-            newExternalIds.removeAll(oldExternalIds);
 
-            if (!newExternalIds.isEmpty()) {
-                modifiedExternalIds.put(courseId, newExternalIds);
+            // 3-1. 변경이 없는 경우 다음 코스로 넘어감
+            if (oldExternalIds.equals(newExternalIds)) {
+                log.debug("[즐길거리 위치 정보 동기화] DB에 존재하는 장소 데이터 변경 사항이 없어 종료합니다: courseId={}", courseId);
+                return;
             }
-        });
 
-        // 4-1. 변경이 없는 경우 종료
-        if (modifiedExternalIds.isEmpty()) {
-            log.info("[즐길거리 위치 정보 동기화] DB에 존재하는 장소 데이터 변경 사항이 없어 종료합니다.");
-            return;
-        }
-
-        // 4-2. 변경이 있는 경우 DB 업데이트
-        log.info("[즐길거리 위치 정보 동기화] {}개 코스에서 새로운 externalId 발견", modifiedExternalIds.size());
-        modifiedExternalIds.forEach((courseId, externalIds) -> {
+            log.info("[즐길거리 위치 정보 동기화] 새로운 externalId 발견: courseId={}", courseId);
             Course course = courseRepository.findById(courseId).orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
 
-            // 기존 Spot이 있는 경우
-            List<Spot> existingSpots = spotRepository.findByExternalIdIn(externalIds);
-            Set<String> existingExternalIds = existingSpots.stream()
-                    .map(Spot::getExternalId)
-                    .collect(Collectors.toSet());
+            // 3-2. 추가해야 할 External Id 수집
+            Set<String> toAdd = new HashSet<>(newExternalIds);
+            toAdd.removeAll(oldExternalIds);
 
-            // 기존 Spot이 없는 경우
-            Set<String> toUpdate = new HashSet<>(externalIds);
-            toUpdate.removeAll(existingExternalIds);
+            // 3-3. 삭제해야 할 External Id 수집
+            Set<String> toDelete = new HashSet<>(oldExternalIds);
+            toDelete.removeAll(newExternalIds);
 
-            List<Spot> spots = new ArrayList<>(existingSpots);
-            List<Spot> newSpots = new ArrayList<>();
-
-            if (!toUpdate.isEmpty()) {
-                log.info("[즐길거리 위치 정보 동기화] 코스 {}: {}개 새 Spot 생성 필요", courseId, toUpdate.size());
-                List<SpotApiResponseDto.Item> items = fetchSpotsInParallel(toUpdate);
-                newSpots = createSpots(items);
-                spots.addAll(newSpots);
+            // 4. DB 삭제 혹은 업데이트
+            // 4-1. 삭제해야 할 External Id Course-Spot 연관관계 삭제
+            if (!toDelete.isEmpty()) {
+                courseSpotRepository.deleteByCourseIdAndSpotExternalIdIn(courseId, toDelete);
+                log.info("[즐길거리 위치 정보 동기화] {}개 Spot Course와 연결 삭제!: courseId={}", toDelete.size(), courseId);
             }
 
-            spotRepository.saveAll(newSpots);
-            courseSpotRepository.deleteByCourseId(courseId);
+            // 4-2. 추가해야 할 External Id 추가
+            if (!toAdd.isEmpty()) {
+                // DB에 이미 존재하는 Spot인지 확인
+                List<Spot> existingSpots = spotRepository.findByExternalIdIn(toAdd);
+                Set<String> existingExternalIds = existingSpots.stream()
+                        .map(Spot::getExternalId)
+                        .collect(Collectors.toSet());
+                log.debug("[즐길거리 위치 정보 동기화] 기존과 겹치는 {}개의 Spot 존재: courseId={}", existingSpots.size(), courseId);
 
-            List<CourseSpot> courseSpots = spots.stream()
-                    .map(spot ->
-                            CourseSpot.builder().course(course).spot(spot).build())
-                    .collect(Collectors.toList());
+                // 기존에 없는 Spot은 새로 공통정보 조회 API를 호출하여 추가해야 함
+                Set<String> toCreate = new HashSet<>(toAdd);
+                toCreate.removeAll(existingExternalIds);
 
-            courseSpotRepository.saveAll(courseSpots);
-            log.info("[즐길거리 위치 정보 동기화] 완료: courseId={}", courseId);
+                // 기존에 있는 Spot은 Course-Spot 연관관계만 추가해야 함
+                List<Spot> toConnect = new ArrayList<>(existingSpots);
+
+                if (!toCreate.isEmpty()) {
+                    log.debug("[즐길거리 위치 정보 동기화] {}개 Spot 생성 필요: courseId={}", toCreate.size(), courseId);
+                    List<SpotApiResponseDto.Item> items = fetchSpotsInParallel(toCreate);
+                    List<Spot> newSpots = createSpots(items);
+                    spotRepository.saveAll(newSpots);
+                    toConnect.addAll(newSpots);
+                }
+
+                List<CourseSpot> newCourseSpots = toConnect.stream()
+                        .map(spot -> CourseSpot.builder().course(course).spot(spot).build())
+                        .toList();
+
+                courseSpotRepository.saveAll(newCourseSpots);
+                log.info("[즐길거리 위치 정보 동기화] {}개 Spot Course와 연결 추가!: courseId={}", newCourseSpots.size(), courseId);
+            }
         });
 
         int orphanedSpotsCount = cleanOrphanedSpots();
