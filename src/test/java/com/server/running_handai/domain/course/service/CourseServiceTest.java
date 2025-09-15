@@ -760,7 +760,6 @@ class CourseServiceTest {
             Long courseId = 100L;
             Course newCourse = createMockCourse(courseId);
 
-            when(courseRepository.existsByName(COURSE_NAME)).thenReturn(false); // 중복된 이름 없음
             when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
             when(courseDataService.createCourseToGpx(any(GpxCourseRequestDto.class), any(MultipartFile.class))).thenReturn(newCourse);
 
@@ -781,27 +780,9 @@ class CourseServiceTest {
             assertThat(capturedEvent.courseId()).isEqualTo(newCourse.getId());
             assertThat(capturedEvent.isInsideBusan()).isTrue();
 
-            verify(courseRepository).existsByName(COURSE_NAME);
             verify(memberRepository).findById(memberId);
             verify(courseDataService).createCourseToGpx(any(GpxCourseRequestDto.class), eq(gpxFile));
             verify(courseDataService).updateCourseImage(newCourse.getId(), thumbnailImgFile);
-        }
-
-        @Test
-        @DisplayName("실패 - 중복된 코스 이름")
-        void createMemberCourse_fail_duplicateCourseName() {
-            // given
-            Long memberId = 1L;
-            when(courseRepository.existsByName(COURSE_NAME)).thenReturn(true); // 코스 이름이 이미 존재함
-
-            // when, then
-            BusinessException exception = assertThrows(BusinessException.class,
-                    () -> courseService.createMemberCourse(memberId, request));
-            assertThat(exception.getResponseCode()).isEqualTo(DUPLICATE_COURSE_NAME);
-
-            verify(memberRepository, never()).findById(anyLong());
-            verify(courseDataService, never()).createCourseToGpx(any(), any());
-            verify(courseDataService, never()).updateCourseImage(any(), any());
         }
 
         @Test
@@ -809,7 +790,6 @@ class CourseServiceTest {
         void createMemberCourse_fail_memberNotFound() {
             // given
             Long nonExistentMemberId = 999L;
-            when(courseRepository.existsByName(COURSE_NAME)).thenReturn(false); // 중복은 통과
             when(memberRepository.findById(nonExistentMemberId)).thenReturn(Optional.empty()); // 존재하지 않는 회원
 
             // when, then
@@ -820,6 +800,59 @@ class CourseServiceTest {
             verify(courseDataService, never()).createCourseToGpx(any(), any());
             verify(courseDataService, never()).updateCourseImage(any(), any());
         }
+    }
+
+    @Nested
+    @DisplayName("코스명 중복 검사")
+    class IsCourseNameDuplicatedTest {
+
+        @Test
+        @DisplayName("성공 - 이미 존재하는 코스명일 경우 true 반환")
+        void returnsTrue_whenNameExists() {
+            // given
+            String existingName = "부산-바다";
+            when(courseRepository.existsByName(existingName)).thenReturn(true);
+
+            // when
+            boolean result = courseService.isCourseNameDuplicated(existingName);
+
+            // then
+            assertThat(result).isTrue();
+            verify(courseRepository).existsByName(existingName);
+        }
+
+        @Test
+        @DisplayName("성공 - 존재하지 않는 코스명일 경우 false 반환")
+        void returnsFalse_whenNameDoesNotExist() {
+            // given
+            String newName = "서울-시티";
+            when(courseRepository.existsByName(newName)).thenReturn(false);
+
+            // when
+            boolean result = courseService.isCourseNameDuplicated(newName);
+
+            // then
+            assertThat(result).isFalse();
+            verify(courseRepository).existsByName(newName);
+        }
+
+        // TODO 공백 처리에 대한 결정에 따라 수정 필요함
+//        @Test
+//        @DisplayName("성공 - 앞뒤 공백이 포함된 코스명이 존재할 경우, 공백을 제거하고 비교하여 true 반환")
+//        void returnsTrue_whenTrimmedNameExists() {
+//            // given
+//            String nameWithSpaces = " 부산-바다 ";
+//            String trimmedName = "부산 바다 코스";
+//            when(courseRepository.existsByName(trimmedName)).thenReturn(true);
+//
+//            // when
+//            boolean result = courseService.isCourseNameDuplicated(nameWithSpaces);
+//
+//            // then
+//            assertThat(result).isTrue();
+//            // .trim()으로 정제된 이름으로 repository 메소드가 호출되었는지 검증
+//            verify(courseRepository).existsByName(trimmedName);
+//        }
     }
 
     @Nested
