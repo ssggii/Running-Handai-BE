@@ -4,6 +4,7 @@ import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
+import static com.server.running_handai.global.response.ResponseCode.INVALID_COURSE_NAME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
@@ -350,6 +351,9 @@ public class CourseService {
      * @return 코스명이 중복되면 true, 중복되지 않으면 false
      */
     public boolean isCourseNameDuplicated(String newCourseName) {
+        if (newCourseName == null || newCourseName.isBlank()) {
+            throw new BusinessException(INVALID_COURSE_NAME_PARAMETER);
+        }
         return courseRepository.existsByName(newCourseName.trim());
     }
 
