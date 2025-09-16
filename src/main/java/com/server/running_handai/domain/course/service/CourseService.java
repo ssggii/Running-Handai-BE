@@ -354,7 +354,7 @@ public class CourseService {
         if (newCourseName == null || newCourseName.isBlank()) {
             throw new BusinessException(INVALID_COURSE_NAME_PARAMETER);
         }
-        return courseRepository.existsByName(newCourseName.trim());
+        return courseRepository.existsByName(newCourseName.replaceAll("\\s+", ""));
     }
 
     /**

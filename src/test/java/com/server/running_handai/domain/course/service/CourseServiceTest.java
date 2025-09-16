@@ -5,6 +5,7 @@ import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
+import static com.server.running_handai.global.response.ResponseCode.INVALID_COURSE_NAME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -836,23 +837,37 @@ class CourseServiceTest {
             verify(courseRepository).existsByName(newName);
         }
 
-        // TODO 공백 처리에 대한 결정에 따라 수정 필요함
-//        @Test
-//        @DisplayName("성공 - 앞뒤 공백이 포함된 코스명이 존재할 경우, 공백을 제거하고 비교하여 true 반환")
-//        void returnsTrue_whenTrimmedNameExists() {
-//            // given
-//            String nameWithSpaces = " 부산-바다 ";
-//            String trimmedName = "부산 바다 코스";
-//            when(courseRepository.existsByName(trimmedName)).thenReturn(true);
-//
-//            // when
-//            boolean result = courseService.isCourseNameDuplicated(nameWithSpaces);
-//
-//            // then
-//            assertThat(result).isTrue();
-//            // .trim()으로 정제된 이름으로 repository 메소드가 호출되었는지 검증
-//            verify(courseRepository).existsByName(trimmedName);
-//        }
+        @Test
+        @DisplayName("성공 - 공백만 차이가 있는 코스명일 경우 true 반환")
+        void returnsTrue_whenTrimmedNameExists() {
+            // given
+            String nameWithSpaces = " 부 산-바 다 ";
+            String trimmedName = "부산-바다";
+            when(courseRepository.existsByName(trimmedName)).thenReturn(true);
+
+            // when
+            boolean result = courseService.isCourseNameDuplicated(nameWithSpaces);
+
+            // then
+            assertThat(result).isTrue();
+            verify(courseRepository).existsByName(trimmedName);
+        }
+
+        @Test
+        @DisplayName("실패 - 코스명이 null이거나 blank인 경우 예외 발생")
+        void returnsFalse_whenTrimmedNameIsNull() {
+            // given
+            String[] courseNames = {null, "", " "};
+
+            // when, then
+            for (String name : courseNames) {
+                BusinessException exception = assertThrows(BusinessException.class,
+                        () -> courseService.isCourseNameDuplicated(name));
+                assertThat(exception.getResponseCode()).isEqualTo(INVALID_COURSE_NAME_PARAMETER);
+                verify(courseRepository, never()).existsByName(any());
+            }
+        }
+
     }
 
     @Nested
