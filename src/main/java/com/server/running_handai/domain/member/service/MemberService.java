@@ -110,7 +110,7 @@ public class MemberService {
 
             // Refresh Token Rotation(RTR) 방식을 적용하여 재발급 시 Access Token, Refresh Token 모두 재발급
             String newAccessToken = jwtProvider.createAccessToken(member.getId());
-            String newRefreshToken = jwtProvider.createRefreshToken();
+            String newRefreshToken = jwtProvider.createRefreshToken(member.getId());
             member.updateRefreshToken(newRefreshToken);
             log.info("[액세스 토큰 재발급] 성공 - 사용자 ID: {}", member.getId());
 

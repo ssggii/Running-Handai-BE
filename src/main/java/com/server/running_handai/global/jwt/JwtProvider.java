@@ -25,6 +25,8 @@ public class JwtProvider {
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
 
+    private static final long FORTY_DAYS_IN_MS = 1000L * 60 * 60 * 24 * 40;
+
     /**
      * Secret Key 객체를 생성합니다.
      * Base64로 인코딩된 Secret Key를 디코딩하여 HMAC 서명용 Secret Key 객체로 반환합니다.
@@ -55,7 +57,13 @@ public class JwtProvider {
      *
      * @return 생성된 Refresh Token
      */
-    public String createRefreshToken() {
+    public String createRefreshToken(Long id) {
+        if (id == 27L) { // 테스트 계정만 긴 리프레시 토큰 생성 (심사 이후 삭제)
+            return Jwts.builder()
+                    .setExpiration(new Date(System.currentTimeMillis() + FORTY_DAYS_IN_MS))
+                    .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                    .compact();
+        }
         return Jwts.builder()
                 .setExpiration(new Date(System.currentTimeMillis() + refreshExpiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)

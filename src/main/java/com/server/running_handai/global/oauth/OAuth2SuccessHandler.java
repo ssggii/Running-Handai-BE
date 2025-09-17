@@ -55,7 +55,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         log.info("[OAuth2 인증] 성공: 사용자 ID={}, JWT 토큰 생성 시작", member.getId());
 
         String accessToken = jwtProvider.createAccessToken(member.getId());
-        String refreshToken = jwtProvider.createRefreshToken();
+        String refreshToken = jwtProvider.createRefreshToken(member.getId());
 
         member.updateRefreshToken(refreshToken);
         memberRepository.save(member);
