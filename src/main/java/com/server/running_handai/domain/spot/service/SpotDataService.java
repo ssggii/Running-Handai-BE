@@ -531,15 +531,16 @@ public class SpotDataService {
      */
     private void updateSpotImage(Spot spot, SpotApiResponseDto.Item item) {
         String oldOriginalUrl = spot.getSpotImage() != null ? spot.getSpotImage().getOriginalUrl() : null;
+        String olds3FileUrl = spot.getSpotImage() != null ? spot.getSpotImage().getImgUrl() : null;
 
         String newOriginalImage = item.getSpotOriginalImage();
         String newThumbnailImage = item.getSpotThumbnailImage();
 
         if (!Objects.equals(oldOriginalUrl, newOriginalImage) && !Objects.equals(oldOriginalUrl, newThumbnailImage)) {
-            SpotImage spotImage = createSpotImage(item);
-            if (spotImage != null) {
-                spot.setSpotImage(spotImage);
-                fileService.deleteFile(oldOriginalUrl);
+            SpotImage newSpotImage = createSpotImage(item);
+            if (newSpotImage != null) {
+                spot.setSpotImage(newSpotImage);
+                fileService.deleteFile(olds3FileUrl);
             }
         }
     }
