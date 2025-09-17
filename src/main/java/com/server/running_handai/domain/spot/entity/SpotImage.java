@@ -38,4 +38,9 @@ public class SpotImage extends BaseTimeEntity {
     protected void setSpot(Spot spot) {
         this.spot = spot;
     }
+
+    public void updateSpotImage(String imgUrl, String originalUrl) {
+        this.imgUrl = imgUrl;
+        this.originalUrl = originalUrl;
+    }
 }

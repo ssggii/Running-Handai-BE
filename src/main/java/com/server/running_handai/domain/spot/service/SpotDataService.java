@@ -523,24 +523,42 @@ public class SpotDataService {
     }
 
     /**
-     * API 데이터와 비교하여 Spot 엔티티의 이미지를 업데이트합니다.
-     * 기존 이미지 URL과 새로운 이미지 URL들이 모두 다른 경우에만 업데이트합니다.
+     * API 데이터와 비교하여 Spot 엔티_티의 이미지를 업데이트합니다.
      *
      * @param spot DB에서 조회한 기존 Spot 엔티티
      * @param item 공통정보 조회 API로부터 받은 응답
      */
     private void updateSpotImage(Spot spot, SpotApiResponseDto.Item item) {
-        String oldOriginalUrl = spot.getSpotImage() != null ? spot.getSpotImage().getOriginalUrl() : null;
-        String olds3FileUrl = spot.getSpotImage() != null ? spot.getSpotImage().getImgUrl() : null;
+        SpotImage existingImage = spot.getSpotImage();
+        String oldOriginalUrl = (existingImage != null) ? existingImage.getOriginalUrl() : null;
 
         String newOriginalImage = item.getSpotOriginalImage();
         String newThumbnailImage = item.getSpotThumbnailImage();
 
+        // 이미지 변경이 필요한지 확인
         if (!Objects.equals(oldOriginalUrl, newOriginalImage) && !Objects.equals(oldOriginalUrl, newThumbnailImage)) {
+            String oldS3FileUrl = (existingImage != null) ? existingImage.getImgUrl() : null;
             SpotImage newSpotImage = createSpotImage(item);
-            if (newSpotImage != null) {
-                spot.setSpotImage(newSpotImage);
-                fileService.deleteFile(olds3FileUrl);
+
+            // 기존 이미지가 있는 경우
+            if (existingImage != null) {
+                if (newSpotImage != null) {
+                    existingImage.updateSpotImage(newSpotImage.getImgUrl(), newSpotImage.getOriginalUrl());
+                } else {
+                    // API 호출 시 새로운 이미지가 없으면 연관관계 삭제
+                    spot.setSpotImage(null);
+                }
+            } else {
+                // 기존 이미지가 없는 경우
+                if (newSpotImage != null) {
+                    // 새 객체를 할당
+                    spot.setSpotImage(newSpotImage);
+                }
+            }
+
+            // 이전 S3 파일이 있었다면 삭제
+            if (oldS3FileUrl != null) {
+                fileService.deleteFile(oldS3FileUrl);
             }
         }
     }
