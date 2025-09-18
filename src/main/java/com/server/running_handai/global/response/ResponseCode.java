@@ -37,6 +37,7 @@ public enum ResponseCode {
     EMPTY_FILE(BAD_REQUEST, "파일이 누락되었습니다."),
     INVALID_POINT_NAME(BAD_REQUEST, "포인트 이름이 누락되었습니다."),
     DUPLICATE_COURSE_NAME(BAD_REQUEST, "이미 존재하는 코스 이름입니다."),
+    INVALID_COURSE_NAME_PARAMETER(BAD_REQUEST, "코스 이름은 필수 입력값입니다."),
 
     // UNAUTHORIZED (401)
     INVALID_ACCESS_TOKEN(UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다."),

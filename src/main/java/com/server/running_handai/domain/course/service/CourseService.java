@@ -4,6 +4,7 @@ import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_AREA_PARAMETER;
+import static com.server.running_handai.global.response.ResponseCode.INVALID_COURSE_NAME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.INVALID_THEME_PARAMETER;
 import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
 import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
@@ -324,24 +325,15 @@ public class CourseService {
      */
     @Transactional
     public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
-        String newCourseName = request.startPointName().trim() + COURSE_NAME_DELIMITER + request.endPointName().trim();
-        checkCourseNameDuplicated(newCourseName);
         Course newCourse = saveMemberCourse(memberId, request);
         courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
         publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
         return newCourse.getId();
     }
 
-    private void checkCourseNameDuplicated(String newCourseName) {
-        if (courseRepository.existsByName(newCourseName)) {
-            throw new BusinessException(DUPLICATE_COURSE_NAME);
-        }
-    }
-
     private Course saveMemberCourse(Long memberId, CourseCreateRequestDto request) {
         Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-        Course newCourse = courseDataService.createCourseToGpx(
-                new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
+        Course newCourse = courseDataService.createCourseToGpx(new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
         newCourse.setCreator(member);
         return newCourse;
     }
@@ -350,6 +342,19 @@ public class CourseService {
         CourseCreatedEvent event = new CourseCreatedEvent(courseId, isInsideBusan);
         log.info("코스 생성 이벤트 발행. courseId: {}, isInsideBusan: {}", courseId, isInsideBusan);
         eventPublisher.publishEvent(event);
+    }
+
+    /**
+     * 코스명 중복 여부를 검사합니다.
+     *
+     * @param newCourseName 사용자가 요청한 코스명
+     * @return 코스명이 중복되면 true, 중복되지 않으면 false
+     */
+    public boolean isCourseNameDuplicated(String newCourseName) {
+        if (newCourseName == null || newCourseName.isBlank()) {
+            throw new BusinessException(INVALID_COURSE_NAME_PARAMETER);
+        }
+        return courseRepository.existsByName(newCourseName.replaceAll("\\s+", ""));
     }
 
     /**
@@ -412,7 +417,9 @@ public class CourseService {
 
         // 변경되었다면 중복 검사 후 이름 업데이트
         if (isCourseNameChanged) {
-            checkCourseNameDuplicated(updatedCourseName);
+            if (isCourseNameDuplicated(updatedCourseName)) { // 코스명 중복 시 예외 발생
+                throw new BusinessException(DUPLICATE_COURSE_NAME);
+            }
             course.updateName(updatedCourseName);
         }
     }

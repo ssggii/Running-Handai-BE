@@ -6,7 +6,6 @@ import static org.springframework.http.HttpStatus.*;
 
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.service.CourseService;
-import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
 import com.server.running_handai.global.response.CommonResponse;
@@ -18,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
@@ -26,10 +26,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -198,6 +195,22 @@ public class CourseController {
     ) {
         boolean isBusanCourse = courseService.isInsideBusan(longitude, latitude);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, isBusanCourse));
+    }
+
+    @Operation(summary = "코스명 중복 검사", description = "이미 존재하는 코스명인지 검사합니다."
+            + "<br>코스명이 중복되는 경우 true, 중복되지 않는 경우 false를 반환합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "요청 파라미터 오류")
+    })
+    @GetMapping("/api/courses/name/exists")
+    public ResponseEntity<CommonResponse<Boolean>> checkCourseNameDuplicated(
+            @Parameter(description = "코스 이름", required = true)
+            @RequestParam("name") String courseName
+    ) {
+        log.info("[코스명 중복 검사] courseName: {}", courseName);
+        boolean isCourseNameDuplicated = courseService.isCourseNameDuplicated(courseName);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, isCourseNameDuplicated));
     }
 
     @Operation(summary = "내 코스 생성", description = "회원의 코스를 생성합니다.")
