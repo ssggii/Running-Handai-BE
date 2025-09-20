@@ -27,16 +27,15 @@ import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
-import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
@@ -254,7 +253,7 @@ public class CourseService {
      */
     public GpxPathDto downloadGpx(Long courseId, Long memberId) {
         Course course = courseRepository.findByIdAndCreatorId(courseId, memberId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // Presigned GET URL 발급 (1시간)
         String gpxPath = fileService.getPresignedGetUrl(course.getGpxPath(), 60);
@@ -287,7 +286,7 @@ public class CourseService {
      */
     public MyCourseDetailDto getMyCourse(Long memberId, Long courseId) {
         Course course = courseRepository.findByIdAndCreatorIdWithTrackPoints(courseId, memberId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         List<TrackPointDto> trackPointDtos = course.getTrackPoints().stream()
                 .map(TrackPointDto::from)
@@ -432,5 +431,40 @@ public class CourseService {
         if (newImageFile != null && !newImageFile.isEmpty()) {
             courseDataService.updateCourseImage(course.getId(), newImageFile);
         }
+    }
+
+    /**
+     * 주어진 좌표 배열의 모든 좌표가 대한민국 내에 있는지 판별합니다.
+     *
+     * @param coordinateDtoList 좌표 배열
+     * @return 모두 대한민국 지역 내에 있으면 true, 하나라도 아니면 false
+     */
+    public Boolean isKoreaCourse(CoordinateListDto coordinateDtoList) {
+        // 모든 좌표를 순회하며 검사
+        for (CoordinateListDto.CoordinateDto coordinateDto : coordinateDtoList.coordinateDtoList()) {
+            double latitude = coordinateDto.latitude();
+            double longitude = coordinateDto.longitude();
+
+            // 대한민국 경계 좌표를 통해 필터링
+            if (latitude < 33.0 || latitude > 38.9 || longitude < 124.5 || longitude > 132.0) {
+                return false;
+            }
+
+            // 대한민국 경계 좌표를 통과한 좌표에 대해 카카오 지도 API를 통해 행정구역 정보를 조회
+            // 행정구역 정보가 존재하지 않을 경우 false로 반환
+            JsonNode regionCode = kakaoMapService.getRegionCodeFromCoordinate(longitude, latitude);
+            if (regionCode == null) {
+                return false;
+            }
+
+            // 행정구역 정보에서 시도단위 추출
+            // 시도단위가 존재하지 않을 경우 false로 반환
+            String provinceName = kakaoMapService.extractProvinceName(regionCode);
+            if (provinceName == null) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

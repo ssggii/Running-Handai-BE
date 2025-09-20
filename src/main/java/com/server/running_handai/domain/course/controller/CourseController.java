@@ -17,7 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
+
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
@@ -182,7 +182,7 @@ public class CourseController {
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, myCourseDetailDto));
     }
 
-    @Operation(summary = "지역 판별", description = "특정 위치 좌표가 부산 내 지역인지 판별합니다.")
+    @Operation(summary = "부산 지역 판별", description = "특정 위치 좌표가 부산 내 지역인지 판별합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공")
     })
@@ -289,6 +289,18 @@ public class CourseController {
             log.error("이미지 다운로드에 실패했습니다. url={}", url, e);
             throw new BusinessException(FAIL_TO_FETCH_IMAGE);
         }
+    }
+
+    @Operation(summary = "대한민국 지역 판별", description = "특정 좌표 배열이 모두 대한민국 내 지역인지 판별합니다. 하나의 좌표라도 대한민국이 아닐 경우, false를 반환하며, 요청 시 좌표 배열은 시작점과 도착점을 포함하여 최소 2개 이상이어야 합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공")
+    })
+    @PostMapping("/api/locations/korea")
+    public ResponseEntity<CommonResponse<Boolean>> isKoreaCourse(
+            @Valid @RequestBody CoordinateListDto coordinateDtoList
+    ) {
+        boolean isKoreaCourse = courseService.isKoreaCourse(coordinateDtoList);
+        return ResponseEntity.ok(CommonResponse.success(SUCCESS, isKoreaCourse));
     }
 
 }
