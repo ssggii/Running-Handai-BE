@@ -293,7 +293,8 @@ public class CourseController {
 
     @Operation(summary = "대한민국 지역 판별", description = "특정 좌표 배열이 모두 대한민국 내 지역인지 판별합니다. 하나의 좌표라도 대한민국이 아닐 경우, false를 반환하며, 요청 시 좌표 배열은 시작점과 도착점을 포함하여 최소 2개 이상이어야 합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "성공")
+            @ApiResponse(responseCode = "200", description = "성공 - SUCCESS"),
+            @ApiResponse(responseCode = "400", description = "실패 (좌표가 2개 미만) - INVALID_INPUT_VALUE")
     })
     @PostMapping("/api/locations/korea")
     public ResponseEntity<CommonResponse<Boolean>> isKoreaCourse(
