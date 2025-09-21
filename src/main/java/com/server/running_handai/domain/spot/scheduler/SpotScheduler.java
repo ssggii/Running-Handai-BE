@@ -15,20 +15,20 @@ import java.time.format.DateTimeFormatter;
 public class SpotScheduler {
     private final SpotDataService spotDataService;
 
-    /**
-     * 매주 월요일 새벽 4시에 즐길거리 위치 정보 동기화 작업을 실행합니다.
-     * cron = "[초] [분] [시] [일] [월] [요일]"
-     */
-    @Scheduled(cron = "0 0 4 * * 1", zone = "Asia/Seoul")
-    public void scheduleSyncSpotsByLocation() {
-        log.info("[스케줄러] 즐길거리 위치 정보 동기화 작업을 시작합니다.");
-        try {
-            spotDataService.syncSpotsByLocation();
-            log.info("[스케줄러] 즐길거리 위치 정보 동기화 작업을 성공적으로 완료했습니다.");
-        } catch (Exception e) {
-            log.error("[스케줄러] 즐길거리 위치 정보 동기화 작업 중 오류가 발생했습니다.", e);
-        }
-    }
+//    /**
+//     * 매주 월요일 새벽 4시에 즐길거리 위치 정보 동기화 작업을 실행합니다.
+//     * cron = "[초] [분] [시] [일] [월] [요일]"
+//     */
+//    @Scheduled(cron = "0 0 4 * * 1", zone = "Asia/Seoul")
+//    public void scheduleSyncSpotsByLocation() {
+//        log.info("[스케줄러] 즐길거리 위치 정보 동기화 작업을 시작합니다.");
+//        try {
+//            spotDataService.syncSpotsByLocation();
+//            log.info("[스케줄러] 즐길거리 위치 정보 동기화 작업을 성공적으로 완료했습니다.");
+//        } catch (Exception e) {
+//            log.error("[스케줄러] 즐길거리 위치 정보 동기화 작업 중 오류가 발생했습니다.", e);
+//        }
+//    }
 
     /**
      * 매일 새벽 5시 30분에 즐길거리 장소 정보 동기화 작업을 실행합니다.

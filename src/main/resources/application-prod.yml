@@ -17,6 +17,8 @@ spring:
             redirect-uri: https://api.runninghandai.com/login/oauth2/code/kakao
           naver:
             redirect-uri: https://api.runninghandai.com/login/oauth2/code/naver
+          google:
+            redirect-uri: https://api.runninghandai.com/login/oauth2/code/google
 
 aws:
   region: ap-northeast-2
