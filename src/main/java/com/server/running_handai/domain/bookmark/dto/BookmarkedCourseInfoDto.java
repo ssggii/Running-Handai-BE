@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
         "bookmarkId",
         "courseId",
+        "courseName",
         "thumbnailUrl",
         "distance",
         "duration",
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 public interface BookmarkedCourseInfoDto {
     long getBookmarkId();
     long getCourseId();
+    String getCourseName();
     String getThumbnailUrl();
 
     @JsonIgnore

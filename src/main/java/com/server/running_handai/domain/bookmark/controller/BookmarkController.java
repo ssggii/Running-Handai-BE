@@ -3,7 +3,6 @@ package com.server.running_handai.domain.bookmark.controller;
 import static com.server.running_handai.global.response.ResponseCode.*;
 
 import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseDetailDto;
-import com.server.running_handai.domain.bookmark.dto.BookmarkedCourseInfoDto;
 import com.server.running_handai.domain.bookmark.service.BookmarkService;
 import com.server.running_handai.domain.course.entity.Area;
 import com.server.running_handai.global.oauth.CustomOAuth2User;

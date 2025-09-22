@@ -46,7 +46,6 @@ public class MemberService {
     private static final int MY_COURSE_PREVIEW_MAX_COUNT = 3;
 
     private final MemberRepository memberRepository;
-    private final BookmarkRepository bookmarkRepository;
     private final JwtProvider jwtProvider;
     private final BookmarkService bookmarkService;
     private final CourseService courseService;
