@@ -134,3 +134,7 @@ swagger:
   server:
     local: http://localhost:8080
     prod: https://api.runninghandai.com
+
+kakao:
+  address: https://dapi.kakao.com/v2/local/geo/coord2address.json
+  region-code: https://dapi.kakao.com/v2/local/geo/coord2regioncode.json

@@ -19,6 +19,12 @@ public class KakaoMapService {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoApiKey;
 
+    @Value("${kakao.address}")
+    private String addressRequestUrl;
+
+    @Value("${kakao.region-code}")
+    private String regionCodeRequestUrl;
+
     public record AddressInfo(String districtName, String dongName) {}
 
     /**
@@ -29,7 +35,7 @@ public class KakaoMapService {
      * @return 주소 정보가 담긴 JsonNode (성공 시 documents[0]), 없거나 파싱 실패시 null
      */
     public JsonNode getAddressFromCoordinate(double longitude, double latitude) {
-        String requestUrl = "https://dapi.kakao.com/v2/local/geo/coord2address.json"
+        String requestUrl = addressRequestUrl
                 + "?x=" + longitude
                 + "&y=" + latitude
                 + "&input_coord=WGS84"; // 좌표계 (기본값)
@@ -92,7 +98,7 @@ public class KakaoMapService {
      * @return 행정구역 정보가 담긴 JsonNode (성공 시 documents[0]), 없거나 파싱 실패시 null
      */
     public JsonNode getRegionCodeFromCoordinate(double longitude, double latitude) {
-        String requestUrl = "https://dapi.kakao.com/v2/local/geo/coord2regioncode.json"
+        String requestUrl = regionCodeRequestUrl
                 + "?x=" + longitude
                 + "&y=" + latitude;
 
@@ -101,7 +107,6 @@ public class KakaoMapService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        log.info("[카카오 지도 API 호출] 요청 URL: {}", requestUrl);
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
