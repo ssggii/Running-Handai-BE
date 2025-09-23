@@ -3,11 +3,7 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
-import static com.server.running_handai.global.response.ResponseCode.COURSE_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.DUPLICATE_COURSE_NAME;
-import static com.server.running_handai.global.response.ResponseCode.INVALID_COURSE_NAME_PARAMETER;
-import static com.server.running_handai.global.response.ResponseCode.MEMBER_NOT_FOUND;
-import static com.server.running_handai.global.response.ResponseCode.NO_AUTHORITY_TO_DELETE_COURSE;
+import static com.server.running_handai.global.response.ResponseCode.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -20,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +44,8 @@ import com.server.running_handai.global.response.exception.BusinessException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Stream;
+
+import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -1265,6 +1264,143 @@ class CourseServiceTest {
 
             assertThat(exception.getResponseCode()).isEqualTo(ResponseCode.DUPLICATE_COURSE_NAME);
             assertThat(course.getName()).isEqualTo(originalCourseName);
+        }
+    }
+
+    @Nested
+    @DisplayName("대한민국 판별 테스트")
+    class CheckKoreaTest {
+        private final ObjectMapper objectMapper = new ObjectMapper();
+
+        /**
+         * [대한민국 판별] 성공
+         * 1. 모든 좌표가 대한민국에 속하는 경우 (true 응답)
+         */
+        @Test
+        @DisplayName("대한민국 판별 성공 - true 반환")
+        void isKoreaCourse_success_inKorea() throws Exception {
+            // given
+            List<CoordinateListDto.CoordinateDto> coordinateDtoList = List.of(
+                    new CoordinateListDto.CoordinateDto(37.566826, 126.9786567), // 서울시청
+                    new CoordinateListDto.CoordinateDto(35.158656, 129.160113) // 해운대 해수욕장
+            );
+
+            CoordinateListDto coordinateListDto = new CoordinateListDto(coordinateDtoList);
+
+            JsonNode mockRegionCode1 = createMockRegionCodeNode("서울특별시");
+            JsonNode mockRegionCode2 = createMockRegionCodeNode("부산광역시");
+
+            given(kakaoMapService.getRegionCodeFromCoordinate(coordinateDtoList.get(0).longitude(), coordinateDtoList.get(0).latitude())).willReturn(mockRegionCode1);
+            given(kakaoMapService.getRegionCodeFromCoordinate(coordinateDtoList.get(1).longitude(), coordinateDtoList.get(1).latitude())).willReturn(mockRegionCode2);
+            given(kakaoMapService.extractProvinceName(mockRegionCode1)).willReturn("서울특별시");
+            given(kakaoMapService.extractProvinceName(mockRegionCode2)).willReturn("부산광역시");
+
+            // when
+            boolean result = courseService.isKoreaCourse(coordinateListDto);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        /**
+         * [대한민국 판별] 성공
+         * 2. 모든 좌표가 대한민국에 속하는 경우 (false 응답)
+         */
+        @ParameterizedTest
+        @MethodSource("coordinateProvider")
+        @DisplayName("대한민국 판별 성공 - false 반환")
+        void isKoreaCourse_success_notInKorea(CoordinateListDto coordinateListDto,
+                                              boolean[] expectedBoundaryResults,
+                                              boolean expectedFinalResult,
+                                              String[] provinceNames
+        ) throws Exception {
+            // given
+            for (int i = 0; i < coordinateListDto.coordinateDtoList().size(); i++) {
+                // 경계 좌표 검증
+                CoordinateListDto.CoordinateDto coordinateDto = coordinateListDto.coordinateDtoList().get(i);
+                double latitude = coordinateDto.latitude();
+                double longitude = coordinateDto.longitude();
+
+                boolean boundary = latitude >= 33.0 && latitude <= 38.9 && longitude >= 124.5 && longitude <= 132.0;
+
+                // then
+                assertThat(boundary).isEqualTo(expectedBoundaryResults[i]);
+
+                // 카카오 지도 검증
+                if (boundary) {
+                    JsonNode mockRegionCode = null;
+                    if (provinceNames[i] != null) {
+                        mockRegionCode = createMockRegionCodeNode(provinceNames[i]);
+
+                        // given
+                        given(kakaoMapService.getRegionCodeFromCoordinate(longitude, latitude)).willReturn(mockRegionCode);
+                        given(kakaoMapService.extractProvinceName(mockRegionCode)).willReturn(mockRegionCode.get("region_1depth_name").asText());
+                    } else {
+                        lenient().when(kakaoMapService.getRegionCodeFromCoordinate(longitude, latitude)).thenReturn(null);
+                    }
+                }
+            }
+
+            // when
+            boolean result = courseService.isKoreaCourse(coordinateListDto);
+
+            // then
+            assertThat(result).isFalse();
+            assertThat(result).isEqualTo(expectedFinalResult);
+        }
+
+        static Stream<Arguments> coordinateProvider() {
+            return Stream.of(
+                    Arguments.of(
+                            new CoordinateListDto(List.of(
+                                    // [CAES 1] 2개 중 1개만 해외 (경계 좌표에서 필터링)
+                                    new CoordinateListDto.CoordinateDto(33.499621, 126.531188), // 제주도
+                                    new CoordinateListDto.CoordinateDto(48.858370, 2.294481) // 프랑스 파리
+                            )),
+                            new boolean[]{true, false},
+                            false,
+                            new String[]{"제주특별자치도", null}
+                    ),
+                    Arguments.of(
+                            new CoordinateListDto(List.of(
+                                    // [CAES 2] 2개 1개만 해외 (경계 좌표 통과)
+                                    new CoordinateListDto.CoordinateDto(35.160032, 126.851338), // 광주
+                                    new CoordinateListDto.CoordinateDto(34.2565, 129.2891) // 일본 대마도
+                            )),
+                            new boolean[]{true, true},
+                            false,
+                            new String[]{"광주광역시", null}
+                    ),
+                    Arguments.of(
+                            new CoordinateListDto(List.of(
+                                    // [CAES 3] 2개 모두 해외 (경계 좌표에서 필터링)
+                                    new CoordinateListDto.CoordinateDto(40.689247, -74.044502), // 미국 뉴욕
+                                    new CoordinateListDto.CoordinateDto(35.658581, 139.745433) // 일본 도쿄
+                            )),
+                            new boolean[]{false, false},
+                            false,
+                            new String[]{null, null}
+                    ),
+                    Arguments.of(
+                            new CoordinateListDto(List.of(
+                                    // [CAES 4] 2개 모두 해외 (경계 좌표 통과)
+                                    new CoordinateListDto.CoordinateDto(34.2565, 129.2891), // 일본 대마도
+                                    new CoordinateListDto.CoordinateDto(34.694406, 129.441962) // 일본 대마도
+                            )),
+                            new boolean[]{true, true},
+                            false,
+                            new String[]{null, null}
+                    )
+            );
+        }
+
+        private JsonNode createMockRegionCodeNode(String provinceName) throws Exception {
+            String jsonString = String.format(
+                    "{\"region_1depth_name\": \"%s\"}",
+                    provinceName
+            );
+
+            return objectMapper.readTree(jsonString);
         }
     }
 }

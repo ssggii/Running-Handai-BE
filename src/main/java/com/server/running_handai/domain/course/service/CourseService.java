@@ -27,13 +27,12 @@ import com.server.running_handai.domain.review.repository.ReviewRepository;
 import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
-import com.server.running_handai.global.response.ResponseCode;
 import com.server.running_handai.global.response.exception.BusinessException;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -55,6 +54,10 @@ public class CourseService {
 
     public static final String MYSQL_POINT_FORMAT = "POINT(%f %f)";
     public static final String COURSE_NAME_DELIMITER = "-";
+    private static final double SOUTH_KOREA_MIN_LATITUDE = 33.0;
+    private static final double SOUTH_KOREA_MAX_LATITUDE = 38.9;
+    private static final double SOUTH_KOREA_MIN_LONGITUDE = 124.5;
+    private static final double SOUTH_KOREA_MAX_LONGITUDE = 132.0;
 
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
@@ -254,7 +257,7 @@ public class CourseService {
      */
     public GpxPathDto downloadGpx(Long courseId, Long memberId) {
         Course course = courseRepository.findByIdAndCreatorId(courseId, memberId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         // Presigned GET URL 발급 (1시간)
         String gpxPath = fileService.getPresignedGetUrl(course.getGpxPath(), 60);
@@ -287,7 +290,7 @@ public class CourseService {
      */
     public MyCourseDetailDto getMyCourse(Long memberId, Long courseId) {
         Course course = courseRepository.findByIdAndCreatorIdWithTrackPoints(courseId, memberId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.COURSE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(COURSE_NOT_FOUND));
 
         List<TrackPointDto> trackPointDtos = course.getTrackPoints().stream()
                 .map(TrackPointDto::from)
@@ -432,5 +435,60 @@ public class CourseService {
         if (newImageFile != null && !newImageFile.isEmpty()) {
             courseDataService.updateCourseImage(course.getId(), newImageFile);
         }
+    }
+
+    /**
+     * 주어진 좌표 배열의 모든 좌표가 대한민국 내에 있는지 판별합니다.
+     *
+     * @param coordinateDtoList 좌표 배열
+     * @return 모두 대한민국 지역 내에 있으면 true, 하나라도 아니면 false
+     */
+    public Boolean isKoreaCourse(CoordinateListDto coordinateDtoList) {
+        AtomicInteger apiCallCount = new AtomicInteger(0);
+
+        boolean result = coordinateDtoList.coordinateDtoList().stream()
+                .allMatch(dto -> isCoordinateInKorea(dto, apiCallCount)); // false일 경우, 즉시 종료!
+
+        log.info("[대한민국 판별] 경계 좌표 필터링 통과해 API 호출: {}", apiCallCount.get());
+        return result;
+    }
+
+    /**
+     * 단일 좌표가 대한민국 내에 있는지 판별합니다.
+     *
+     * @param coordinateDto 검사할 좌표 DTO
+     * @param apiCallCount API 호출 개수
+     * @return 대한민국 내에 있으면 true, 아니면 false
+     */
+    private boolean isCoordinateInKorea(
+            CoordinateListDto.CoordinateDto coordinateDto,
+            AtomicInteger apiCallCount
+    ) {
+        double latitude = coordinateDto.latitude();
+        double longitude = coordinateDto.longitude();
+
+        // 대한민국 경계 좌표를 통해 필터링
+        if (latitude < SOUTH_KOREA_MIN_LATITUDE || latitude > SOUTH_KOREA_MAX_LATITUDE
+                || longitude < SOUTH_KOREA_MIN_LONGITUDE || longitude > SOUTH_KOREA_MAX_LONGITUDE) {
+            return false;
+        }
+
+        apiCallCount.incrementAndGet();
+
+        // 대한민국 경계 좌표를 통과한 좌표에 대해 카카오 지도 API를 통해 행정구역 정보를 조회
+        // 행정구역 정보가 존재하지 않을 경우 false로 반환
+        JsonNode regionCode = kakaoMapService.getRegionCodeFromCoordinate(longitude, latitude);
+        if (regionCode == null) {
+            return false;
+        }
+
+        // 행정구역 정보에서 시도단위 추출
+        // 시도단위가 존재하지 않을 경우 false로 반환
+        String provinceName = kakaoMapService.extractProvinceName(regionCode);
+        if (provinceName == null) {
+            return false;
+        }
+
+        return true;
     }
 }
