@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -300,6 +301,7 @@ public class CourseController {
     public ResponseEntity<CommonResponse<Boolean>> isKoreaCourse(
             @Valid @RequestBody CoordinateListDto coordinateDtoList
     ) {
+        log.info("[대한민국 판별] {}개 좌표 검사 시작", coordinateDtoList.coordinateDtoList().size());
         boolean isKoreaCourse = courseService.isKoreaCourse(coordinateDtoList);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, isKoreaCourse));
     }
