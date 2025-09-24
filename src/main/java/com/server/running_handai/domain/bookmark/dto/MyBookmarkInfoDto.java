@@ -3,6 +3,7 @@ package com.server.running_handai.domain.bookmark.dto;
 public record MyBookmarkInfoDto(
         long bookmarkId,
         long courseId,
+        String courseName,
         String thumbnailUrl,
         int bookmarkCount,
         boolean isBookmarked
@@ -11,6 +12,7 @@ public record MyBookmarkInfoDto(
         return new MyBookmarkInfoDto(
                 courseInfoDto.getBookmarkId(),
                 courseInfoDto.getCourseId(),
+                courseInfoDto.getCourseName(),
                 courseInfoDto.getThumbnailUrl(),
                 courseInfoDto.getBookmarkCount(),
                 courseInfoDto.getIsBookmarked()
