@@ -48,7 +48,7 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
                     "    s.description, " +
                     "    si.img_url As imageUrl " +
                     "FROM spot s " +
-                    "LEFT JOIN spot_image si ON s.spot_id = si.spot_id " +
+                    "JOIN spot_image si ON s.spot_id = si.spot_id " +
                     "JOIN course_spot cs ON cs.spot_id = s.spot_id " +
                     "WHERE cs.course_id = :courseId " +
                     "ORDER BY RAND() LIMIT 3",
