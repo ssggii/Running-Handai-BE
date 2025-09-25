@@ -42,16 +42,24 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
      * CourseId와 일치하는 Spot을 SpotImage와 함께 랜덤으로 3개 가져옵니다.
      */
     @Query(
-            value = "SELECT " +
-                    "    s.spot_id AS spotId, " +
-                    "    s.name, " +
-                    "    s.description, " +
-                    "    si.img_url As imageUrl " +
-                    "FROM spot s " +
-                    "JOIN spot_image si ON s.spot_id = si.spot_id " +
-                    "JOIN course_spot cs ON cs.spot_id = s.spot_id " +
-                    "WHERE cs.course_id = :courseId " +
-                    "ORDER BY RAND() LIMIT 3",
+            value = """
+                    SELECT
+                        s.spot_id AS spotId,
+                        s.name,
+                        s.description,
+                        si.img_url AS imageUrl
+                    FROM
+                        spot s
+                    JOIN
+                        course_spot cs ON s.spot_id = cs.spot_id
+                    LEFT JOIN
+                        spot_image si ON s.spot_id = si.spot_id
+                    WHERE
+                        cs.course_id = :courseId
+                    ORDER BY
+                        (si.img_url IS NOT NULL) DESC,
+                        RAND()
+                    LIMIT 3""",
             nativeQuery = true
     )
     List<SpotInfoDto> findRandom3ByCourseId(@Param("courseId") Long courseId);
