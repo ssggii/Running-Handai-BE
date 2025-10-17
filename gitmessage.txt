@@ -1,4 +1,4 @@
-[TYPE] title (#이슈번호)
+TYPE: title (#이슈번호)
 
 # ---- COMMIT END ----
 # TYPE 목록
