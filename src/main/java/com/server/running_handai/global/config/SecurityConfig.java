@@ -72,7 +72,8 @@ public class SecurityConfig {
                                 "/teamchuck/swagger-ui/**",
                                 "/teamchuck/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/api/members/oauth/token"
+                                "/api/members/oauth/token",
+                                "/api/admin/login"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
