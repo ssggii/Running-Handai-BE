@@ -94,3 +94,8 @@ cors:
 course:
   simplification:
     distance-tolerance: 0.0001
+
+admin:
+  id: "admin_id"
+  email: "admin_email"
+  password: "admin_password"
