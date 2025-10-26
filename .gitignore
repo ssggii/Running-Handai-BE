@@ -45,6 +45,3 @@ application-private.yml
 
 # Docker data volumes
 /data
-
-# admin
-src/main/java/com/server/running_handai/domain/admin

@@ -141,3 +141,8 @@ swagger:
 kakao:
   address: https://dapi.kakao.com/v2/local/geo/coord2address.json
   region-code: https://dapi.kakao.com/v2/local/geo/coord2regioncode.json
+
+admin:
+  id: ${ADMIN_ID}
+  email: ${ADMIN_EMAIL}
+  password: ${ADMIN_PASSWORD}
