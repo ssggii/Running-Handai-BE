@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import static com.server.running_handai.global.response.ResponseCode.*;
 
@@ -32,6 +33,7 @@ public class AdminService {
     private final JwtProvider jwtProvider;
     private final MemberRepository memberRepository;
 
+    @Transactional
     public TokenResponseDto login(AdminLoginRequestDto adminLoginRequestDto) {
         log.info("[관리자 로그인] 시도");
         String email = adminLoginRequestDto.email();
