@@ -1,20 +1,16 @@
-# 프로젝트 개요
-
-## 러닝한다이 (Running Handai)
+# 러닝한다이 (Running Handai)
 
 부산의 다채로운 매력을 따라 달리는 데이터 기반 러닝코스 추천 플랫폼, [**러닝한다이**](https://runninghandai.com/)입니다
 
-### 프로젝트 성과
+## 프로젝트 성과
 
 - 🏆 2025 관광데이터 활용 공모전 **우수상** 수상
 - 🎖️ 2025 관광데이터 활용 공모전 **부산관광공사 특별상** 수상
 
-### 서비스 링크
+## 서비스 소개
 
-- 서비스 : https://runninghandai.com/
+- 서비스 바로가기 : https://runninghandai.com/
 - 시연 영상 : https://drive.google.com/file/d/1AQqq0j2C61L-bnMzuSFbhwNnwJe4bgQn/view?usp=sharing
-
-### 서비스 소개
 
 ![1](https://github.com/user-attachments/assets/66db6bb5-3714-4c09-b38c-6cd61e02144c)
 ![2](https://github.com/user-attachments/assets/a9673e05-e07e-4b1c-9730-3ff1f979cffb)
