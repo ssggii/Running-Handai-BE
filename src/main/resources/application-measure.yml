@@ -1,0 +1,14 @@
+# 성능 측정 전용 프로필
+# 쿼리 수를 셀 때 local 프로필과 함께 켠다: SPRING_PROFILES_ACTIVE=local,measure
+# 시간을 잴 때는 로그 비용이 섞이지 않게 p6spy만 끈다: DECORATOR_DATASOURCE_ENABLED=false
+spring:
+  jpa:
+    properties:
+      hibernate:
+        generate_statistics: true # 세션마다 JDBC 문장 수, JDBC 배치 수, 소요 시간을 로그로 요약
+
+decorator:
+  datasource:
+    enabled: true
+    p6spy:
+      enable-logging: true # 실행된 SQL을 바인딩 값과 실행 시간(ms)까지 한 줄씩 로그로 남김

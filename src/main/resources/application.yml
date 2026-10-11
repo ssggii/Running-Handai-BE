@@ -142,6 +142,11 @@ kakao:
   address: https://dapi.kakao.com/v2/local/geo/coord2address.json
   region-code: https://dapi.kakao.com/v2/local/geo/coord2regioncode.json
 
+# 쿼리 측정 도구(p6spy)는 기본 비활성화 (measure 프로필에서만 켠다)
+decorator:
+  datasource:
+    enabled: false
+
 admin:
   id: ${ADMIN_ID}
   email: ${ADMIN_EMAIL}
