@@ -3,6 +3,8 @@
 # 시간을 잴 때는 로그 비용이 섞이지 않게 p6spy만 끈다: DECORATOR_DATASOURCE_ENABLED=false
 spring:
   jpa:
+    hibernate:
+      ddl-auto: none # 운영 스키마를 그대로 쓴다. local의 update가 스키마를 바꾸지 않게 막는다
     properties:
       hibernate:
         generate_statistics: true # 세션마다 JDBC 문장 수, JDBC 배치 수, 소요 시간을 로그로 요약

@@ -28,7 +28,7 @@ services:
 
   # MySQL Database
   mysql-db:
-    image: mysql:8.0
+    image: mysql:8.0.41 # 운영 RDS와 같은 버전 (공간 인덱스 동작이 버전마다 다르다)
     container_name: runninghandai-local-db
     ports:
       - "3307:3306"
