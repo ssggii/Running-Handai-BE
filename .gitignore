@@ -45,3 +45,6 @@ application-private.yml
 
 # Docker data volumes
 /data
+
+# 개인 개선 작업 문서 (fork 전용)
+/docs/개선작업/
