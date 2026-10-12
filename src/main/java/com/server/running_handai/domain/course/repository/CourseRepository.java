@@ -19,7 +19,9 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByExternalIdIsNotNull();
 
     /**
-     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 5km 이내에 있는 Course 목록 조회
+     * 코스의 시작점을 기준으로 사용자의 현재 위치에서 반경 이내에 있는 Course 목록 조회
+     * 1차로 반경을 감싸는 사각형(boundingBox)으로 공간 인덱스(idx_course_location)를 타서 후보를 좁히고,
+     * 2차로 후보만 정확한 구면 거리로 거른다. 공간 인덱스는 SRID가 지정된 컬럼과 MBRContains 같은 공간 관계 조건에서만 쓰인다
      */
     @Query(
             value = "SELECT " +
@@ -35,12 +37,15 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                     "LEFT JOIN " +
                     "    course_image ci ON c.course_id = ci.course_id " +
                     "WHERE " +
-                    "    ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= 5000 " +
+                    "    MBRContains(ST_GeomFromText(:boundingBox, 4326), c.start_point) " +
+                    "    AND ST_Distance_Sphere(c.start_point, ST_PointFromText(:userPoint, 4326)) <= :radiusMeters " +
                     "ORDER BY " +
                     "    distanceFromUser ASC",
             nativeQuery = true
     )
-    List<CourseInfoDto> findCoursesNearbyUser(@Param("userPoint") String userPoint);
+    List<CourseInfoDto> findCoursesNearbyUser(@Param("userPoint") String userPoint,
+                                              @Param("boundingBox") String boundingBox,
+                                              @Param("radiusMeters") double radiusMeters);
 
     /**
      * 특정 지역 내의 Course 목록 조회

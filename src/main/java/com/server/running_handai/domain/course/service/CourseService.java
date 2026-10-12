@@ -28,6 +28,7 @@ import com.server.running_handai.domain.review.service.ReviewService;
 import com.server.running_handai.domain.spot.dto.SpotInfoDto;
 import com.server.running_handai.domain.spot.repository.SpotRepository;
 import com.server.running_handai.global.response.exception.BusinessException;
+import com.server.running_handai.global.util.GeoBoundingBox;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,6 +54,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class CourseService {
 
     public static final String MYSQL_POINT_FORMAT = "POINT(%f %f)";
+    // 내 주변 코스 검색 반경. 사각형(1차 필터) 계산과 SQL의 거리 조건(2차 필터)에 같은 값을 써서 둘이 어긋나지 않게 한다
+    public static final double NEARBY_RADIUS_METERS = 5000;
     public static final String COURSE_NAME_DELIMITER = "-";
     private static final double SOUTH_KOREA_MIN_LATITUDE = 33.0;
     private static final double SOUTH_KOREA_MAX_LATITUDE = 38.9;
@@ -94,7 +97,8 @@ public class CourseService {
     }
 
     private List<CourseInfoDto> findCoursesNearby(CourseFilterRequestDto request) {
-        return courseRepository.findCoursesNearbyUser(parseUserPoint(request));
+        GeoBoundingBox boundingBox = GeoBoundingBox.around(request.lat(), request.lon(), NEARBY_RADIUS_METERS);
+        return courseRepository.findCoursesNearbyUser(parseUserPoint(request), boundingBox.toWkt(), NEARBY_RADIUS_METERS);
     }
 
     private List<CourseInfoDto> findCoursesByArea(CourseFilterRequestDto request) {

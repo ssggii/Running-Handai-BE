@@ -3,9 +3,11 @@ package com.server.running_handai.domain.course.service;
 import static com.server.running_handai.domain.course.entity.CourseFilter.*;
 import static com.server.running_handai.domain.course.entity.SpotStatus.*;
 import static com.server.running_handai.domain.course.service.CourseService.MYSQL_POINT_FORMAT;
+import static com.server.running_handai.domain.course.service.CourseService.NEARBY_RADIUS_METERS;
 import static com.server.running_handai.global.response.ResponseCode.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -153,7 +155,7 @@ class CourseServiceTest {
         BookmarkCountDto bookmarkCountDto = new BookmarkCountDto(COURSE_ID, 3L); // 북마크 3개로 가정
 
         switch (filterType) {
-            case NEARBY -> given(courseRepository.findCoursesNearbyUser(anyString())).willReturn(List.of(courseInfoDto));
+            case NEARBY -> given(courseRepository.findCoursesNearbyUser(anyString(), anyString(), anyDouble())).willReturn(List.of(courseInfoDto));
             case AREA -> given(courseRepository.findCoursesByArea(anyString(), eq(Area.HAEUN_GWANGAN.name()))).willReturn(List.of(courseInfoDto));
             case THEME -> given(courseRepository.findCoursesByTheme(anyString(), eq(Theme.MOUNTAIN.name()))).willReturn(List.of(courseInfoDto));
         }
@@ -188,7 +190,7 @@ class CourseServiceTest {
         assertThat(details.isBookmarked()).isTrue();
 
         switch (filterType) {
-            case NEARBY -> verify(courseRepository).findCoursesNearbyUser(anyString());
+            case NEARBY -> verify(courseRepository).findCoursesNearbyUser(anyString(), anyString(), anyDouble());
             case AREA -> verify(courseRepository).findCoursesByArea(anyString(), eq(Area.HAEUN_GWANGAN.name()));
             case THEME -> verify(courseRepository).findCoursesByTheme(anyString(), eq(Theme.MOUNTAIN.name()));
         }
@@ -209,7 +211,7 @@ class CourseServiceTest {
         BookmarkCountDto bookmarkCountDto = new BookmarkCountDto(COURSE_ID, 3L); // 북마크 3개로 가정
 
         switch (filterType) {
-            case NEARBY -> given(courseRepository.findCoursesNearbyUser(anyString())).willReturn(List.of(courseInfoDto));
+            case NEARBY -> given(courseRepository.findCoursesNearbyUser(anyString(), anyString(), anyDouble())).willReturn(List.of(courseInfoDto));
             case AREA -> given(courseRepository.findCoursesByArea(anyString(), eq(Area.HAEUN_GWANGAN.name()))).willReturn(List.of(courseInfoDto));
             case THEME -> given(courseRepository.findCoursesByTheme(anyString(), eq(Theme.MOUNTAIN.name()))).willReturn(List.of(courseInfoDto));
         }
@@ -243,7 +245,7 @@ class CourseServiceTest {
         assertThat(details.isBookmarked()).isFalse();
 
         switch (filterType) {
-            case NEARBY -> verify(courseRepository).findCoursesNearbyUser(anyString());
+            case NEARBY -> verify(courseRepository).findCoursesNearbyUser(anyString(), anyString(), anyDouble());
             case AREA -> verify(courseRepository).findCoursesByArea(anyString(), eq(Area.HAEUN_GWANGAN.name()));
             case THEME -> verify(courseRepository).findCoursesByTheme(anyString(), eq(Theme.MOUNTAIN.name()));
         }
@@ -258,7 +260,7 @@ class CourseServiceTest {
     void findCourses_success_emptyResult() {
         // given
         CourseFilterRequestDto filterOption = new CourseFilterRequestDto(NEARBY, USER_LAT, USER_LON, null, null);
-        given(courseRepository.findCoursesNearbyUser(String.format(MYSQL_POINT_FORMAT, filterOption.lat(), filterOption.lon()))).willReturn(List.of());
+        given(courseRepository.findCoursesNearbyUser(eq(String.format(MYSQL_POINT_FORMAT, filterOption.lat(), filterOption.lon())), anyString(), eq(NEARBY_RADIUS_METERS))).willReturn(List.of());
 
         // when
         List<CourseInfoWithDetailsDto> result = courseService.findCourses(filterOption, null);
