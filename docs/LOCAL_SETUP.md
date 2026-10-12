@@ -39,6 +39,19 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
+### **4) DB 스키마 적용**
+
+스키마의 기준은 엔티티가 아니라 `sql/` 폴더의 SQL 파일입니다. 운영은 `ddl-auto: none`이라 엔티티 정의로 테이블을 만들지 않습니다. 로컬의 `ddl-auto: update`로 테이블을 새로 만들면 `course.start_point`가 SRID 없는 `GEOMETRY` 컬럼으로 생겨, 반경 검색이 공간 인덱스를 쓰지 못하는 등 운영과 달라집니다.
+
+DB를 처음 만들었을 때는 운영 스키마와 변경 SQL을 순서대로 적용합니다. `prod-schema.sql`은 기존 테이블을 지우고 다시 만들기 때문에, 앞 단계에서 앱이 테이블을 먼저 만들었어도 운영과 같은 스키마로 바뀝니다. **데이터가 모두 지워지니 처음 세팅할 때만 실행하세요.**
+
+```bash
+docker exec -i runninghandai-local-db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < sql/prod-schema.sql
+docker exec -i runninghandai-local-db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < sql/V2_course_start_point_srid.sql
+```
+
+엔티티의 `columnDefinition`은 테스트 DB(H2)가 MySQL 전용 문법(`POINT SRID 4326`)을 이해하지 못해 `GEOMETRY`로 둡니다.
+
 ## 3. Docker 명령어
 
 초기 설정이 끝난 후, 일반적인 개발 상황에서는 아래 명령어를 통해 서비스(애플리케이션, DB)를 실행합니다.
