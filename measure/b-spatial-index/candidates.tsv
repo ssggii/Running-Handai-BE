@@ -4,3 +4,4 @@ time	label	table	runs	median_ms	min_ms	max_ms	rows_sent	rows_examined	missing_vs
 2026-10-12 18:06	c2	course_srid	10	1871.689	1759.441	2121.233	41554	127784	266	2	type=range key=idx_course_location rows=8479 extra=Using where; Using filesort
 2026-10-12 18:58	c3	course_srid	10	25558.777	24259.061	829578.700	41818	4283636	0	0	type=ALL key=NULL rows=4062497 extra=Using where; Using filesort
 2026-10-12 19:36	c3f	course_srid c FORCE INDEX (idx_course_lat_lon)	10	4128.264	3788.402	4792.236	41818	367173	0	0	type=range key=idx_course_lat_lon rows=563920 extra=Using where; Using MRR; Using filesort
+2026-10-12 21:57	after	course	10	1845.651	1731.200	2156.705	41818	128613	0	0	type=range key=idx_course_location rows=8716 extra=Using where; Using filesort

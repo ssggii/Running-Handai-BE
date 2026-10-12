@@ -8,12 +8,13 @@
 #   ./compare_candidates.sh c2         # 후보 2: ST_Within + ST_Buffer 원 다각형 (course_srid)
 #   ./compare_candidates.sh c3         # 후보 3: 위도·경도 B-Tree 범위 + 거리 재확인 (course_srid의 가상 컬럼). 옵티마이저에게 맡김
 #   ./compare_candidates.sh c3f        # 후보 3에 FORCE INDEX (idx_course_lat_lon): 인덱스를 강제로 쓰게 했을 때
+#   ./compare_candidates.sh after      # 6단계 개선 후: SRID 4326으로 바꾼 course에 앱과 같은 쿼리 (사각형은 앱이 보낸 값)
 #
 # 기록하는 것: EXPLAIN의 course 줄(type, key, 추정 행 수, Extra를 plan 칸에 함께 저장), 실행 시간(워밍업 후 서버 측 시간 중앙값), 결과 행 수,
 #             검사한 행 수, 원래 결과와의 차이(빠진 코스, 더 들어온 코스). 결과는 candidates.tsv에 쌓인다.
 set -euo pipefail
 
-LABEL=${1:?후보를 주세요: baseline | original | c1 | c2 | c3 | c3f}
+LABEL=${1:?후보를 주세요: baseline | original | c1 | c2 | c3 | c3f | after}
 WARMUP=${WARMUP:-3}
 RUNS=${RUNS:-10}
 CONTAINER=runninghandai-local-db
@@ -31,6 +32,7 @@ case "$LABEL" in
   c1)                TABLE=course_srid; WHERE="MBRContains($BOX, c.start_point) AND $DIST <= 5000" ;;
   c2)                TABLE=course_srid; WHERE="ST_Within(c.start_point, ST_Buffer($USER_POINT, 5000))" ;;
   c3)                TABLE=course_srid; WHERE="c.start_lat BETWEEN $LAT_MIN AND $LAT_MAX AND c.start_lon BETWEEN $LON_MIN AND $LON_MAX AND $DIST <= 5000" ;;
+  after)             TABLE=course;      WHERE="MBRContains(ST_GeomFromText('POLYGON((35.1132842 129.1048495, 35.1132842 129.2159505, 35.2041158 129.2159505, 35.2041158 129.1048495, 35.1132842 129.1048495))', 4326), c.start_point) AND $DIST <= 5000.0" ;;
   c3f)               TABLE="course_srid c FORCE INDEX (idx_course_lat_lon)"; WHERE="c.start_lat BETWEEN $LAT_MIN AND $LAT_MAX AND c.start_lon BETWEEN $LON_MIN AND $LON_MAX AND $DIST <= 5000" ;;
   *) sed -n '2,13p' "$0"; exit 1 ;;
 esac
