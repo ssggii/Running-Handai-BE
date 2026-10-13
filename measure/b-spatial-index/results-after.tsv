@@ -1,0 +1,5 @@
+time	label	courses	table_mb	runs	median_ms	min_ms	max_ms	rows_sent	rows_examined	disk_reads	sort_merge_passes	plan
+2026-10-12 21:40	after-57	57	0.1	10	0.661	0.634	1.032	9	75	0	0	type=ALL key=NULL rows=57 extra=Using where; Using filesort
+2026-10-12 21:42	after-42k	42000	15.1	10	11.813	10.967	13.366	401	1229	0	0	type=range key=idx_course_location rows=243 extra=Using where; Using filesort
+2026-10-12 21:43	after-420k	420000	121.3	10	124.322	117.457	137.145	4200	12928	0	10	type=range key=idx_course_location rows=275 extra=Using where; Using filesort
+2026-10-12 21:56	after-4.2m	4200000	1181.5	10	2007.641	1721.310	2164.485	41818	128613	788304	10	type=range key=idx_course_location rows=8716 extra=Using where; Using filesort
