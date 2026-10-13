@@ -18,6 +18,7 @@ import com.server.running_handai.domain.course.entity.Theme;
 import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
+import com.server.running_handai.domain.course.repository.TrackPointJdbcRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.global.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.ResponseCode;
@@ -57,6 +58,7 @@ public class CourseDataService {
     private final DurunubiApiClient durunubiApiClient;
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
+    private final TrackPointJdbcRepository trackPointJdbcRepository;
     private final RoadConditionRepository roadConditionRepository;
     private final KakaoMapService kakaoMapService;
     private final OpenAiService openAiService;
@@ -94,6 +96,7 @@ public class CourseDataService {
                 .collect(Collectors.toMap(Course::getExternalId, course -> course));
 
         List<Course> newCourses = new ArrayList<>(); // 새롭게 추가된 코스
+        Map<Course, List<TrackPoint>> newCourseTrackPoints = new HashMap<>(); // 신규 코스별 트랙포인트
         List<Course> updatedCourses = new ArrayList<>(); // 수정된 기존 코스
 
         // API 데이터를 기준으로 루프를 돌며 DB 데이터와 비교
@@ -117,9 +120,7 @@ public class CourseDataService {
 
             Course dbCourse = dbCourseMap.get(externalId); // 현재 DB에 저장된 Course
             if (dbCourse != null) { // DB에 이미 존재 -> 업데이트
-                trackPointRepository.deleteByCourseId(dbCourse.getId());
-                trackPoints.forEach(trackPoint -> trackPoint.setCourse(dbCourse));
-                trackPointRepository.saveAll(trackPoints);
+                replaceTrackPoints(dbCourse, trackPoints);
                 dbCourse.setStartPoint(apiCourse.getStartPoint());
                 dbCourse.updateElevation(apiCourse.getMinElevation(), apiCourse.getMaxElevation());
                 log.info("[두루누비 코스 동기화] 트랙포인트 업데이트 완료: courseId={}, count={}", dbCourse.getId(), trackPoints.size());
@@ -130,8 +131,8 @@ public class CourseDataService {
                 }
                 dbCourseMap.remove(externalId); // 업데이트 끝난 DB 데이터는 맵에서 제거 (남은 데이터는 DELETE 대상)
             } else { // DB에 없음 -> 신규 추가
-                trackPoints.forEach(trackPoint -> trackPoint.setCourse(apiCourse));
                 newCourses.add(apiCourse);
+                newCourseTrackPoints.put(apiCourse, trackPoints);
                 log.info("[두루누비 코스 동기화] 신규 코스 저장 (INSERT): externalId={}", externalId);
             }
         }
@@ -139,6 +140,7 @@ public class CourseDataService {
         // 신규 코스 저장 및 길 상태 업데이트
         if (!newCourses.isEmpty()) {
             courseRepository.saveAll(newCourses);
+            newCourses.forEach(newCourse -> saveTrackPoints(newCourse, newCourseTrackPoints.get(newCourse)));
             log.info("[두루누비 코스 동기화] {}건의 신규 코스가 추가되었습니다.", newCourses.size());
 
             log.info("[두루누비 코스 동기화] {}건의 신규 코스에 대한 길 상태 정보 업데이트를 시작합니다.", newCourses.size());
@@ -593,14 +595,32 @@ public class CourseDataService {
         roadConditionRepository.saveAll(roadConditions);
         log.info("[GPX 코스 생성] RoadCondition {}개 저장 완료", roadConditions.size());
 
-        for (TrackPoint trackPoint : trackPoints) {
-            trackPoint.setCourse(course);
-        }
-        trackPointRepository.saveAll(trackPoints);
+        saveTrackPoints(course, trackPoints);
         log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
 
         log.info("[GPX 코스 생성] 전체 작업 완료: 코스명={})", courseName);
         return course;
+    }
+
+    /**
+     * 코스의 트랙포인트를 JDBC 배치로 저장합니다.
+     *
+     * @param course 트랙포인트를 연결할 코스
+     * @param trackPoints 저장할 트랙포인트 목록
+     */
+    public void saveTrackPoints(Course course, List<TrackPoint> trackPoints) {
+        trackPointJdbcRepository.batchInsert(course.getId(), trackPoints);
+    }
+
+    /**
+     * 코스의 트랙포인트를 모두 삭제하고 새 트랙포인트로 교체합니다.
+     *
+     * @param course 트랙포인트를 교체할 코스
+     * @param trackPoints 새 트랙포인트 목록
+     */
+    public void replaceTrackPoints(Course course, List<TrackPoint> trackPoints) {
+        trackPointRepository.deleteAllByCourseIdInBulk(course.getId());
+        trackPointJdbcRepository.batchInsert(course.getId(), trackPoints);
     }
 
     /**

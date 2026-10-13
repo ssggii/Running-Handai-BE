@@ -4,6 +4,9 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME_PROD}
     password: ${SPRING_DATASOURCE_PASSWORD_PROD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      data-source-properties:
+        rewriteBatchedStatements: true # JDBC 배치를 여러 행 INSERT 한 문장으로 전송
 
   jpa:
     hibernate:

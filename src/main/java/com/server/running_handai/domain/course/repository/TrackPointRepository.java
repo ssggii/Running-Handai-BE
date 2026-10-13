@@ -6,7 +6,9 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
 
@@ -18,7 +20,9 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
     /**
      * 특정한 courseId의 트랙포인트 전체 삭제
      */
-    void deleteByCourseId(Long courseId);
+    @Modifying
+    @Query("DELETE FROM TrackPoint t WHERE t.course.id = :courseId")
+    int deleteAllByCourseIdInBulk(@Param("courseId") Long courseId);
 
     /**
      * 특정 코스의 전체 트랙포인트 목록 조회
@@ -48,7 +52,7 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
                     "FROM course c " +
                     "JOIN track_point stp ON c.course_id = stp.course_id AND stp.sequence = 1 " +
                     "JOIN track_point etp ON c.course_id = etp.course_id AND etp.sequence = (" +
-                        "SELECT MAX(mtp.sequence) FROM track_point mtp WHERE mtp.course_id = c.course_id" +
+                    "SELECT MAX(mtp.sequence) FROM track_point mtp WHERE mtp.course_id = c.course_id" +
                     ")",
             nativeQuery = true
     )
