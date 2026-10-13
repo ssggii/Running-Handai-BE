@@ -96,7 +96,7 @@ public class CourseDataService {
                 .collect(Collectors.toMap(Course::getExternalId, course -> course));
 
         List<Course> newCourses = new ArrayList<>(); // 새롭게 추가된 코스
-        Map<Course, List<TrackPoint>> newCourseTrackPoints = new HashMap<>(); // 신규 코스별 트랙포인트 (코스 저장 후 JDBC 배치로 저장)
+        Map<Course, List<TrackPoint>> newCourseTrackPoints = new HashMap<>(); // 신규 코스별 트랙포인트
         List<Course> updatedCourses = new ArrayList<>(); // 수정된 기존 코스
 
         // API 데이터를 기준으로 루프를 돌며 DB 데이터와 비교
@@ -603,12 +603,9 @@ public class CourseDataService {
     }
 
     /**
-     * 코스에 트랙포인트를 연결해 JDBC 배치로 저장합니다. (GPX 코스 생성, 두루누비 신규 코스)
-     * 호출하는 쪽의 트랜잭션 안에서 실행됩니다.
-     * JPA를 거치지 않으므로 저장한 트랙포인트는 course.getTrackPoints()에 들어가지 않습니다.
-     * TrackPoint.setCourse()를 함께 쓰면 cascade로 같은 트랙포인트가 한 번 더 INSERT되므로 쓰지 않습니다.
+     * 코스의 트랙포인트를 JDBC 배치로 저장합니다.
      *
-     * @param course 트랙포인트를 연결할 코스 (이미 저장되어 ID가 있어야 함)
+     * @param course 트랙포인트를 연결할 코스
      * @param trackPoints 저장할 트랙포인트 목록
      */
     public void saveTrackPoints(Course course, List<TrackPoint> trackPoints) {
@@ -616,10 +613,7 @@ public class CourseDataService {
     }
 
     /**
-     * 코스의 기존 트랙포인트를 모두 삭제하고 새 트랙포인트로 교체합니다. (두루누비 코스 동기화)
-     * 호출하는 쪽의 트랜잭션 안에서 실행됩니다.
-     * 삭제는 벌크 삭제 한 문장이라 영속성 컨텍스트에 이미 읽어 둔 트랙포인트가 있으면 DB와 어긋납니다.
-     * 이 메서드를 부르기 전에는 해당 코스의 트랙포인트를 엔티티로 읽지 않아야 합니다.
+     * 코스의 트랙포인트를 모두 삭제하고 새 트랙포인트로 교체합니다.
      *
      * @param course 트랙포인트를 교체할 코스
      * @param trackPoints 새 트랙포인트 목록

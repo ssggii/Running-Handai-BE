@@ -22,9 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 트랙포인트 저장 구간만 따로 재는 측정 전용 API입니다. (measure 프로필에서만 등록)
- * OpenAI, 카카오, S3 호출 없이 CourseDataService의 저장 구간 메서드를 실제 코드 그대로 호출합니다.
- * 응답의 elapsedMs는 저장 구간 메서드 호출부터 flush까지(쓰기 지연된 SQL까지 DB에 보낸 시점)의 시간입니다.
+ * 트랙포인트 저장 구간 측정용 API입니다. (measure 프로필 전용)
  */
 @Profile("measure")
 @RestController
@@ -41,8 +39,7 @@ public class TrackPointMeasureController {
     private final GeometryFactory geometryFactory;
 
     /**
-     * GPX 코스 생성과 같은 흐름: 새 코스를 저장한 뒤 같은 트랜잭션에서 트랙포인트를 저장합니다.
-     * 시간은 트랙포인트 저장 구간만 잽니다. (코스 INSERT 1건은 시간에서 빠지고 쿼리 수에는 포함)
+     * 코스 생성 흐름의 트랙포인트 저장 시간을 잽니다.
      */
     @PostMapping("/create")
     public Map<String, Object> create(@RequestParam int points) {
@@ -61,8 +58,7 @@ public class TrackPointMeasureController {
     }
 
     /**
-     * 두루누비 동기화와 같은 흐름: 이미 저장된 코스를 읽고, 기존 트랙포인트를 지운 뒤 새 트랙포인트를 저장합니다.
-     * 시간은 교체 구간만 잽니다. (코스 조회 SELECT 1건은 시간에서 빠지고 쿼리 수에는 포함)
+     * 두루누비 동기화 흐름의 트랙포인트 교체 시간을 잽니다.
      */
     @PostMapping("/replace")
     public Map<String, Object> replace(@RequestParam long courseId, @RequestParam int points) {
@@ -94,7 +90,7 @@ public class TrackPointMeasureController {
     }
 
     /**
-     * 해운대해수욕장에서 북동쪽으로 이어지는 트랙포인트를 만듭니다. 값은 매번 같습니다. (sequence는 1부터)
+     * 측정용 트랙포인트를 만듭니다.
      */
     private List<TrackPoint> generateTrackPoints(int count) {
         List<TrackPoint> trackPoints = new ArrayList<>(count);

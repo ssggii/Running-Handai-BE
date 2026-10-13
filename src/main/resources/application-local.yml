@@ -6,7 +6,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       data-source-properties:
-        rewriteBatchedStatements: true # JDBC 배치를 여러 행짜리 INSERT 한 문장으로 묶어 전송 (기본값 false면 한 문장씩 전송)
+        rewriteBatchedStatements: true # JDBC 배치를 여러 행 INSERT 한 문장으로 전송
 
   jpa:
     hibernate:

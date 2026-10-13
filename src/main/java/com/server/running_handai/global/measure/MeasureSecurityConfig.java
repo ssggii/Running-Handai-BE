@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 
 /**
- * 측정 전용 API(/measure/**)를 인증 없이 호출할 수 있게 합니다. (measure 프로필에서만 등록, 운영 보안 설정은 그대로)
+ * 측정 API(/measure/**)를 인증 없이 허용합니다. (measure 프로필 전용)
  */
 @Profile("measure")
 @Configuration

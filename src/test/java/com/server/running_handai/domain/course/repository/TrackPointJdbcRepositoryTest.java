@@ -24,7 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 @Import(TrackPointJdbcRepository.class)
 class TrackPointJdbcRepositoryTest {
 
-    // 배치 크기(1,000)를 넘겨 묶음이 여러 개일 때도 확인한다
+    // 배치 크기(1,000)를 넘는 개수
     private static final int POINT_COUNT = 2500;
 
     @Autowired

@@ -18,9 +18,7 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
     Optional<TrackPoint> findFirstByCourseOrderBySequenceAsc(Course course);
 
     /**
-     * 특정한 courseId의 트랙포인트를 한 문장으로 전체 삭제
-     * 영속성 컨텍스트를 거치지 않는 벌크 삭제라, 이미 읽어 둔 트랙포인트 엔티티는 메모리에 남습니다.
-     * (파생 삭제 deleteByCourseId는 트랙포인트를 모두 조회한 뒤 한 건씩 DELETE해서 대체했습니다)
+     * 특정한 courseId의 트랙포인트 전체 삭제
      */
     @Modifying
     @Query("DELETE FROM TrackPoint t WHERE t.course.id = :courseId")
@@ -54,7 +52,7 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
                     "FROM course c " +
                     "JOIN track_point stp ON c.course_id = stp.course_id AND stp.sequence = 1 " +
                     "JOIN track_point etp ON c.course_id = etp.course_id AND etp.sequence = (" +
-                        "SELECT MAX(mtp.sequence) FROM track_point mtp WHERE mtp.course_id = c.course_id" +
+                    "SELECT MAX(mtp.sequence) FROM track_point mtp WHERE mtp.course_id = c.course_id" +
                     ")",
             nativeQuery = true
     )
