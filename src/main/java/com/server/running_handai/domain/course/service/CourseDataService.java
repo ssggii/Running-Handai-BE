@@ -117,9 +117,7 @@ public class CourseDataService {
 
             Course dbCourse = dbCourseMap.get(externalId); // 현재 DB에 저장된 Course
             if (dbCourse != null) { // DB에 이미 존재 -> 업데이트
-                trackPointRepository.deleteByCourseId(dbCourse.getId());
-                trackPoints.forEach(trackPoint -> trackPoint.setCourse(dbCourse));
-                trackPointRepository.saveAll(trackPoints);
+                replaceTrackPoints(dbCourse, trackPoints);
                 dbCourse.setStartPoint(apiCourse.getStartPoint());
                 dbCourse.updateElevation(apiCourse.getMinElevation(), apiCourse.getMaxElevation());
                 log.info("[두루누비 코스 동기화] 트랙포인트 업데이트 완료: courseId={}, count={}", dbCourse.getId(), trackPoints.size());
@@ -593,14 +591,38 @@ public class CourseDataService {
         roadConditionRepository.saveAll(roadConditions);
         log.info("[GPX 코스 생성] RoadCondition {}개 저장 완료", roadConditions.size());
 
-        for (TrackPoint trackPoint : trackPoints) {
-            trackPoint.setCourse(course);
-        }
-        trackPointRepository.saveAll(trackPoints);
+        saveTrackPoints(course, trackPoints);
         log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
 
         log.info("[GPX 코스 생성] 전체 작업 완료: 코스명={})", courseName);
         return course;
+    }
+
+    /**
+     * 코스에 트랙포인트를 연결하고 저장합니다. (GPX 코스 생성)
+     * 호출하는 쪽의 트랜잭션 안에서 실행됩니다.
+     *
+     * @param course 트랙포인트를 연결할 코스
+     * @param trackPoints 저장할 트랙포인트 목록
+     */
+    public void saveTrackPoints(Course course, List<TrackPoint> trackPoints) {
+        for (TrackPoint trackPoint : trackPoints) {
+            trackPoint.setCourse(course);
+        }
+        trackPointRepository.saveAll(trackPoints);
+    }
+
+    /**
+     * 코스의 기존 트랙포인트를 모두 삭제하고 새 트랙포인트로 교체합니다. (두루누비 코스 동기화)
+     * 호출하는 쪽의 트랜잭션 안에서 실행됩니다.
+     *
+     * @param course 트랙포인트를 교체할 코스
+     * @param trackPoints 새 트랙포인트 목록
+     */
+    public void replaceTrackPoints(Course course, List<TrackPoint> trackPoints) {
+        trackPointRepository.deleteByCourseId(course.getId());
+        trackPoints.forEach(trackPoint -> trackPoint.setCourse(course));
+        trackPointRepository.saveAll(trackPoints);
     }
 
     /**
