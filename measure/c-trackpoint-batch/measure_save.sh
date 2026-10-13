@@ -38,9 +38,10 @@ sql() {
   docker exec -i "$CONTAINER" sh -c 'mysql -N -B -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' 2>&1 | grep -v 'Using a password' || true
 }
 
-# Com_delete, Com_insert, Com_select, Com_update 순서 (SHOW STATUS는 Com_select에 잡히지 않는다)
+# Com_delete, Com_delete_multi, Com_insert, Com_select, Com_update 순서 (SHOW STATUS는 Com_select에 잡히지 않는다)
+# Com_delete_multi: Hibernate 6의 JPQL 벌크 삭제는 'delete t from track_point t where ...' 형태라 MySQL이 이쪽으로 센다
 counters() {
-  echo "SHOW GLOBAL STATUS WHERE Variable_name IN ('Com_insert', 'Com_delete', 'Com_select', 'Com_update');" | sql | sort | awk '{printf "%s ", $2}'
+  echo "SHOW GLOBAL STATUS WHERE Variable_name IN ('Com_insert', 'Com_delete', 'Com_delete_multi', 'Com_select', 'Com_update');" | sql | sort | awk '{printf "%s ", $2}'
 }
 
 cleanup() {
@@ -82,8 +83,9 @@ for line in sys.stdin.read().split("\n"):
         continue
     v = line.split()
     times.append(float(v[0]))
-    b, a = list(map(int, v[1:5])), list(map(int, v[5:9]))
-    d = [y - x for x, y in zip(b, a)]  # delete, insert, select, update
+    b, a = list(map(int, v[1:6])), list(map(int, v[6:11]))
+    d = [y - x for x, y in zip(b, a)]  # delete, delete_multi, insert, select, update
+    d = [d[0] + d[1]] + d[2:]  # DELETE = 한 테이블 삭제 + 여러 테이블 형식 삭제
     d[2] -= 1  # 측정 후 카운터를 읽으려고 mysql 클라이언트가 접속할 때 SELECT 1건이 늘어난다 (호출 없이 연속으로 읽어 확인)
     deltas.add(tuple(d))
 cols = list(zip(*sorted(deltas)))
