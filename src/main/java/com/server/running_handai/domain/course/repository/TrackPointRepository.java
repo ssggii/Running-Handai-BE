@@ -6,7 +6,9 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
 
@@ -16,9 +18,13 @@ public interface TrackPointRepository extends JpaRepository<TrackPoint, Long> {
     Optional<TrackPoint> findFirstByCourseOrderBySequenceAsc(Course course);
 
     /**
-     * 특정한 courseId의 트랙포인트 전체 삭제
+     * 특정한 courseId의 트랙포인트를 한 문장으로 전체 삭제
+     * 영속성 컨텍스트를 거치지 않는 벌크 삭제라, 이미 읽어 둔 트랙포인트 엔티티는 메모리에 남습니다.
+     * (파생 삭제 deleteByCourseId는 트랙포인트를 모두 조회한 뒤 한 건씩 DELETE해서 대체했습니다)
      */
-    void deleteByCourseId(Long courseId);
+    @Modifying
+    @Query("DELETE FROM TrackPoint t WHERE t.course.id = :courseId")
+    int deleteAllByCourseIdInBulk(@Param("courseId") Long courseId);
 
     /**
      * 특정 코스의 전체 트랙포인트 목록 조회
