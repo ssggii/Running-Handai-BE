@@ -1,0 +1,4 @@
+time	label	mode	points	runs	median_ms	min_ms	max_ms	inserts	deletes	selects	updates
+2026-10-13 18:35	before	create	1156	10	110.8	96.8	202.9	1157	0	0	0
+2026-10-13 18:36	before	create	17089	10	1090.9	927.4	1251.9	17090	0	0	0
+2026-10-13 18:36	before	replace	1299	10	157.9	137.5	263.4	1299	1299	15	0

@@ -10,6 +10,7 @@ services:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - DECORATOR_DATASOURCE_ENABLED # 값을 줄 때만 전달. 측정 시간을 잴 때 false로 p6spy를 끈다
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
