@@ -1,3 +1,5 @@
 time	label	create_rate	duration_s	creates	create_fail	create_p50_ms	create_p95_ms	reads	read_fail	read_p50_ms	read_p95_ms	read_p99_ms	read_max_ms	active_max	pending_max	pending_mean
 2026-10-14 16:19	before	2.4	60	121	0	10452	14261	251	0	5801	9816	10494	17158	10	96	53.3
 2026-10-14 16:31	before-slow	2.4	60	121	45	38618	42994	251	108	28861	33438	34157	34321	10	237	131.9
+2026-10-14 17:49	after	2.4	60	121	0	4818	4842	251	0	23	40	92	137	2	0	0.0
+2026-10-14 17:51	after-slow	2.4	60	121	0	9717	9759	251	0	24	49	69	164	2	0	0.0
