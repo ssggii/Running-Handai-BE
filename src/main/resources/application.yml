@@ -3,6 +3,7 @@ spring:
     active: prod
 
   jpa:
+    open-in-view: false # 요청 전체에 커넥션을 붙잡아 두지 않도록 끈다 (외부 API 대기 중 커넥션 점유 방지)
     hibernate:
       ddl-auto: none
     properties:
