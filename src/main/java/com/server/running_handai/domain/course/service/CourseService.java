@@ -17,7 +17,6 @@ import com.server.running_handai.domain.bookmark.repository.BookmarkRepository;
 import com.server.running_handai.domain.course.dto.*;
 import com.server.running_handai.domain.course.entity.Course;
 import com.server.running_handai.domain.course.entity.TrackPoint;
-import com.server.running_handai.domain.course.event.CourseCreatedEvent;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.domain.member.entity.Member;
@@ -321,34 +320,6 @@ public class CourseService {
         log.info("[지역 판별] city={}", city);
 
         return city.startsWith("부산");
-    }
-
-    /**
-     * 회원이 생성한 코스를 저장하고, 트랜잭션 커밋 후 이벤트를 발행합니다.
-     *
-     * @param memberId 요청 회원의 ID
-     * @param request 코스 생성에 필요한 데이터 DTO
-     * @return 저장된 코스의 ID
-     */
-    @Transactional
-    public Long createMemberCourse(Long memberId, CourseCreateRequestDto request) {
-        Course newCourse = saveMemberCourse(memberId, request);
-        courseDataService.updateCourseImage(newCourse.getId(), request.thumbnailImage());
-        publishCourseCreatedEvent(newCourse.getId(), request.isInsideBusan());
-        return newCourse.getId();
-    }
-
-    private Course saveMemberCourse(Long memberId, CourseCreateRequestDto request) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-        Course newCourse = courseDataService.createCourseToGpx(new GpxCourseRequestDto(request.startPointName(), request.endPointName()), request.gpxFile());
-        newCourse.setCreator(member);
-        return newCourse;
-    }
-
-    private void publishCourseCreatedEvent(Long courseId, boolean isInsideBusan) {
-        CourseCreatedEvent event = new CourseCreatedEvent(courseId, isInsideBusan);
-        log.info("코스 생성 이벤트 발행. courseId: {}, isInsideBusan: {}", courseId, isInsideBusan);
-        eventPublisher.publishEvent(event);
     }
 
     /**

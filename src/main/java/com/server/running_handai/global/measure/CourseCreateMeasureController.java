@@ -1,7 +1,7 @@
 package com.server.running_handai.global.measure;
 
 import com.server.running_handai.domain.course.dto.CourseCreateRequestDto;
-import com.server.running_handai.domain.course.service.CourseService;
+import com.server.running_handai.domain.course.service.CourseCreationService;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
@@ -26,7 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class CourseCreateMeasureController {
 
-    private final CourseService courseService;
+    private final CourseCreationService courseCreationService;
 
     /**
      * 측정용 GPX와 썸네일로 회원 코스를 생성하고 걸린 시간을 돌려줍니다.
@@ -41,7 +41,7 @@ public class CourseCreateMeasureController {
                 false);
 
         long start = System.nanoTime();
-        Long courseId = courseService.createMemberCourse(memberId, request);
+        Long courseId = courseCreationService.createMemberCourse(memberId, request);
         double elapsedMs = (System.nanoTime() - start) / 1_000_000.0;
 
         return Map.of("courseId", courseId, "elapsedMs", elapsedMs);
