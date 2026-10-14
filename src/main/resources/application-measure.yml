@@ -14,3 +14,9 @@ decorator:
     enabled: true
     p6spy:
       enable-logging: true # 실행된 SQL을 바인딩 값과 실행 시간(ms)까지 한 줄씩 로그로 남김
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics # Hikari 커넥션 지표(hikaricp.connections.*) 조회
