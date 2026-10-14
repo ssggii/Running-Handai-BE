@@ -5,6 +5,7 @@ import static com.server.running_handai.global.response.ResponseCode.*;
 import static org.springframework.http.HttpStatus.*;
 
 import com.server.running_handai.domain.course.dto.*;
+import com.server.running_handai.domain.course.service.CourseCreationService;
 import com.server.running_handai.domain.course.service.CourseService;
 import com.server.running_handai.global.entity.SortBy;
 import com.server.running_handai.global.oauth.CustomOAuth2User;
@@ -48,6 +49,7 @@ import org.springframework.web.client.RestTemplate;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CourseCreationService courseCreationService;
     private final RestTemplate restTemplate;
 
     @Operation(summary = "추천코스 전체 조회", description = "추천코스를 다양한 필터 옵션으로 조회합니다.")
@@ -226,7 +228,7 @@ public class CourseController {
     ) {
         Long memberId = customOAuth2User.getMember().getId();
         log.info("[내 코스 생성] startPointName: {}, endPointName: {}", request.startPointName(), request.endPointName());
-        Long courseId = courseService.createMemberCourse(memberId, request);
+        Long courseId = courseCreationService.createMemberCourse(memberId, request);
         return ResponseEntity.ok(CommonResponse.success(SUCCESS, courseId));
     }
 

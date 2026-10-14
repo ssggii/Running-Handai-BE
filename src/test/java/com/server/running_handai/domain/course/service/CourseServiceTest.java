@@ -60,6 +60,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
+import com.server.running_handai.domain.course.dto.GpxCourseDraft;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -724,83 +726,6 @@ class CourseServiceTest {
                     cityName
             );
             return objectMapper.readTree(jsonString);
-        }
-    }
-
-    @Nested
-    @DisplayName("내 코스 생성 테스트")
-    class MyCourseCreationTest {
-
-        private final String START_POINT_NAME = "광안리해수욕장";
-        private final String END_POINT_NAME = "해운대해수욕장";
-        private final String COURSE_NAME = START_POINT_NAME + "-" + END_POINT_NAME;
-
-        private Member member;
-        private MultipartFile gpxFile;
-        private MultipartFile thumbnailImgFile;
-        private CourseCreateRequestDto request;
-
-        @BeforeEach
-        void setUp() {
-            member = Member.builder()
-                    .nickname("nickname1")
-                    .providerId("providerId1")
-                    .provider(Provider.GOOGLE)
-                    .email("email1")
-                    .role(Role.USER)
-                    .build();
-            gpxFile = new MockMultipartFile("gpxFile", "test.gpx", "application/gpx+xml", "<gpx></gpx>".getBytes());
-            thumbnailImgFile = new MockMultipartFile("thumbnail", "thumb.jpg", "image/jpeg", "thumbnail-image".getBytes());
-            request = new CourseCreateRequestDto(START_POINT_NAME, END_POINT_NAME, gpxFile, thumbnailImgFile, true);
-        }
-
-        @Test
-        @DisplayName("내 코스 생성 성공")
-        void createMemberCourse_success() {
-            // given
-            Long memberId = 1L;
-            Long courseId = 100L;
-            Course newCourse = createMockCourse(courseId);
-
-            when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-            when(courseDataService.createCourseToGpx(any(GpxCourseRequestDto.class), any(MultipartFile.class))).thenReturn(newCourse);
-
-            // when
-            Long result = courseService.createMemberCourse(memberId, request);
-
-            // then
-            assertThat(result).isEqualTo(newCourse.getId());
-            assertThat(newCourse.getCreator()).isEqualTo(member);
-            assertThat(member.getCourses()).contains(newCourse);
-
-            // 이벤트 캡처
-            ArgumentCaptor<CourseCreatedEvent> eventCaptor = ArgumentCaptor.forClass(CourseCreatedEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
-
-            // 캡처한 이벤트의 내용 검증
-            CourseCreatedEvent capturedEvent = eventCaptor.getValue();
-            assertThat(capturedEvent.courseId()).isEqualTo(newCourse.getId());
-            assertThat(capturedEvent.isInsideBusan()).isTrue();
-
-            verify(memberRepository).findById(memberId);
-            verify(courseDataService).createCourseToGpx(any(GpxCourseRequestDto.class), eq(gpxFile));
-            verify(courseDataService).updateCourseImage(newCourse.getId(), thumbnailImgFile);
-        }
-
-        @Test
-        @DisplayName("실패 - 존재하지 않는 회원")
-        void createMemberCourse_fail_memberNotFound() {
-            // given
-            Long nonExistentMemberId = 999L;
-            when(memberRepository.findById(nonExistentMemberId)).thenReturn(Optional.empty()); // 존재하지 않는 회원
-
-            // when, then
-            BusinessException exception = assertThrows(BusinessException.class,
-                    () -> courseService.createMemberCourse(nonExistentMemberId, request));
-            assertThat(exception.getResponseCode()).isEqualTo(MEMBER_NOT_FOUND);
-
-            verify(courseDataService, never()).createCourseToGpx(any(), any());
-            verify(courseDataService, never()).updateCourseImage(any(), any());
         }
     }
 

@@ -255,6 +255,7 @@ public class MemberService {
      * @param memberId 요청 회원의 ID
      * @return 조회한 회원 정보를 담은 DTO
      */
+    @Transactional(readOnly = true)
     public MemberInfoDto getMemberInfo(Long memberId) {
         // 회원 조회
         Member member = memberRepository.findById(memberId)

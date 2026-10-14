@@ -19,6 +19,7 @@ import com.server.running_handai.domain.course.entity.TrackPoint;
 import com.server.running_handai.domain.course.repository.CourseRepository;
 import com.server.running_handai.domain.course.repository.RoadConditionRepository;
 import com.server.running_handai.domain.course.repository.TrackPointJdbcRepository;
+import com.server.running_handai.domain.course.dto.GpxCourseDraft;
 import com.server.running_handai.domain.course.repository.TrackPointRepository;
 import com.server.running_handai.global.util.TrackPointSimplificationUtil;
 import com.server.running_handai.global.response.ResponseCode;
@@ -59,6 +60,7 @@ public class CourseDataService {
     private final CourseRepository courseRepository;
     private final TrackPointRepository trackPointRepository;
     private final TrackPointJdbcRepository trackPointJdbcRepository;
+    private final CourseCreationSaver courseCreationSaver;
     private final RoadConditionRepository roadConditionRepository;
     private final KakaoMapService kakaoMapService;
     private final OpenAiService openAiService;
@@ -483,15 +485,33 @@ public class CourseDataService {
     }
 
     /**
-     * GPX 파일을 받아 코스 정보를 생성하고 저장합니다.
+     * GPX 파일을 받아 코스 정보를 생성하고 저장합니다. (관리자 코스 생성)
+     * 외부 API 호출은 트랜잭션 밖에서 하고, DB 저장만 트랜잭션으로 묶습니다.
+     * 저장에 실패하면 업로드한 GPX 파일을 S3에서 삭제합니다.
+     *
+     * @param gpxCourseRequestDto 코스 출발지, 도착지 존재
+     * @param courseGpxFile 업로드된 GPX 파일
+     */
+    public Course createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
+        GpxCourseDraft draft = prepareCourseFromGpx(gpxCourseRequestDto, courseGpxFile);
+        try {
+            return courseCreationSaver.saveCourse(draft);
+        } catch (RuntimeException e) {
+            deleteUploadedFile(draft.gpxPath());
+            throw e;
+        }
+    }
+
+    /**
+     * GPX 파일을 파싱하고 외부 API(카카오, OpenAI, S3)를 호출해 저장할 코스 정보를 만듭니다. DB에는 저장하지 않습니다.
      * OpenAI API의 경우, 예상 토큰 값을 계산하여 최대 토큰 값을 넘으면 RDP 단순화 알고리즘을 적용하여 요청합니다.
      * S3 버킷의 디렉토리는 "gpx"로 지정합니다.
      *
      * @param gpxCourseRequestDto 코스 출발지, 도착지 존재
      * @param courseGpxFile 업로드된 GPX 파일
+     * @return DB 저장 전의 코스 정보
      */
-    @Transactional
-    public Course createCourseToGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
+    public GpxCourseDraft prepareCourseFromGpx(GpxCourseRequestDto gpxCourseRequestDto, MultipartFile courseGpxFile) {
         log.info("[GPX 코스 생성] 시작: 파일명={}, 크기={} bytes", courseGpxFile.getOriginalFilename(), courseGpxFile.getSize());
 
         // 1. 코스 이름 조합
@@ -566,40 +586,35 @@ public class CourseDataService {
         // 8. AWS S3에 GPX 파일 업로드
         String gpxPath = fileService.uploadFile(courseGpxFile, "gpx");
 
-        // 9. course, road condition, track point DB에 저장
-        Course course = Course.builder()
-                .name(courseName)
-                .distance(distance)
-                .duration(duration)
-                .level(level)
-                .area(area)
-                .gpxPath(gpxPath)
-                .startPoint(startPoint)
-                .maxElevation(maxElevation)
-                .minElevation(minElevation)
-                .build();
-
-        // 10. Theme 설정
+        // 9. Theme 결정
         List<Theme> themes = extractTheme(startAddressInfo);
-        themes.forEach(course::addTheme);
 
-        courseRepository.save(course);
-        log.info("[GPX 코스 생성] Course 저장 완료: ID={}", course.getId());
-
-        List<RoadCondition> roadConditions = descriptions.stream()
+        List<String> roadConditions = descriptions.stream()
                 .skip(1)
                 .limit(5)
-                .map(description -> RoadCondition.builder().course(course).description(description).build())
                 .toList();
 
-        roadConditionRepository.saveAll(roadConditions);
-        log.info("[GPX 코스 생성] RoadCondition {}개 저장 완료", roadConditions.size());
+        log.info("[GPX 코스 생성] 외부 API 호출 완료: 코스명={}", courseName);
+        return new GpxCourseDraft(courseName, distance, duration, level, area, gpxPath, startPoint,
+                maxElevation, minElevation, themes, roadConditions, trackPoints);
+    }
 
-        saveTrackPoints(course, trackPoints);
-        log.info("[GPX 코스 생성] TrackPoint {}개 저장 완료", trackPoints.size());
-
-        log.info("[GPX 코스 생성] 전체 작업 완료: 코스명={})", courseName);
-        return course;
+    /**
+     * 코스 생성 중 업로드한 S3 파일을 삭제합니다. (DB 저장 실패 시 보상)
+     * 삭제마저 실패하면 원래 예외를 가리지 않도록 로그만 남깁니다.
+     *
+     * @param fileUrl 삭제할 파일 URL (없으면 무시)
+     */
+    public void deleteUploadedFile(String fileUrl) {
+        if (fileUrl == null) {
+            return;
+        }
+        try {
+            fileService.deleteFile(fileUrl);
+            log.warn("[코스 생성 보상] 저장 실패로 업로드한 파일 삭제: {}", fileUrl);
+        } catch (Exception e) {
+            log.error("[코스 생성 보상] 업로드한 파일 삭제 실패: {}", fileUrl, e);
+        }
     }
 
     /**
