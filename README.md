@@ -5,10 +5,14 @@
 > 이 저장소는 팀 프로젝트 원본 [RunChuck/Running-Handai-BE](https://github.com/RunChuck/Running-Handai-BE)를 fork하여, <br>
 > 프로젝트 종료 후 성능과 안정성 개선을 개인적으로 이어 간 저장소입니다.
 
+<br>
+
 ## 프로젝트 성과
 
 - 🏆 2025 관광데이터 활용 공모전 **우수상** 수상
 - 🎖️ 2025 관광데이터 활용 공모전 **부산관광공사 특별상** 수상
+
+<br>
 
 ## 담당 역할 및 성과
 
@@ -44,6 +48,8 @@
 
 - 로컬 개발 환경과 Swagger API 문서 구성, GitHub와 Slack 알림 연동
 
+<br>
+
 ## 개선 작업 (fork)
 
 팀 프로젝트가 끝난 뒤 운영 로그와 코드에서 찾은 문제를 로컬에서 재현하고, 개선 전후를 측정했습니다. 작업마다 이슈에 문제와 원인을, PR에 해결 과정과 측정 결과를 남겼습니다.
@@ -72,6 +78,8 @@
 
 측정 도구는 measure 프로필에서만 켜지고 운영 설정에는 들어가지 않습니다.
 
+<br>
+
 ## 주요 기능
 
 | 기능         | 내용                                                           |
@@ -82,6 +90,8 @@
 | 코스 리뷰      | 코스별 평점과 리뷰를 남기고, 전체 평점과 다른 사용자의 후기 확인                        |
 | 코스 즐겨찾기    | 마음에 드는 코스를 북마크하고 모아 보기                                       |
 | 마이페이지      | 내가 만든 코스와 즐겨찾기한 코스 관리, 러닝 용어사전 제공                            |
+
+<br>
 
 ## 기술 스택
 
@@ -131,11 +141,15 @@
   <img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"/>
 </p>
 
+<br>
+
 ## 시스템 아키텍처 · ERD
 
 <img width="2368" height="1792" alt="infra_system" src="https://github.com/user-attachments/assets/36825c09-beb6-45b3-948f-33966781626d" />
 
 <img width="4296" height="2142" alt="runninghandai_ERD" src="https://github.com/user-attachments/assets/fcb28458-3479-45e1-ab3f-8222943c0a36" />
+
+<br>
 
 ## 디렉토리 구조
 
@@ -219,6 +233,8 @@
 ```
 
 </details>
+
+<br>
 
 ## 팀원 및 개발 기간
 
