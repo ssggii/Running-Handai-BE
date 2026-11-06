@@ -77,7 +77,7 @@
 |---------------------------------------------------------------|-------------------------------|-------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | 코스 생성이 OpenAI·S3 응답을 기다리는 동안 DB 커넥션을 점유해 다른 API까지 지연          | 외부 호출을 트랜잭션 밖으로 분리, OSIV 비활성화 | 조회 API p95 9.8초 → 0.04초, 커넥션 대기 96건 → 0건  | [이슈 #5](https://github.com/ssggii/Running-Handai-BE/issues/5) · [PR #6](https://github.com/ssggii/Running-Handai-BE/pull/6) |
 | 공공데이터 동기화에서 코스 좌표가 한 건씩 삭제·저장                                 | JDBC 배치 저장, 벌크 삭제             | 코스 1개 교체 쿼리 2,613회 → 6회, 157.9ms → 20.1ms | [이슈 #3](https://github.com/ssggii/Running-Handai-BE/issues/3) · [PR #4](https://github.com/ssggii/Running-Handai-BE/pull/4) |
-| 내 주변 코스 검색이 공간 인덱스를 쓰지 못하고 모든 코스의 거리를 계산                      | 사각형 범위 조건으로 공간 인덱스를 먼저 타게 변경  | 코스 420만 개 기준 22.5초 → 2.0초, 검색 결과 동일       | [이슈 #1](https://github.com/ssggii/Running-Handai-BE/issues/1) · [PR #2](https://github.com/ssggii/Running-Handai-BE/pull/2) |
+| 내 주변 코스 검색이 공간 인덱스를 쓰지 못하고 모든 코스의 거리를 계산                      | 사각형 범위 조건으로 공간 인덱스를 먼저 타게 변경  | 코스 420만 개 기준 21.5초 → 1.5초, 캐시를 비운 상태 3.3초, 검색 결과 동일 | [이슈 #1](https://github.com/ssggii/Running-Handai-BE/issues/1) · [PR #2](https://github.com/ssggii/Running-Handai-BE/pull/2), 통제 실험 재검증 [이슈 #9](https://github.com/ssggii/Running-Handai-BE/issues/9) · [PR #10](https://github.com/ssggii/Running-Handai-BE/pull/10) |
 | 없는 경로 요청이 404가 아닌 500으로 응답. 팀 기간 스캐닝 대응 때 넣은 처리가 실제로는 동작하지 않음 | 서블릿용 예외 클래스로 수정하고 테스트 추가      | 500 → 404                                 | [이슈 #7](https://github.com/ssggii/Running-Handai-BE/issues/7) · [PR #8](https://github.com/ssggii/Running-Handai-BE/pull/8) |
 
 ### 측정 방식
@@ -86,6 +86,7 @@
 - 규모: 서비스가 전국으로 확장해 1년 운영한 상황을 가정(코스 420만 개, 코스 생성 피크 초당 2.4건). 코스당 좌표 수와 외부 API 소요 시간은 운영 DB와 CloudWatch 로그의 실측값
 - 외부 API: OpenAI, 카카오, S3는 운영 로그의 중앙값만큼 기다리는 지연 스텁으로 대체
 - 반복: 반경 검색과 좌표 저장은 워밍업 후 10회 실행의 중앙값, 트랜잭션 범위는 60초 부하(코스 생성 초당 2.4건과 조회 초당 5건)에서의 p95
+- 반경 검색은 같은 테이블에서 조건절과 인덱스를 하나씩만 바꿔 측정하고, MySQL 재시작과 OS 캐시 비우기 후 첫 실행으로 캐시가 없는 상태도 측정
 
 ### 재현 방법
 
@@ -93,7 +94,7 @@
 |----------------------------------------------------------|-------------------------|
 | [measure/e-tx-boundary](measure/e-tx-boundary)           | 부하 스크립트, 측정 데이터 준비, 결과  |
 | [measure/c-trackpoint-batch](measure/c-trackpoint-batch) | 저장 구간 측정 스크립트, 결과       |
-| [measure/b-spatial-index](measure/b-spatial-index)       | 코스 시드 데이터 생성, 쿼리 측정, 결과 |
+| [measure/b-spatial-index](measure/b-spatial-index)       | 코스 시드 데이터 생성, 쿼리 측정, 통제 실험, 결과 |
 
 측정 도구는 measure 프로필에서만 켜지고 운영 설정에는 들어가지 않습니다.
 
