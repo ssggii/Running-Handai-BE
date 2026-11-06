@@ -1,0 +1,33 @@
+time	cell	point	cache	runs	median_ms	min_ms	max_ms	rows_sent	rows_examined	disk_reads	missing_vs_base	extra_vs_base	plan
+2026-11-06 15:42	A1	haeundae	warm	10	21458.0	19996.7	22286.6	41818	4283636	404339	0	0	type=ALL key=NULL rows=4163376 extra=Using where; Using filesort
+2026-11-06 15:50	A2	haeundae	warm	10	32540.3	32201.6	33381.6	41818	4283636	362831	0	0	type=ALL key=NULL rows=4163376 extra=Using where; Using filesort
+2026-11-06 15:51	A3	haeundae	warm	10	2425.3	2407.5	2516.9	41818	4283636	296872	0	0	type=ALL key=NULL rows=4163376 extra=Using where; Using filesort
+2026-11-06 15:59	B1	haeundae	warm	10	32043.6	31678.5	34383.8	41818	4283636	297511	0	0	type=ALL key=NULL rows=4163376 extra=Using where; Using filesort
+2026-11-06 16:00	B2	haeundae	warm	10	1554.5	1509.4	1719.5	41818	128610	384717	0	0	type=range key=idx_exp_lat_lon_s rows=591710 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:00	B3	haeundae	warm	10	1565.9	1503.6	1823.4	41818	128613	391831	0	0	type=range key=idx_exp_location rows=8933 extra=Using where; Using filesort
+2026-11-06 16:00	B0	haeundae	warm	10	1513.2	1498.9	1643.7	41818	128613	395705	0	0	type=range key=idx_exp_location rows=8933 extra=Using where; Using filesort
+2026-11-06 16:01	N2	haeundae	warm	10	1205.1	1175.2	1286.1	41818	128610	355932	0	0	type=range key=idx_exp_lat_lon_s rows=591710 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:01	N3	haeundae	warm	10	1500.2	1480.6	1530.9	41818	128613	395524	0	0	type=range key=idx_exp_location rows=8933 extra=Using where; Using filesort
+2026-11-06 16:03	B2	gangnam	warm	10	5888.7	5790.4	6954.0	146858	476922	1959837	0	0	type=range key=idx_exp_lat_lon_s rows=1110704 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:04	B3	gangnam	warm	10	5853.7	5810.7	6069.6	146858	476948	1970831	0	0	type=range key=idx_exp_location rows=64727 extra=Using where; Using filesort
+2026-11-06 16:06	B0	gangnam	warm	10	6067.8	5825.8	7396.6	146858	476948	1954669	0	0	type=range key=idx_exp_location rows=64727 extra=Using where; Using filesort
+2026-11-06 16:07	N2	gangnam	warm	10	4642.4	4522.2	5543.8	146858	476922	1948272	0	0	type=range key=idx_exp_lat_lon_s rows=1110704 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:08	N3	gangnam	warm	10	6092.6	5856.8	6756.8	146858	476948	1943363	0	0	type=range key=idx_exp_location rows=64727 extra=Using where; Using filesort
+2026-11-06 16:09	B2	daejeon	warm	10	1746.8	1666.9	2077.0	46170	147809	420788	0	0	type=range key=idx_exp_lat_lon_s rows=158536 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:09	B3	daejeon	warm	10	1744.2	1697.6	1973.7	46170	147819	449020	0	0	type=range key=idx_exp_location rows=5779 extra=Using where; Using filesort
+2026-11-06 16:10	B0	daejeon	warm	10	1785.0	1711.7	2110.7	46170	147819	449210	0	0	type=range key=idx_exp_location rows=5779 extra=Using where; Using filesort
+2026-11-06 16:10	N2	daejeon	warm	10	1326.1	1263.1	2056.0	46170	147809	375878	0	0	type=range key=idx_exp_lat_lon_s rows=158536 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:11	N3	daejeon	warm	10	1778.5	1699.1	1869.5	46170	147819	418660	0	0	type=range key=idx_exp_location rows=5779 extra=Using where; Using filesort
+2026-11-06 16:11	B2	taebaek	warm	10	19.6	19.2	22.8	0	0	0	0	0	type=range key=idx_exp_lat_lon_s rows=205390 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:11	B3	taebaek	warm	10	0.1	0.1	0.3	0	0	0	0	0	type=range key=idx_exp_location rows=528 extra=Using where; Using filesort
+2026-11-06 16:11	B0	taebaek	warm	10	0.1	0.1	0.4	0	0	0	0	0	type=range key=idx_exp_location rows=528 extra=Using where; Using filesort
+2026-11-06 16:11	N2	taebaek	warm	10	19.4	19.0	20.0	0	0	0	0	0	type=range key=idx_exp_lat_lon_s rows=205390 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:11	N3	taebaek	warm	10	0.1	0.1	0.3	0	0	0	0	0	type=range key=idx_exp_location rows=528 extra=Using where; Using filesort
+2026-11-06 16:13	B1	haeundae	cold	3	35277.9	34695.4	35836.0	41818	4283636	64903	0	0	type=ALL key=NULL rows=4163376 extra=Using where; Using filesort
+2026-11-06 16:14	B2	haeundae	cold	3	3380.9	3362.4	3449.4	41818	128610	156155	0	0	type=range key=idx_exp_lat_lon_s rows=591710 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:14	B3	haeundae	cold	3	3539.9	3344.9	3656.2	41818	128613	158161	0	0	type=range key=idx_exp_location rows=8933 extra=Using where; Using filesort
+2026-11-06 16:15	B2	gangnam	cold	3	8030.0	7837.4	8393.6	146858	476922	576607	0	0	type=range key=idx_exp_lat_lon_s rows=1110704 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:15	B3	gangnam	cold	3	8450.5	8416.5	8991.2	146858	476948	581257	0	0	type=range key=idx_exp_location rows=64727 extra=Using where; Using filesort
+2026-11-06 16:23	A3	haeundae	cold	3	4161.7	4152.6	4182.4	41818	4283636	67036	0	0	type=ALL key=NULL rows=4163376 extra=Using where; Using filesort
+2026-11-06 16:24	N2	haeundae	cold	3	2832.9	2819.9	2872.1	41818	128610	155571	0	0	type=range key=idx_exp_lat_lon_s rows=591710 extra=Using index condition; Using where; Using MRR; Using filesort
+2026-11-06 16:24	N3	haeundae	cold	3	3318.8	3200.5	3620.4	41818	128613	158362	0	0	type=range key=idx_exp_location rows=8933 extra=Using where; Using filesort
