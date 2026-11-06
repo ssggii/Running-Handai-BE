@@ -1,0 +1,23 @@
+-- 칸 A1 / 지점 haeundae / 2026-11-06 15:42
+SELECT c.course_id AS id, c.name, ci.img_url AS thumbnailUrl, c.distance, c.duration, c.max_ele AS maxElevation, (ST_Distance_Sphere(c.start_point, ST_PointFromText('POINT(35.1587 129.1604)', 4326)) / 1000) AS distanceFromUser FROM course_exp c IGNORE INDEX (idx_exp_location, idx_exp_lat_lon_v, idx_exp_lat_lon_s) LEFT JOIN course_image_exp ci ON c.course_id = ci.course_id WHERE ST_Distance_Sphere(c.start_point, ST_PointFromText('POINT(35.1587 129.1604)', 4326)) <= 5000 ORDER BY distanceFromUser ASC;
+
+-- EXPLAIN
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	c	NULL	ALL	NULL	NULL	NULL	NULL	4163376	100.00	Using where; Using filesort
+1	SIMPLE	ci	NULL	eq_ref	uk_course_image_exp_course	uk_course_image_exp_course	8	runninghandai-local-db.c.course_id	1	100.00	NULL
+
+-- EXPLAIN FORMAT=TREE
+-> Nested loop left join  (cost=4.84e+6 rows=4.16e+6)
+    -> Sort: distanceFromUser  (cost=446369 rows=4.16e+6)
+        -> Filter: (st_distance_sphere(c.start_point,<cache>(st_pointfromtext('POINT(35.1587 129.1604)',4326))) <= 5000)  (cost=446369 rows=4.16e+6)
+            -> Table scan on c  (cost=446369 rows=4.16e+6)
+    -> Single-row index lookup on ci using uk_course_image_exp_course (course_id=c.course_id)  (cost=0.955 rows=1)
+
+
+-- EXPLAIN ANALYZE
+-> Nested loop left join  (cost=4.84e+6 rows=4.16e+6) (actual time=21385..21722 rows=41818 loops=1)
+    -> Sort: distanceFromUser  (cost=446369 rows=4.16e+6) (actual time=21385..21389 rows=41818 loops=1)
+        -> Filter: (st_distance_sphere(c.start_point,<cache>(st_pointfromtext('POINT(35.1587 129.1604)',4326))) <= 5000)  (cost=446369 rows=4.16e+6) (actual time=0.356..21107 rows=41818 loops=1)
+            -> Table scan on c  (cost=446369 rows=4.16e+6) (actual time=0.0968..1883 rows=4.2e+6 loops=1)
+    -> Single-row index lookup on ci using uk_course_image_exp_course (course_id=c.course_id)  (cost=0.955 rows=1) (actual time=0.00785..0.00787 rows=1 loops=41818)
+

@@ -1,0 +1,294 @@
+1	SIMPLE	c	NULL	ALL	idx_exp_lat_lon_v	NULL	NULL	NULL	4163376	1.58	Using where; Using filesort
+1	SIMPLE	ci	NULL	eq_ref	uk_course_image_exp_course	uk_course_image_exp_course	8	runninghandai-local-db.c.course_id	1	100.00	NULL
+{
+  "steps": [
+    {
+      "join_preparation": {
+        "select#": 1,
+        "steps": [
+          {
+            "expanded_query": "/* select#1 */ select `c`.`course_id` AS `id`,`c`.`name` AS `name`,`ci`.`img_url` AS `thumbnailUrl`,`c`.`distance` AS `distance`,`c`.`duration` AS `duration`,`c`.`max_ele` AS `maxElevation`,(st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) / 1000) AS `distanceFromUser` from (`course_exp` `c` left join `course_image_exp` `ci` on((`c`.`course_id` = `ci`.`course_id`))) where ((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000)) order by `distanceFromUser`"
+          },
+          {
+            "transformations_to_nested_joins": {
+              "transformations": [
+                "parenthesis_removal"
+              ],
+              "expanded_query": "/* select#1 */ select `c`.`course_id` AS `id`,`c`.`name` AS `name`,`ci`.`img_url` AS `thumbnailUrl`,`c`.`distance` AS `distance`,`c`.`duration` AS `duration`,`c`.`max_ele` AS `maxElevation`,(st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) / 1000) AS `distanceFromUser` from `course_exp` `c` left join `course_image_exp` `ci` on((`c`.`course_id` = `ci`.`course_id`)) where ((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000)) order by `distanceFromUser`"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "join_optimization": {
+        "select#": 1,
+        "steps": [
+          {
+            "condition_processing": {
+              "condition": "WHERE",
+              "original_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))",
+              "steps": [
+                {
+                  "transformation": "equality_propagation",
+                  "resulting_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))"
+                },
+                {
+                  "transformation": "constant_propagation",
+                  "resulting_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))"
+                },
+                {
+                  "transformation": "trivial_condition_removal",
+                  "resulting_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))"
+                }
+              ]
+            }
+          },
+          {
+            "substitute_generated_columns": {
+              "resulting_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))"
+            }
+          },
+          {
+            "table_dependencies": [
+              {
+                "table": "`course_exp` `c`",
+                "row_may_be_null": false,
+                "map_bit": 0,
+                "depends_on_map_bits": [
+                ]
+              },
+              {
+                "table": "`course_image_exp` `ci`",
+                "row_may_be_null": true,
+                "map_bit": 1,
+                "depends_on_map_bits": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "ref_optimizer_key_uses": [
+              {
+                "table": "`course_image_exp` `ci`",
+                "field": "course_id",
+                "equals": "`c`.`course_id`",
+                "null_rejecting": true
+              }
+            ]
+          },
+          {
+            "rows_estimation": [
+              {
+                "table": "`course_exp` `c`",
+                "range_analysis": {
+                  "table_scan": {
+                    "rows": 4163376,
+                    "cost": 453652
+                  },
+                  "potential_range_indexes": [
+                    {
+                      "index": "PRIMARY",
+                      "usable": false,
+                      "cause": "not_applicable"
+                    },
+                    {
+                      "index": "idx_exp_location",
+                      "usable": false,
+                      "cause": "not_applicable"
+                    },
+                    {
+                      "index": "idx_exp_lat_lon_s",
+                      "usable": false,
+                      "cause": "not_applicable"
+                    },
+                    {
+                      "index": "idx_exp_lat_lon_v",
+                      "usable": true,
+                      "key_parts": [
+                        "start_lat",
+                        "start_lon",
+                        "course_id"
+                      ]
+                    }
+                  ],
+                  "setup_range_conditions": [
+                  ],
+                  "group_index_range": {
+                    "chosen": false,
+                    "cause": "not_single_table"
+                  },
+                  "skip_scan_range": {
+                    "chosen": false,
+                    "cause": "not_single_table"
+                  },
+                  "analyzing_range_alternatives": {
+                    "range_scan_alternatives": [
+                      {
+                        "index": "idx_exp_lat_lon_v",
+                        "ranges": [
+                          "35.1132842 <= start_lat <= 35.2041158"
+                        ],
+                        "index_dives_for_eq_ranges": true,
+                        "rowid_ordered": false,
+                        "using_mrr": true,
+                        "index_only": false,
+                        "in_memory": 0,
+                        "rows": 591710,
+                        "cost": 585895,
+                        "chosen": false,
+                        "cause": "cost"
+                      }
+                    ],
+                    "analyzing_roworder_intersect": {
+                      "usable": false,
+                      "cause": "too_few_roworder_scans"
+                    }
+                  }
+                }
+              },
+              {
+                "table": "`course_image_exp` `ci`",
+                "table_scan": {
+                  "rows": 4072541,
+                  "cost": 22522
+                }
+              }
+            ]
+          },
+          {
+            "considered_execution_plans": [
+              {
+                "plan_prefix": [
+                ],
+                "table": "`course_exp` `c`",
+                "best_access_path": {
+                  "considered_access_paths": [
+                    {
+                      "rows_to_scan": 4163376,
+                      "filtering_effect": [
+                      ],
+                      "final_filtering_effect": 0.0157898,
+                      "access_type": "scan",
+                      "resulting_rows": 65739,
+                      "cost": 453650,
+                      "chosen": true,
+                      "use_tmp_table": true
+                    }
+                  ]
+                },
+                "condition_filtering_pct": 100,
+                "rows_for_plan": 65739,
+                "cost_for_plan": 453650,
+                "rest_of_plan": [
+                  {
+                    "plan_prefix": [
+                      "`course_exp` `c`"
+                    ],
+                    "table": "`course_image_exp` `ci`",
+                    "best_access_path": {
+                      "considered_access_paths": [
+                        {
+                          "access_type": "eq_ref",
+                          "index": "uk_course_image_exp_course",
+                          "rows": 1,
+                          "cost": 72312.9,
+                          "chosen": true
+                        },
+                        {
+                          "rows_to_scan": 4072541,
+                          "access_type": "scan",
+                          "using_join_cache": true,
+                          "buffers_needed": 1077067173,
+                          "resulting_rows": 4.07254e+06,
+                          "cost": 2.42845e+13,
+                          "chosen": false
+                        }
+                      ]
+                    },
+                    "condition_filtering_pct": 100,
+                    "rows_for_plan": 65739,
+                    "cost_for_plan": 525962,
+                    "sort_cost": 65739,
+                    "new_cost_for_plan": 591701,
+                    "chosen": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "attaching_conditions_to_tables": {
+              "original_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))",
+              "attached_conditions_computation": [
+              ],
+              "attached_conditions_summary": [
+                {
+                  "table": "`course_exp` `c`",
+                  "attached": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))"
+                },
+                {
+                  "table": "`course_image_exp` `ci`",
+                  "attached": "<if>(is_not_null_compl(ci), (`ci`.`course_id` = `c`.`course_id`), true)"
+                }
+              ]
+            }
+          },
+          {
+            "optimizing_distinct_group_by_order_by": {
+              "simplifying_order_by": {
+                "original_clause": "`distanceFromUser`",
+                "items": [
+                  {
+                    "item": "(st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) / 1000)"
+                  }
+                ],
+                "resulting_clause_is_simple": true,
+                "resulting_clause": "`distanceFromUser`"
+              }
+            }
+          },
+          {
+            "finalizing_table_conditions": [
+              {
+                "table": "`course_exp` `c`",
+                "original_table_condition": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,st_pointfromtext('POINT(35.1587 129.1604)',4326)) <= 5000))",
+                "final_table_condition   ": "((`c`.`start_lat` between 35.1132842 and 35.2041158) and (`c`.`start_lon` between 129.1048495 and 129.2159505) and (st_distance_sphere(`c`.`start_point`,<cache>(st_pointfromtext('POINT(35.1587 129.1604)',4326))) <= 5000))"
+              },
+              {
+                "table": "`course_image_exp` `ci`",
+                "original_table_condition": "<if>(is_not_null_compl(ci), (`ci`.`course_id` = `c`.`course_id`), true)",
+                "final_table_condition   ": null
+              }
+            ]
+          },
+          {
+            "refine_plan": [
+              {
+                "table": "`course_exp` `c`"
+              },
+              {
+                "table": "`course_image_exp` `ci`"
+              }
+            ]
+          },
+          {
+            "considering_tmp_tables": [
+              {
+                "adding_sort_to_table": "c"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "join_explain": {
+        "select#": 1,
+        "steps": [
+        ]
+      }
+    }
+  ]
+}

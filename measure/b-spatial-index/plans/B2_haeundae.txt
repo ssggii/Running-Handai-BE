@@ -1,0 +1,23 @@
+-- 칸 B2 / 지점 haeundae / 2026-11-06 16:00
+SELECT c.course_id AS id, c.name, ci.img_url AS thumbnailUrl, c.distance, c.duration, c.max_ele AS maxElevation, (ST_Distance_Sphere(c.start_point, ST_PointFromText('POINT(35.1587 129.1604)', 4326)) / 1000) AS distanceFromUser FROM course_exp c FORCE INDEX (idx_exp_lat_lon_s) LEFT JOIN course_image_exp ci ON c.course_id = ci.course_id WHERE MBRContains(ST_GeomFromText('POLYGON((35.1132842 129.1048495, 35.1132842 129.2159505, 35.2041158 129.2159505, 35.2041158 129.1048495, 35.1132842 129.1048495))', 4326), c.start_point) AND c.start_lat_s BETWEEN 35.1132842 AND 35.2041158 AND c.start_lon_s BETWEEN 129.1048495 AND 129.2159505 AND ST_Distance_Sphere(c.start_point, ST_PointFromText('POINT(35.1587 129.1604)', 4326)) <= 5000 ORDER BY distanceFromUser ASC;
+
+-- EXPLAIN
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	c	NULL	range	idx_exp_lat_lon_s	idx_exp_lat_lon_s	18	NULL	591710	11.11	Using index condition; Using where; Using MRR; Using filesort
+1	SIMPLE	ci	NULL	eq_ref	uk_course_image_exp_course	uk_course_image_exp_course	8	runninghandai-local-db.c.course_id	1	100.00	NULL
+
+-- EXPLAIN FORMAT=TREE
+-> Nested loop left join  (cost=712402 rows=591710)
+    -> Sort: distanceFromUser  (cost=590804 rows=591710)
+        -> Filter: (mbrcontains(<cache>(st_geomfromtext('POLYGON((35.1132842 129.1048495, 35.1132842 129.2159505, 35.2041158 129.2159505, 35.2041158 129.1048495, 35.1132842 129.1048495))',4326)),c.start_point) and (st_distance_sphere(c.start_point,<cache>(st_pointfromtext('POINT(35.1587 129.1604)',4326))) <= 5000))  (cost=590804 rows=591710)
+            -> Index range scan on c using idx_exp_lat_lon_s over (35.1132842 <= start_lat_s <= 35.2041158 AND 129.1048495 <= start_lon_s <= 129.2159505), with index condition: ((c.start_lat_s between 35.1132842 and 35.2041158) and (c.start_lon_s between 129.1048495 and 129.2159505))  (cost=590804 rows=591710)
+    -> Single-row index lookup on ci using uk_course_image_exp_course (course_id=c.course_id)  (cost=0.95 rows=1)
+
+
+-- EXPLAIN ANALYZE
+-> Nested loop left join  (cost=712402 rows=591710) (actual time=1016..1241 rows=41818 loops=1)
+    -> Sort: distanceFromUser  (cost=590804 rows=591710) (actual time=1016..1021 rows=41818 loops=1)
+        -> Filter: (mbrcontains(<cache>(st_geomfromtext('POLYGON((35.1132842 129.1048495, 35.1132842 129.2159505, 35.2041158 129.2159505, 35.2041158 129.1048495, 35.1132842 129.1048495))',4326)),c.start_point) and (st_distance_sphere(c.start_point,<cache>(st_pointfromtext('POINT(35.1587 129.1604)',4326))) <= 5000))  (cost=590804 rows=591710) (actual time=51.2..771 rows=41818 loops=1)
+            -> Index range scan on c using idx_exp_lat_lon_s over (35.1132842 <= start_lat_s <= 35.2041158 AND 129.1048495 <= start_lon_s <= 129.2159505), with index condition: ((c.start_lat_s between 35.1132842 and 35.2041158) and (c.start_lon_s between 129.1048495 and 129.2159505))  (cost=590804 rows=591710) (actual time=51.1..255 rows=44974 loops=1)
+    -> Single-row index lookup on ci using uk_course_image_exp_course (course_id=c.course_id)  (cost=0.95 rows=1) (actual time=0.00515..0.00516 rows=1 loops=41818)
+
